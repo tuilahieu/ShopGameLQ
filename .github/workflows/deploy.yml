@@ -18,42 +18,55 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-level: '20'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: './frontend/package-lock.json'
 
-      # 3. Cài đặt thư viện và Build frontend (để tạo thư mục frontend/dist)
+      # 3. Cài đặt thư viện và TỰ BUILD FRONTEND trên GitHub Server (Tạo thư mục frontend/dist)
       - name: Build Frontend
         run: |
           cd frontend
           npm install
           npm run build
 
-      # 4. SSH & Triển khai lên VPS (Sử dụng Git pull trực tiếp trên VPS)
-      # Đây là phương pháp tối ưu và nhanh nhất cho VPS.
-      - name: Deploy to VPS via SSH
+      # 4. SSH vào VPS để kéo code Backend mới nhất (Git pull)
+      - name: Pull Backend Code on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}          # IP của VPS
-          username: ${{ secrets.VPS_USERNAME }}  # Username đăng nhập VPS (e.g. root)
-          key: ${{ secrets.VPS_SSH_KEY }}        # Private SSH Key dùng để đăng nhập
-          port: ${{ secrets.VPS_PORT || 22 }}    # Cổng SSH (mặc định là 22)
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            # Di chuyển vào thư mục dự án trên VPS
-            cd /path/to/your/project-directory
-            
-            # Kéo code mới nhất từ github về
+            cd /var/www/shop-game
+            # Kéo code từ git (sẽ cập nhật backend & code nguồn frontend, riêng thư mục frontend/dist bị gitignore nên không đổi)
             git pull origin main
             
-            # 1. Cấu hình Backend
+            # Cài đặt thư viện cho backend
             cd backend
             npm install --production
-            
-            # 2. Cấu hình Frontend
-            cd ../frontend
-            npm install
-            npm run build
-            
-            # 3. Khởi động lại ứng dụng backend bằng PM2
-            cd ../backend
+
+      # 5. TỰ ĐỘNG ĐẨY THƯ MỤC BUILD (dist) TỪ GITHUB LÊN VPS (Thay thế thư mục dist cũ)
+      # Giúp VPS không cần chạy lệnh build nặng nhọc (tiết kiệm RAM/CPU)
+      - name: Copy Frontend Build to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "frontend/dist/"
+          target: "/var/www/shop-game/"
+          strip_components: 0 # Giữ nguyên cấu trúc thư mục frontend/dist
+
+      # 6. Khởi động lại Server Backend trên VPS qua PM2
+      - name: Restart PM2 Service on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            cd /var/www/shop-game/backend
             pm2 restart all || pm2 start src/app.js --name "shop-game-backend"
