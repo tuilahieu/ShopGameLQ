@@ -59,18 +59,6 @@ async function start() {
     // Sync database schema
     await sequelize.sync();
 
-    // Alter transactions.type enum to support ctv_earn
-    try {
-      await sequelize.query(`
-        ALTER TABLE transactions 
-        MODIFY COLUMN type ENUM('deposit', 'buy_acc', 'refund', 'admin_add', 'admin_sub', 'ctv_earn') NOT NULL
-      `);
-      console.log("🌱 Altered transactions type column to include ctv_earn");
-    } catch (err) {
-      // Ignore if it's already updated or has issues (e.g. SQLite if it were used, but dialect is mysql)
-      console.log("ℹ️ Transactions column check/alter completed");
-    }
-
     app.listen(process.env.PORT, () => {
       console.log(`🚀 Server đang chạy tại cổng ${process.env.PORT}`);
     });

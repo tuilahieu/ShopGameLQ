@@ -57,6 +57,56 @@ export default function ClientLayout() {
     fetchSettings();
   }, []);
 
+  // Dynamic script/HTML injection from Admin Settings (js_web)
+  useEffect(() => {
+    if (setting?.js_web) {
+      // 1. Remove previous custom scripts/elements to avoid duplicate runs
+      const oldScripts = document.querySelectorAll(".custom-web-js");
+      oldScripts.forEach((el) => el.remove());
+
+      // 2. Parse and inject elements
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = setting.js_web.trim();
+
+      const hasScripts = tempDiv.getElementsByTagName("script").length > 0;
+
+      if (hasScripts) {
+        // Iterate through parsed nodes to support both script tags and other markup (e.g. style, div, link)
+        Array.from(tempDiv.childNodes).forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node;
+            if (el.tagName === "SCRIPT") {
+              const newScript = document.createElement("script");
+              newScript.className = "custom-web-js";
+              // Copy all attributes (src, async, defer, etc.)
+              Array.from(el.attributes).forEach((attr) => {
+                newScript.setAttribute(attr.name, attr.value);
+              });
+              newScript.textContent = el.textContent;
+              document.body.appendChild(newScript);
+            } else {
+              // Clone and append non-script tags (style, link, custom divs)
+              const clone = el.cloneNode(true);
+              clone.classList.add("custom-web-js");
+              document.body.appendChild(clone);
+            }
+          } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+            const textSpan = document.createElement("span");
+            textSpan.className = "custom-web-js";
+            textSpan.textContent = node.textContent;
+            document.body.appendChild(textSpan);
+          }
+        });
+      } else {
+        // No script tags found, treat the setting string as raw JavaScript code
+        const newScript = document.createElement("script");
+        newScript.className = "custom-web-js";
+        newScript.textContent = setting.js_web;
+        document.body.appendChild(newScript);
+      }
+    }
+  }, [setting?.js_web]);
+
   function logout() {
     localStorage.clear();
     navigate("/");
