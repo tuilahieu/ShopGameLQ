@@ -53,7 +53,7 @@ export default function AccountCard({ acc }) {
         {discountPercent > 0 && !isSold && (
           <span className="badge-sale">-{discountPercent}%</span>
         )}
-        <img src={acc.img || "https://placehold.co/400x250/111827/ffffff?text=Lien+Quan"} alt={`Account ${acc.id}`} />
+        <img src={acc.img || "https://placehold.co/400x250/111827/ffffff?text=Lien+Quan"} alt={`Account ${acc.id}`} loading="lazy" />
       </div>
 
       <div className="account-body-premium">

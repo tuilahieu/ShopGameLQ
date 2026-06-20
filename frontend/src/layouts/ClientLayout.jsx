@@ -227,7 +227,7 @@ export default function ClientLayout() {
           {setting.logo ? (
             <img src={setting.logo} alt={setting.ten_web || "Logo"} style={{ maxHeight: "36px", width: "auto" }} />
           ) : (
-            <span>🎮 {setting.ten_web || "Shopgameliqi"}</span>
+            <span>{setting.ten_web || "Shopgameliqi"}</span>
           )}
         </Link>
 

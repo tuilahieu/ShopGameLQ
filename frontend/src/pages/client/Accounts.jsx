@@ -184,7 +184,7 @@ export default function Accounts() {
                   style={{ cursor: "pointer", transition: "transform 0.2s" }}
                 >
                   <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                    <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} />
+                    <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} loading="lazy" />
                   </div>
                   <div className="category-info">
                     <h3>{type.name}</h3>
@@ -210,22 +210,7 @@ export default function Accounts() {
 
           {/* Filter and Sorting Bar */}
           <div className="filter-wrapper">
-            <div className="filter-grid">
-              <div className="filter-item">
-                <label><Filter size={12} style={{ display: "inline", marginRight: "4px" }} /> Gói tài khoản</label>
-                <select
-                  className="filter-input"
-                  value={loaiId}
-                  onChange={(e) => updateFilter("loai_id", e.target.value)}
-                >
-                  {types.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            <div className="filter-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
               <div className="filter-item">
                 <label><SlidersHorizontal size={12} style={{ display: "inline", marginRight: "4px" }} /> Sắp xếp theo giá</label>
                 <select
@@ -252,7 +237,7 @@ export default function Accounts() {
             <div className="type-info-banner" style={{ marginBottom: "32px" }}>
               {selectedType.img && (
                 <div className="type-info-banner-img">
-                  <img src={selectedType.img} alt={selectedType.name} />
+                  <img src={selectedType.img} alt={selectedType.name} loading="lazy" />
                 </div>
               )}
               <div className="type-info-banner-body">

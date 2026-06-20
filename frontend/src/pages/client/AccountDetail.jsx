@@ -248,7 +248,7 @@ export default function AccountDetail() {
                   className={`gallery-thumb-item ${activeImg === img ? "active" : ""}`}
                   onClick={() => setActiveImg(img)}
                 >
-                  <img src={img} alt={`Thumb ${i}`} />
+                  <img src={img} alt={`Thumb ${i}`} loading="lazy" />
                 </div>
               ))}
             </div>

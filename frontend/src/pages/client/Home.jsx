@@ -320,7 +320,7 @@ export default function Home() {
                         return (
                           <Link to={`/accounts?loai_id=${type.id}`} className="category-card" key={type.id}>
                             <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                              <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} />
+                              <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} loading="lazy" />
                             </div>
                             <div className="category-info">
                               <h3>{type.name}</h3>
