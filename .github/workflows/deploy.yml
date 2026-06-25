@@ -24,6 +24,8 @@ jobs:
 
       # 3. Cài đặt thư viện và TỰ BUILD FRONTEND trên GitHub Server (Tạo thư mục frontend/dist)
       - name: Build Frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           cd frontend
           npm install

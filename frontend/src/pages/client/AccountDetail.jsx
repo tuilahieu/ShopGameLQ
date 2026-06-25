@@ -17,6 +17,14 @@ export default function AccountDetail() {
   const [activeImg, setActiveImg] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  // Set image loading state to true when activeImg changes
+  useEffect(() => {
+    if (activeImg) {
+      setImageLoading(true);
+    }
+  }, [activeImg]);
   
   // Modal states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -217,10 +225,34 @@ export default function AccountDetail() {
         <div className="detail-gallery">
           <div 
             className="gallery-main" 
-            style={{ position: "relative", cursor: "zoom-in" }}
+            style={{ position: "relative", cursor: "zoom-in", minHeight: "280px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-secondary)", overflow: "hidden" }}
             onClick={() => setIsZoomOpen(true)}
           >
-            <img src={activeImg || "https://placehold.co/600x350/111827/ffffff?text=Lien+Quan"} alt={`Account detail ${account.id}`} />
+            {imageLoading && (
+              <div className="image-loading-spinner-wrapper" style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "var(--bg-secondary)",
+                zIndex: 2
+              }}>
+                <div className="image-spinner"></div>
+              </div>
+            )}
+            <img 
+              src={activeImg || "https://placehold.co/600x350/111827/ffffff?text=Lien+Quan"} 
+              alt={`Account detail ${account.id}`} 
+              onLoad={() => setImageLoading(false)}
+              style={{
+                display: "block",
+                width: "100%",
+                height: "auto",
+                opacity: imageLoading ? 0 : 1,
+                transition: "opacity 0.25s ease-in-out"
+              }}
+            />
             <button 
               onClick={() => setIsZoomOpen(true)}
               className="small-btn"
