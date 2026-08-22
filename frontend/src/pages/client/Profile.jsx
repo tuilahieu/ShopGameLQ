@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { Key, CreditCard, History, Check, AlertCircle } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 
 export default function Profile() {
   const token = localStorage.getItem("accessToken");
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // Change password form
   const [passwordForm, setPasswordForm] = useState({
@@ -21,6 +23,7 @@ export default function Profile() {
 
   async function loadProfileAndTx() {
     setLoading(true);
+    setLoadError("");
     try {
       const [profileRes, txRes] = await Promise.all([
         api.get("/profile"),
@@ -32,6 +35,7 @@ export default function Profile() {
       setTransactions(list);
     } catch (err) {
       console.error("Failed to load profile data:", err);
+      setLoadError(err.response?.data?.message || "Không thể tải thông tin cá nhân.");
     } finally {
       setLoading(false);
     }
@@ -46,18 +50,25 @@ export default function Profile() {
       return;
     }
 
+    if (passwordForm.newPassword.length < 10) {
+      setPwStatus({ type: "error", msg: "Mật khẩu mới cần tối thiểu 10 ký tự." });
+      return;
+    }
+
     setPwLoading(true);
     try {
       await api.post("/profile/change-password", {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword
       });
-      setPwStatus({ type: "success", msg: "Đổi mật khẩu thành công!" });
+      setPwStatus({ type: "success", msg: "Đổi mật khẩu thành công. Bạn cần đăng nhập lại để tiếp tục." });
       setPasswordForm({
         oldPassword: "",
         newPassword: "",
         confirmNewPassword: ""
       });
+      localStorage.clear();
+      window.setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
       setPwStatus({ 
         type: "error", 
@@ -114,15 +125,15 @@ export default function Profile() {
           <div style={{ color: "var(--text-secondary)" }}>Đang tải thông tin cá nhân...</div>
           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
+      ) : loadError || !profile ? (
+        <div className="empty-state"><p>{loadError || "Không tìm thấy thông tin tài khoản."}</p><button className="btn-primary" onClick={loadProfileAndTx}>Tải lại</button></div>
       ) : (
         <div className="profile-layout">
           {/* Sidebar user card */}
           <div className="profile-sidebar-card">
-            <img 
-              src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile?.username || "default"}`} 
-              alt="Avatar" 
-              style={{ width: "80px", height: "80px", borderRadius: "50%", background: "var(--bg-tertiary)", padding: "4px", border: "2px solid var(--border-color)", objectFit: "cover" }} 
-            />
+            <div className="profile-avatar" aria-label={`Tài khoản ${profile?.username || ""}`}>
+              {(profile?.username || "?").slice(0, 1).toUpperCase()}
+            </div>
             
             <div style={{ marginTop: "8px" }}>
               <h3 style={{ color: "var(--text-primary)", fontSize: "1.25rem", fontWeight: "700" }}>{profile?.username}</h3>
@@ -168,7 +179,7 @@ export default function Profile() {
                   style={{ 
                     background: pwStatus.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
                     border: `1px solid ${pwStatus.type === "success" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-                    color: pwStatus.type === "success" ? "#34d399" : "#f87171",
+                    color: pwStatus.type === "success" ? "var(--green-color)" : "var(--danger-color)",
                     marginBottom: "20px",
                     display: "flex",
                     alignItems: "center",
@@ -196,7 +207,9 @@ export default function Profile() {
                   <label>Mật khẩu mới</label>
                   <input 
                     type="password" 
-                    placeholder="Tối thiểu 6 ký tự"
+                    minLength={10}
+                    maxLength={128}
+                    placeholder="Tối thiểu 10 ký tự"
                     value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                     required
@@ -207,6 +220,8 @@ export default function Profile() {
                   <label>Nhập lại mật khẩu mới</label>
                   <input 
                     type="password" 
+                    minLength={10}
+                    maxLength={128}
                     placeholder="Xác nhận lại mật khẩu mới"
                     value={passwordForm.confirmNewPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
@@ -240,13 +255,14 @@ export default function Profile() {
                     </thead>
                     <tbody>
                       {transactions.map((tx) => {
-                        const isAdd = tx.type === "recharge" || tx.type === "admin_add" || (tx.description && tx.description.toLowerCase().includes("cộng"));
+                        const amount = Number(tx.amount || 0);
+                        const isAdd = amount > 0;
                         return (
                           <tr key={tx.id}>
                             <td style={{ fontWeight: "500", color: "var(--text-primary)" }}>#{tx.id}</td>
                             <td>{tx.description || tx.type}</td>
                             <td className={isAdd ? "amount-add" : "amount-sub"}>
-                              {isAdd ? "+" : "-"}{Number(tx.amount).toLocaleString()}đ
+                              {isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ
                             </td>
                             <td>{Number(tx.balance_after).toLocaleString()}đ</td>
                             <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>

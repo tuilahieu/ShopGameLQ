@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
+import Modal from "../../components/Modal";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -12,6 +13,11 @@ export default function AdminUsers() {
     total: 0,
     totalPage: 1
   });
+  const [adjustment, setAdjustment] = useState(null);
+  const [adjustmentForm, setAdjustmentForm] = useState({ amount: "", description: "" });
+  const [adjustmentError, setAdjustmentError] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+  const adjustmentKeyRef = useRef(null);
 
   async function load() {
     try {
@@ -41,21 +47,40 @@ export default function AdminUsers() {
     }
   }
 
-  async function money(id, type) {
-    const amount = prompt("Nhập số tiền:");
-    if (!amount) return;
-
+  async function submitAdjustment() {
+    const amount = Number(adjustmentForm.amount);
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      setAdjustmentError("Nhập số tiền nguyên dương hợp lệ.");
+      return;
+    }
+    setAdjusting(true);
+    setAdjustmentError("");
     try {
-      await api.post(`/admin/users/${id}/money`, {
-        type,
-        amount: Number(amount),
-        description: type === "add" ? "Admin cộng tiền" : "Admin trừ tiền",
+      adjustmentKeyRef.current ||= crypto.randomUUID();
+      await api.post(`/admin/users/${adjustment.id}/money`, {
+        type: adjustment.type,
+        amount,
+        description: adjustmentForm.description.trim() || (adjustment.type === "add" ? "Admin cộng tiền" : "Admin trừ tiền"),
+      }, {
+        headers: { "Idempotency-Key": adjustmentKeyRef.current },
       });
+      adjustmentKeyRef.current = null;
+      setAdjustment(null);
+      setAdjustmentForm({ amount: "", description: "" });
       load();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Lỗi giao dịch tiền");
+      setAdjustmentError(err.response?.data?.message || "Không thể thực hiện điều chỉnh số dư.");
+    } finally {
+      setAdjusting(false);
     }
+  }
+
+  function openAdjustment(user, type) {
+    setAdjustment({ id: user.id, username: user.username, balance: Number(user.money || 0), type });
+    adjustmentKeyRef.current = crypto.randomUUID();
+    setAdjustmentForm({ amount: "", description: "" });
+    setAdjustmentError("");
   }
 
   function handleSearch(e) {
@@ -81,7 +106,7 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <h1 className="page-title">Quản lý người dùng (Users)</h1>
+      <h1 className="page-title">Quản lý người dùng</h1>
 
       {/* Search Bar */}
       <div className="filter-wrapper" style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -147,13 +172,13 @@ export default function AdminUsers() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     <button
                       className="small-btn"
-                      onClick={() => money(u.id, "add")}
+                      onClick={() => openAdjustment(u, "add")}
                     >
                       + Tiền
                     </button>
                     <button
                       className="small-btn danger-btn"
-                      onClick={() => money(u.id, "sub")}
+                      onClick={() => openAdjustment(u, "sub")}
                     >
                       - Tiền
                     </button>
@@ -225,6 +250,22 @@ export default function AdminUsers() {
           </button>
         </div>
       )}
+
+      <Modal
+        isOpen={Boolean(adjustment)}
+        onClose={() => !adjusting && setAdjustment(null)}
+        title={adjustment?.type === "add" ? "Cộng số dư" : "Trừ số dư"}
+        footer={<><button className="btn-outline" disabled={adjusting} onClick={() => setAdjustment(null)}>Hủy</button><button className="btn-primary" disabled={adjusting} onClick={submitAdjustment}>{adjusting ? "Đang lưu..." : "Xác nhận"}</button></>}
+      >
+        <div className="admin-adjustment-form">
+          <p>Người dùng: <strong>{adjustment?.username}</strong></p>
+          <p>Số dư hiện tại: <strong>{Number(adjustment?.balance || 0).toLocaleString()}đ</strong></p>
+          <div className="form-group-premium"><label>Số tiền</label><input type="number" min="1" step="1" autoFocus value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} placeholder="Ví dụ: 100000" /></div>
+          <div className="form-group-premium"><label>Lý do điều chỉnh</label><textarea value={adjustmentForm.description} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, description: e.target.value })} placeholder="Bắt buộc ghi rõ với điều chỉnh thủ công" /></div>
+          {adjustmentError && <p className="form-hint error">{adjustmentError}</p>}
+          {adjustment?.type === "sub" && <p className="form-hint">Không thể trừ vượt quá số dư hiện tại. Thao tác sẽ được lưu vào lịch sử giao dịch.</p>}
+        </div>
+      </Modal>
     </div>
   );
 }

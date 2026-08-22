@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 
 import { User } from "../models/user.model.js";
 import { errorResponse } from "../utils/response.util.js";
+import { env } from "../config/env.js";
 
 export async function authMiddleware(req, res, next) {
   try {
@@ -11,9 +12,10 @@ export async function authMiddleware(req, res, next) {
       return errorResponse(res, "Vui lòng đăng nhập để tiếp tục", 401);
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.slice(7).trim();
+    if (!token) return errorResponse(res, "Vui lòng đăng nhập để tiếp tục", 401);
 
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    const decoded = jwt.verify(token, env.jwt.accessSecret, { algorithms: ["HS256"] });
 
     const user = await User.findByPk(decoded.id, {
       attributes: ["id", "username", "level", "money", "tong_nap", "banned"],

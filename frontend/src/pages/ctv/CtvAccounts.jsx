@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Edit2, EyeOff, Upload, RefreshCw } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
@@ -179,9 +180,12 @@ export default function CtvAccounts() {
               </label>
             </div>
             {form.img && (
-              <img
+              <SafeImage
                 src={form.img}
-                alt="Preview"
+                alt="Xem trước ảnh tài khoản"
+                width={120}
+                height={70}
+                fallbackLabel="Ảnh không tải được"
                 style={{ width: "120px", height: "70px", objectFit: "cover", borderRadius: "8px", marginTop: "10px", border: "1px solid var(--border-color)" }}
               />
             )}
@@ -286,11 +290,15 @@ export default function CtvAccounts() {
                     <tr key={acc.id}>
                       <td>#{acc.id}</td>
                       <td>
-                        {acc.img ? (
-                          <img src={acc.img} alt="" style={{ width: "65px", height: "38px", objectFit: "cover", borderRadius: "4px" }} />
-                        ) : (
-                          "Không có ảnh"
-                        )}
+                        <SafeImage
+                          src={acc.img}
+                          alt={`Ảnh tài khoản mã số ${acc.id}`}
+                          width={65}
+                          height={38}
+                          fallbackClassName="table-image-fallback"
+                          style={{ width: "65px", height: "38px", objectFit: "cover", borderRadius: "4px" }}
+                          fallbackLabel="Chưa có ảnh"
+                        />
                       </td>
                       <td><span style={{ color: "var(--cyan-color)", fontWeight: "600" }}>{accType?.name || `Loại #${acc.loai_id}`}</span></td>
                       <td style={{ fontWeight: "600" }}>{Number(acc.gia).toLocaleString()}đ</td>

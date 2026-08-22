@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Upload, Pencil, Trash2, Plus, X, ShoppingBag } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
 
 const STATUS_MAP = {
   0: { label: "Đang bán", color: "var(--green-color)" },
@@ -146,7 +147,7 @@ export default function AdminAccounts() {
   }
 
   async function deleteAccount(id) {
-    if (!window.confirm("Xác nhận xóa tài khoản #" + id + "?")) return;
+    if (!window.confirm("Ẩn tài khoản #" + id + " khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.")) return;
     try {
       await api.delete(`/accounts/${id}`);
       loadData();
@@ -157,13 +158,13 @@ export default function AdminAccounts() {
 
   async function deleteSelected() {
     if (selected.size === 0) return;
-    if (!window.confirm(`Xác nhận xóa ${selected.size} tài khoản đã chọn? Hành động này không thể hoàn tác!`)) return;
+    if (!window.confirm(`Ẩn ${selected.size} tài khoản đã chọn khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.`)) return;
     let ok = 0, fail = 0;
     for (const id of selected) {
       try { await api.delete(`/accounts/${id}`); ok++; }
       catch { fail++; }
     }
-    alert(fail > 0 ? `Đã xóa ${ok}/${selected.size}, ${fail} lỗi.` : `✅ Đã xóa ${ok} tài khoản!`);
+    alert(fail > 0 ? `Đã ẩn ${ok}/${selected.size}, ${fail} lỗi.` : `Đã ẩn ${ok} tài khoản.`);
     loadData();
   }
 
@@ -323,9 +324,12 @@ export default function AdminAccounts() {
               </div>
               {form.img && (
                 <div style={{ marginTop: "12px" }}>
-                  <img
+                  <SafeImage
                     src={form.img}
-                    alt="Preview"
+                    alt="Xem trước ảnh tài khoản"
+                    width={214}
+                    height={120}
+                    fallbackLabel="Ảnh không tải được"
                     style={{
                       maxHeight: "120px",
                       borderRadius: "8px",
@@ -519,10 +523,15 @@ export default function AdminAccounts() {
                   <td style={{ fontWeight: 700, color: "var(--text-secondary)", fontSize: "0.85rem" }}>#{acc.id}</td>
 
                   <td>
-                    {acc.img
-                      ? <img src={acc.img} alt="" style={{ width: "60px", height: "44px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }} />
-                      : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                    }
+                    <SafeImage
+                      src={acc.img}
+                      alt={`Ảnh tài khoản mã số ${acc.id}`}
+                      width={60}
+                      height={44}
+                      fallbackClassName="table-image-fallback"
+                      style={{ width: "60px", height: "44px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }}
+                      fallbackLabel="Chưa có ảnh"
+                    />
                   </td>
 
                   <td>

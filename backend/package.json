@@ -2,10 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "src/app.js",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/app.js",
-    "start": "node src/app.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "node src/database/migrate.js",
+    "migrate:status": "node src/database/migrate.js --status",
+    "generate-docs": "node scripts/generate-openapi.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",

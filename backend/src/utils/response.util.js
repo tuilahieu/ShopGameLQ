@@ -8,12 +8,15 @@ export function successResponse(
     success: true,
     message,
     data,
+    requestId: res.req?.requestId,
   });
 }
 
-export function errorResponse(res, message = "Có lỗi xảy ra", status = 400) {
+export function errorResponse(res, message = "Có lỗi xảy ra", status = 400, code = undefined, req = undefined) {
   return res.status(status).json({
     success: false,
     message,
+    ...(code && { code }),
+    requestId: req?.requestId || res.req?.requestId,
   });
 }

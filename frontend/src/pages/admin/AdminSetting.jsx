@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Upload, Eye, EyeOff } from "lucide-react";
-
-const BACKEND = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3000";
+import SafeImage from "../../components/SafeImage";
 
 function ImageUploadField({ label, fieldKey, value, onChange }) {
   const inputRef = useRef();
@@ -67,9 +66,12 @@ function ImageUploadField({ label, fieldKey, value, onChange }) {
         </label>
       </div>
       {value && (
-        <img
+        <SafeImage
           src={value}
           alt={label}
+          width={180}
+          height={100}
+          fallbackLabel="Ảnh không tải được"
           style={{
             maxHeight: "100px",
             marginTop: "10px",
@@ -195,17 +197,6 @@ export default function AdminSetting() {
             />
           </div>
 
-          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <label>Custom JavaScript (chèn vào cuối &lt;body&gt;)</label>
-            <textarea
-              className="full"
-              placeholder="<script>...</script>"
-              value={form.js_web || ""}
-              onChange={(e) => set("js_web", e.target.value)}
-              rows={3}
-              style={{ resize: "vertical", fontFamily: "monospace", fontSize: "0.85rem" }}
-            />
-          </div>
         </div>
       </div>
 

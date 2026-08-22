@@ -67,7 +67,7 @@ export default function Terms() {
               QUY ĐỊNH NẠP TIỀN VÍ
             </h3>
             <ul style={{ paddingLeft: "18px", color: "var(--text-secondary)", fontSize: "0.92rem", display: "flex", flexDirection: "column", gap: "8px" }}>
-              <li><strong>ATM/Momo:</strong> Số dư ví cộng tự động sau 1-3 phút khi chuyển đúng cú pháp <code>NAPTIEN [username]</code>. Ghi sai cú pháp vui lòng liên hệ admin xử lý thủ công.</li>
+              <li><strong>ATM/Momo:</strong> Ghi đúng cú pháp <code>NAPTIEN [username]</code> và giữ lại biên lai. Giao dịch sẽ được đối soát trước khi số dư ví được cập nhật; ghi sai cú pháp vui lòng liên hệ hỗ trợ để xử lý.</li>
               <li>Hệ thống chỉ chấp nhận thanh toán qua các cổng ngân hàng/ví điện tử đang hoạt động được niêm yết chính thức tại trang nạp tiền của website.</li>
               <li>Số tiền nạp vào tài khoản ví dùng để mua nick trên shop, không hỗ trợ quy đổi ngược lại thành tiền mặt hoặc rút về tài khoản ngân hàng.</li>
             </ul>

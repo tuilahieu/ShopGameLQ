@@ -1,15 +1,13 @@
 import { Sequelize } from "sequelize";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { env } from "./env.js";
 
 export const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
+  env.database.name,
+  env.database.user,
+  env.database.password,
   {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+    host: env.database.host,
+    port: env.database.port,
     dialect: "mysql",
 
     logging: false,
@@ -18,6 +16,14 @@ export const sequelize = new Sequelize(
 
     dialectOptions: {
       charset: "utf8mb4",
+      ...(env.database.ssl && { ssl: { require: true, rejectUnauthorized: false } }),
+    },
+
+    pool: {
+      max: 20,
+      min: 2,
+      acquire: 30_000,
+      idle: 10_000,
     },
 
     define: {

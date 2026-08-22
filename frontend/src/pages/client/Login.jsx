@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../../api/api";
 import { User, Lock, LogIn, AlertCircle } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import TurnstileCaptcha from "../../components/TurnstileCaptcha";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     updateSEO({
@@ -21,14 +23,22 @@ export default function Login() {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaResetRef = useRef(null);
+  const captchaEnabled = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
+  const onCaptchaToken = useCallback((token) => setCaptchaToken(token), []);
 
   async function submit(e) {
     e.preventDefault();
     setErrorMsg("");
+    if (captchaEnabled && !captchaToken) {
+      setErrorMsg("Vui lòng hoàn tất xác minh captcha.");
+      return;
+    }
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/login", form);
+      const res = await api.post("/auth/login", { ...form, captcha_token: captchaToken || undefined });
       const data = res.data.data;
 
       localStorage.setItem("accessToken", data.accessToken);
@@ -41,10 +51,12 @@ export default function Login() {
       } else if (lvl === 1) {
         navigate("/ctv");
       } else {
-        navigate("/");
+        const redirect = new URLSearchParams(location.search).get("redirect");
+        navigate(redirect?.startsWith("/") ? redirect : "/");
       }
       window.location.reload(); // Reload to refresh layout wallet context
     } catch (error) {
+      captchaResetRef.current?.();
       setErrorMsg(error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");
     } finally {
       setLoading(false);
@@ -86,6 +98,7 @@ export default function Login() {
             </label>
             <input
               type="password"
+              maxLength={128}
               placeholder="Nhập mật khẩu"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -93,7 +106,9 @@ export default function Login() {
             />
           </div>
 
-          <button disabled={loading} className="btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }}>
+          <TurnstileCaptcha onToken={onCaptchaToken} resetRef={captchaResetRef} />
+
+          <button disabled={loading || (captchaEnabled && !captchaToken)} className="btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }}>
             <LogIn size={16} /> {loading ? "Đang xử lý..." : "Đăng nhập ngay"}
           </button>
         </form>

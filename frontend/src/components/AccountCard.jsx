@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
+import SafeImage from "./SafeImage";
 
-export default function AccountCard({ acc }) {
+export default function AccountCard({ acc, priority = false }) {
   const isSold = Number(acc.status) === 1;
 
   // Render spec tags if thong_tin has text
@@ -53,7 +54,15 @@ export default function AccountCard({ acc }) {
         {discountPercent > 0 && !isSold && (
           <span className="badge-sale">-{discountPercent}%</span>
         )}
-        <img src={acc.img || "https://placehold.co/400x250/111827/ffffff?text=Lien+Quan"} alt={`Account ${acc.id}`} loading="lazy" />
+        <SafeImage
+          src={acc.img}
+          alt={`Ảnh tài khoản Liên Quân mã số ${acc.id}`}
+          width={400}
+          height={250}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "low"}
+          fallbackLabel="Chưa có ảnh tài khoản"
+        />
       </div>
 
       <div className="account-body-premium">

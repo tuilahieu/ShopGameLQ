@@ -18,6 +18,14 @@ const router = Router();
  *     tags: [Order]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 16
+ *         description: Khóa duy nhất cho đúng một lần bấm mua; dùng lại khi retry cùng yêu cầu.
  *     requestBody:
  *       required: true
  *       content:

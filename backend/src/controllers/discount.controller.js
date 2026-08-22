@@ -1,91 +1,53 @@
 import { Discount, GameAccount, Sale } from "../models/index.js";
-
 import { successResponse, errorResponse } from "../utils/response.util.js";
+import {
+  calculateDiscountAmount,
+  ensureDiscountIsAvailable,
+  normalizeDiscountCode,
+  parsePositiveId,
+  validateSalePrice,
+} from "../services/pricing.service.js";
 
+// This is a preview only. Checkout repeats every check while rows are locked,
+// so this endpoint can never reserve a voucher or authorize a price.
 export async function checkDiscount(req, res) {
   try {
-    const { code, account_id } = req.body;
-
-    if (!code) {
-      return errorResponse(res, "Vui lòng nhập mã giảm giá", 400);
-    }
-
-    if (!account_id) {
-      return errorResponse(res, "Thiếu account_id", 400);
-    }
-
-    const account = await GameAccount.findByPk(account_id);
-
-    if (!account) {
-      return errorResponse(res, "Tài khoản không tồn tại", 404);
-    }
+    const accountId = parsePositiveId(req.body.account_id, "account_id");
+    const code = normalizeDiscountCode(req.body.code);
+    const account = await GameAccount.findOne({ where: { id: accountId, status: 0 } });
+    if (!account) return errorResponse(res, "Tài khoản không tồn tại hoặc không còn được bán", 404);
 
     const now = new Date();
-
-    let finalPrice = Number(account.gia);
-
+    const originalPrice = validateSalePrice(account.gia, account.gia, { status: 409 });
     const sale = await Sale.findOne({
-      where: {
-        acc_id: account.id,
-        status: 1,
-      },
+      where: { acc_id: account.id, status: 1 },
+      order: [["id", "DESC"]],
     });
+    const saleIsActive = sale && now >= new Date(sale.batdau) && now <= new Date(sale.ketthuc);
+    const priceAfterSale = saleIsActive
+      ? validateSalePrice(originalPrice, sale.sale_price, { status: 409 })
+      : originalPrice;
 
-    if (sale && now >= sale.batdau && now <= sale.ketthuc) {
-      finalPrice = Number(sale.sale_price);
-    }
-
-    const discount = await Discount.findOne({
-      where: {
-        magiamgia: code,
-        status: 1,
-      },
-    });
-
-    if (!discount) {
-      return errorResponse(res, "Mã giảm giá không tồn tại", 404);
-    }
-
-    if (discount.batdau && now < discount.batdau) {
-      return errorResponse(res, "Mã giảm giá chưa có hiệu lực", 400);
-    }
-
-    if (discount.ketthuc && now > discount.ketthuc) {
-      return errorResponse(res, "Mã giảm giá đã hết hạn", 400);
-    }
-
-    if (Number(discount.soluong) <= 0) {
-      return errorResponse(res, "Mã giảm giá đã hết lượt sử dụng", 400);
-    }
-
-    let discountAmount = 0;
-
-    if (discount.theo === "phantram") {
-      discountAmount = Math.floor(
-        (finalPrice * Number(discount.giamgia)) / 100,
-      );
-    } else {
-      discountAmount = Number(discount.giamgia);
-    }
-
-    if (discountAmount > finalPrice) {
-      discountAmount = finalPrice;
-    }
+    const discount = await Discount.findOne({ where: { magiamgia: code, status: 1 } });
+    if (!discount) return errorResponse(res, "Mã giảm giá không tồn tại", 404);
+    ensureDiscountIsAvailable(discount, now);
+    const discountAmount = calculateDiscountAmount(priceAfterSale, discount, { status: 409 });
 
     return successResponse(res, "Áp dụng mã giảm giá thành công", {
-      original_price: Number(account.gia),
-
-      sale_price: sale?.sale_price || null,
-
+      original_price: originalPrice,
+      sale_price: saleIsActive ? priceAfterSale : null,
       discount_amount: discountAmount,
-
-      final_price: finalPrice - discountAmount,
-
-      discount,
+      final_price: priceAfterSale - discountAmount,
+      discount: {
+        id: discount.id,
+        magiamgia: discount.magiamgia,
+        theo: discount.theo,
+        giamgia: discount.giamgia,
+      },
     });
   } catch (error) {
-    console.error(error);
-
-    return errorResponse(res, "Có lỗi xảy ra", 500);
+    console.error("CHECK DISCOUNT ERROR:", error);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra" : error.message, status);
   }
 }

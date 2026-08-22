@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Upload } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
 
 export default function AdminAccountTypes() {
   const [types, setTypes] = useState([]);
@@ -108,7 +109,7 @@ export default function AdminAccountTypes() {
   }
 
   async function remove(id) {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa loại tài khoản này? Hành động này không thể hoàn tác.")) return;
+    if (!window.confirm("Ẩn loại tài khoản này khỏi phía khách hàng? Các dữ liệu đã có vẫn được lưu giữ.")) return;
     try {
       const res = await api.delete(`/account-types/${id}`);
       alert(res.data?.message || "Xóa loại tài khoản thành công");
@@ -175,9 +176,12 @@ export default function AdminAccountTypes() {
               </label>
             </div>
             {form.img && (
-              <img
+              <SafeImage
                 src={form.img}
-                alt="Preview"
+                alt="Xem trước ảnh loại tài khoản"
+                width={120}
+                height={70}
+                fallbackLabel="Ảnh không tải được"
                 style={{ width: "120px", height: "70px", objectFit: "cover", borderRadius: "8px", marginTop: "10px", border: "1px solid var(--border-color)" }}
               />
             )}
@@ -265,20 +269,24 @@ export default function AdminAccountTypes() {
                 return (
                   <tr key={t.id}>
                     <td>{t.id}</td>
-                    <td><span style={{ color: "blue", fontWeight: "bold" }}>{parentCat?.name || `DM #${t.danhmuc_id}`}</span></td>
+                    <td><span style={{ color: "var(--accent-color)", fontWeight: "bold" }}>{parentCat?.name || `DM #${t.danhmuc_id}`}</span></td>
                     <td><strong>{t.name}</strong></td>
                     <td>
-                      {t.img ? (
-                        <img src={t.img} alt="" style={{ width: "60px", height: "35px", objectFit: "cover", borderRadius: "4px" }} />
-                      ) : (
-                        "No Image"
-                      )}
+                      <SafeImage
+                        src={t.img}
+                        alt={`Ảnh loại tài khoản ${t.name}`}
+                        width={60}
+                        height={35}
+                        fallbackClassName="type-image-fallback"
+                        style={{ width: "60px", height: "35px", objectFit: "cover", borderRadius: "4px" }}
+                        fallbackLabel="Chưa có ảnh"
+                      />
                     </td>
-                    <td>{t.noidung || "N/A"}</td>
-                    <td>{t.camket || "N/A"}</td>
+                    <td>{t.noidung || "Chưa cập nhật"}</td>
+                    <td>{t.camket || "Chưa cập nhật"}</td>
                     <td>
-                      <span style={{ color: Number(t.status) === 1 ? "green" : "red", fontWeight: "bold" }}>
-                        {Number(t.status) === 1 ? "Active" : "Hidden"}
+                      <span style={{ color: Number(t.status) === 1 ? "var(--green-color)" : "var(--danger-color)", fontWeight: "bold" }}>
+                        {Number(t.status) === 1 ? "Đang hiển thị" : "Đã ẩn"}
                       </span>
                     </td>
                     <td>

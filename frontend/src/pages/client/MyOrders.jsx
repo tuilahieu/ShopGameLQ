@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import { Key, Calendar, ShieldCheck, Copy, Check, Info } from "lucide-react";
@@ -6,6 +7,7 @@ import { Key, Calendar, ShieldCheck, Copy, Check, Info } from "lucide-react";
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -15,11 +17,13 @@ export default function MyOrders() {
 
   async function load() {
     setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/orders/my");
       setOrders(res.data.data);
     } catch (err) {
       console.error(err);
+      setLoadError(err.response?.data?.message || "Không thể tải lịch sử mua hàng.");
     } finally {
       setLoading(false);
     }
@@ -50,6 +54,10 @@ export default function MyOrders() {
     load();
   }, []);
 
+  if (!localStorage.getItem("accessToken")) {
+    return <div className="page-container empty-state"><h1 className="page-title">Đăng nhập để xem đơn hàng</h1><p>Thông tin tài khoản đã mua chỉ hiển thị cho chủ tài khoản.</p><Link className="btn-primary" to="/login?redirect=%2Fmy-orders">Đăng nhập</Link></div>;
+  }
+
   return (
     <div className="page-container">
       <h1 className="page-title" style={{ marginBottom: "32px" }}>TÀI KHOẢN ĐÃ MUA</h1>
@@ -60,6 +68,8 @@ export default function MyOrders() {
           <div style={{ color: "var(--text-secondary)" }}>Đang tải lịch sử mua nick...</div>
           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
+      ) : loadError ? (
+        <div className="empty-state"><p>{loadError}</p><button className="btn-primary" onClick={load}>Tải lại</button></div>
       ) : orders.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 24px", background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
           <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>Bạn chưa mua tài khoản nào trên hệ thống.</p>

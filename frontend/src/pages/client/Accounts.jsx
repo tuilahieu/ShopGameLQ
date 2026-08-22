@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
-import { Filter, SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Layers, Gamepad2 } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Layers } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 
 export default function Accounts() {
@@ -12,6 +13,8 @@ export default function Accounts() {
   const [types, setTypes] = useState([]);
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [catalogueLoaded, setCatalogueLoaded] = useState(false);
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -30,32 +33,40 @@ export default function Accounts() {
 
   async function loadData() {
     setLoading(true);
+    setLoadError("");
     try {
+      // Account types rarely change during one customer session. Avoid loading
+      // the full catalogue again for each pagination/sort interaction.
+      const homeRequest = catalogueLoaded ? null : api.get("/home");
+
       if (loaiId) {
-        // Fetch accounts, types and count map
-        const [accRes, homeRes] = await Promise.all([
+        const [homeRes, accRes] = await Promise.all([
+          homeRequest,
           api.get("/accounts", {
             params: {
               loai_id: loaiId,
               sort: sort || undefined,
-              page: page,
-              limit: 12
+              page,
+              limit: 12,
             },
           }),
-          api.get("/home"),
         ]);
-
+        if (homeRes) {
+          setTypes(homeRes.data?.data?.accountTypes || []);
+          setCounts(homeRes.data?.data?.accountCountByType || {});
+          setCatalogueLoaded(true);
+        }
         setAccounts(accRes.data?.data?.accounts || []);
         if (accRes.data?.data?.pagination) {
           setPagination(accRes.data.data.pagination);
         }
-        setTypes(homeRes.data?.data?.accountTypes || []);
-        setCounts(homeRes.data?.data?.accountCountByType || {});
       } else {
-        // If no loai_id, only fetch types & counts to let users choose
-        const homeRes = await api.get("/home");
-        setTypes(homeRes.data?.data?.accountTypes || []);
-        setCounts(homeRes.data?.data?.accountCountByType || {});
+        const homeRes = homeRequest ? await homeRequest : null;
+        if (homeRes) {
+          setTypes(homeRes.data?.data?.accountTypes || []);
+          setCounts(homeRes.data?.data?.accountCountByType || {});
+          setCatalogueLoaded(true);
+        }
         setAccounts([]);
         setPagination({
           page: 1,
@@ -66,6 +77,7 @@ export default function Accounts() {
       }
     } catch (error) {
       console.error(error);
+      setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
     } finally {
       setLoading(false);
     }
@@ -117,51 +129,16 @@ export default function Accounts() {
   return (
     <div className="page-container">
       {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "100px 0", gap: "16px" }}>
-          <div className="premium-loader-container-small">
-            <div className="loader-ring-small"></div>
-            <div className="loader-icon-box-small">
-              <Gamepad2 className="loader-gamepad-small" size={20} />
-            </div>
-          </div>
-          <style>{`
-            .premium-loader-container-small {
-              position: relative;
-              width: 50px;
-              height: 50px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .loader-ring-small {
-              position: absolute;
-              width: 44px;
-              height: 44px;
-              border-radius: 50%;
-              border: 2px solid transparent;
-              border-top-color: var(--accent-color);
-              border-bottom-color: var(--cyan-color);
-              animation: loader-spin 1.2s linear infinite;
-            }
-            .loader-icon-box-small {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 30px;
-              height: 30px;
-              background: var(--bg-secondary);
-              border-radius: 50%;
-              border: 1px solid var(--border-color);
-            }
-            .loader-gamepad-small {
-              color: var(--accent-color);
-              animation: pulse-glow-small 1.5s ease-in-out infinite;
-            }
-            @keyframes pulse-glow-small {
-              0%, 100% { opacity: 0.7; transform: scale(0.95); }
-              50% { opacity: 1; transform: scale(1.05); }
-            }
-          `}</style>
+        <div className="catalogue-skeleton" aria-busy="true" aria-label="Đang tải kho tài khoản">
+          <div className="skeleton-heading" />
+          <div className="skeleton-filter" />
+          <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
+        </div>
+      ) : loadError ? (
+        <div className="empty-state">
+          <h2>Không thể tải kho tài khoản</h2>
+          <p>{loadError}</p>
+          <button className="btn-primary" onClick={loadData}>Tải lại</button>
         </div>
       ) : !loaiId ? (
         /* Render Category Types Selection List when no specific type selected */
@@ -184,7 +161,15 @@ export default function Accounts() {
                   style={{ cursor: "pointer", transition: "transform 0.2s" }}
                 >
                   <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                    <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} loading="lazy" />
+                    <SafeImage
+                      src={type.img}
+                      alt={`Ảnh loại tài khoản ${type.name}`}
+                      width={500}
+                      height={260}
+                      loading="lazy"
+                      decoding="async"
+                      fallbackLabel="Chưa có ảnh loại tài khoản"
+                    />
                   </div>
                   <div className="category-info">
                     <h3>{type.name}</h3>
@@ -235,11 +220,17 @@ export default function Accounts() {
           {/* Type Info Banner - shown when a specific type is selected */}
           {selectedType && (
             <div className="type-info-banner" style={{ marginBottom: "32px" }}>
-              {selectedType.img && (
-                <div className="type-info-banner-img">
-                  <img src={selectedType.img} alt={selectedType.name} loading="lazy" />
-                </div>
-              )}
+              <div className="type-info-banner-img">
+                <SafeImage
+                  src={selectedType.img}
+                  alt={`Ảnh loại tài khoản ${selectedType.name}`}
+                  width={320}
+                  height={180}
+                  loading="lazy"
+                  decoding="async"
+                  fallbackLabel="Chưa có ảnh loại tài khoản"
+                />
+              </div>
               <div className="type-info-banner-body">
                 <h2 className="type-info-banner-title">{selectedType.name}</h2>
                 {selectedType.noidung && (
@@ -265,8 +256,8 @@ export default function Accounts() {
           ) : (
             <>
               <div className="account-grid">
-                {accounts.map((acc) => (
-                  <AccountCard acc={acc} key={acc.id} />
+                {accounts.map((acc, index) => (
+                  <AccountCard acc={acc} key={acc.id} priority={index < 2} />
                 ))}
               </div>
 
@@ -300,14 +291,6 @@ export default function Accounts() {
           )}
         </>
       )}
-
-      {/* Loading Spin Animation Definition */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

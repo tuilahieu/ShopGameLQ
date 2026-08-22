@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
+import SafeImage from "../../components/SafeImage";
 import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, Gamepad2, ZoomIn, X } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 
@@ -11,7 +12,11 @@ export default function AccountDetail() {
 
   const [account, setAccount] = useState(null);
   const [discountCode, setDiscountCode] = useState("");
+  const [discountPreview, setDiscountPreview] = useState(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountError, setDiscountError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   
   // Image gallery state
   const [activeImg, setActiveImg] = useState("");
@@ -21,9 +26,7 @@ export default function AccountDetail() {
 
   // Set image loading state to true when activeImg changes
   useEffect(() => {
-    if (activeImg) {
-      setImageLoading(true);
-    }
+    setImageLoading(Boolean(activeImg));
   }, [activeImg]);
   
   // Modal states
@@ -31,12 +34,15 @@ export default function AccountDetail() {
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [purchaseData, setPurchaseData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isBuying, setIsBuying] = useState(false);
+  const purchaseKeyRef = useRef(null);
 
   // Clipboard copy feedback
   const [copiedField, setCopiedField] = useState("");
 
   async function loadData() {
     setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get(`/accounts/${id}`);
       setAccount(res.data.data);
@@ -45,6 +51,7 @@ export default function AccountDetail() {
       }
     } catch (error) {
       console.error(error);
+      setLoadError(error.response?.data?.message || "Không thể tải thông tin tài khoản. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -91,14 +98,20 @@ export default function AccountDetail() {
   })();
 
   async function buyAccount() {
+    if (isBuying) return;
     setErrorMsg("");
+    setIsBuying(true);
     try {
+      purchaseKeyRef.current ||= crypto.randomUUID();
       const res = await api.post("/orders/buy", {
         account_id: account.id,
         discount_code: discountCode || undefined,
+      }, {
+        headers: { "Idempotency-Key": purchaseKeyRef.current },
       });
 
       setPurchaseData(res.data.data);
+      purchaseKeyRef.current = null;
       setIsConfirmOpen(false);
       setIsSuccessOpen(true);
       
@@ -106,7 +119,34 @@ export default function AccountDetail() {
       setAccount(prev => prev ? { ...prev, status: 1 } : null);
     } catch (error) {
       setErrorMsg(error.response?.data?.message || "Mua tài khoản thất bại. Vui lòng kiểm tra lại số dư hoặc mã giảm giá.");
+    } finally {
+      setIsBuying(false);
     }
+  }
+
+  async function applyDiscount() {
+    const code = discountCode.trim();
+    if (!code) return;
+    setDiscountLoading(true);
+    setDiscountError("");
+    try {
+      const res = await api.post("/discount/check", { code, account_id: account.id });
+      setDiscountPreview(res.data.data);
+    } catch (error) {
+      setDiscountPreview(null);
+      setDiscountError(error.response?.data?.message || "Mã giảm giá không hợp lệ.");
+    } finally {
+      setDiscountLoading(false);
+    }
+  }
+
+  function openPurchase() {
+    if (!localStorage.getItem("accessToken")) {
+      navigate(`/login?redirect=${encodeURIComponent(`/account/${id}`)}`);
+      return;
+    }
+    setErrorMsg("");
+    setIsConfirmOpen(true);
   }
 
   function handleCopy(text, fieldName) {
@@ -195,6 +235,19 @@ export default function AccountDetail() {
     );
   }
 
+  if (loadError || !account) {
+    return (
+      <div className="page-container empty-state">
+        <h1 className="page-title">Không thể mở tài khoản</h1>
+        <p>{loadError || "Tài khoản này không còn tồn tại hoặc đã được bán."}</p>
+        <div className="empty-state-actions">
+          <button onClick={loadData} className="btn-primary">Thử lại</button>
+          <Link to="/accounts" className="btn-outline">Về kho tài khoản</Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!account) {
     return (
       <div className="page-container" style={{ textAlign: "center", padding: "80px 24px" }}>
@@ -226,7 +279,7 @@ export default function AccountDetail() {
           <div 
             className="gallery-main" 
             style={{ position: "relative", cursor: "zoom-in", minHeight: "280px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-secondary)", overflow: "hidden" }}
-            onClick={() => setIsZoomOpen(true)}
+            onClick={() => activeImg && setIsZoomOpen(true)}
           >
             {imageLoading && (
               <div className="image-loading-spinner-wrapper" style={{
@@ -241,10 +294,15 @@ export default function AccountDetail() {
                 <div className="image-spinner"></div>
               </div>
             )}
-            <img 
-              src={activeImg || "https://placehold.co/600x350/111827/ffffff?text=Lien+Quan"} 
-              alt={`Account detail ${account.id}`} 
+            <SafeImage
+              src={activeImg}
+              alt={`Ảnh chi tiết tài khoản Liên Quân mã số ${account.id}`}
+              width={800}
+              height={560}
               onLoad={() => setImageLoading(false)}
+              onError={() => setImageLoading(false)}
+              decoding="async"
+              fallbackLabel="Tài khoản này chưa có ảnh"
               style={{
                 display: "block",
                 width: "100%",
@@ -253,7 +311,7 @@ export default function AccountDetail() {
                 transition: "opacity 0.25s ease-in-out"
               }}
             />
-            <button 
+            {activeImg && <button
               onClick={() => setIsZoomOpen(true)}
               className="small-btn"
               style={{
@@ -269,7 +327,7 @@ export default function AccountDetail() {
               }}
             >
               <ZoomIn size={14} /> Xem ảnh lớn
-            </button>
+            </button>}
           </div>
 
           {images.length > 1 && (
@@ -280,7 +338,15 @@ export default function AccountDetail() {
                   className={`gallery-thumb-item ${activeImg === img ? "active" : ""}`}
                   onClick={() => setActiveImg(img)}
                 >
-                  <img src={img} alt={`Thumb ${i}`} loading="lazy" />
+                  <SafeImage
+                    src={img}
+                    alt={`Ảnh thu nhỏ ${i + 1} của tài khoản ${account.id}`}
+                    width={120}
+                    height={84}
+                    loading="lazy"
+                    decoding="async"
+                    fallbackLabel="Ảnh lỗi"
+                  />
                 </div>
               ))}
             </div>
@@ -366,13 +432,22 @@ export default function AccountDetail() {
                   <input
                     placeholder="Nhập mã giảm giá (nếu có)"
                     value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setDiscountCode(e.target.value.toUpperCase());
+                      setDiscountPreview(null);
+                      setDiscountError("");
+                    }}
                     style={{ flexGrow: "1" }}
                   />
+                  <button type="button" onClick={applyDiscount} disabled={!discountCode.trim() || discountLoading} className="btn-outline">
+                    {discountLoading ? "Đang kiểm tra" : "Áp dụng"}
+                  </button>
                 </div>
+                {discountPreview && <small className="form-hint success">Đã áp dụng: giảm {Number(discountPreview.discount_amount).toLocaleString()}đ</small>}
+                {discountError && <small className="form-hint error">{discountError}</small>}
               </div>
 
-              <button onClick={() => setIsConfirmOpen(true)} className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: "1.1rem" }}>
+              <button onClick={openPurchase} className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: "1.1rem" }}>
                 <ShoppingCart size={20} /> MUA NGAY
               </button>
             </>
@@ -394,8 +469,8 @@ export default function AccountDetail() {
             <button onClick={() => setIsConfirmOpen(false)} className="btn-outline" style={{ padding: "8px 16px" }}>
               Hủy bỏ
             </button>
-            <button onClick={buyAccount} className="btn-primary" style={{ padding: "8px 16px" }}>
-              Xác nhận thanh toán
+            <button disabled={isBuying} onClick={buyAccount} className="btn-primary" style={{ padding: "8px 16px" }}>
+              {isBuying ? "Đang xử lý..." : "Xác nhận thanh toán"}
             </button>
           </>
         }
@@ -417,10 +492,11 @@ export default function AccountDetail() {
             )}
             <hr style={{ border: "0", borderTop: "1px solid var(--border-color)", margin: "8px 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", color: "var(--gold-color)", fontSize: "1.1rem" }}>
-              <span>Tổng thanh toán:</span>
-              <span>{Number(currentPrice).toLocaleString()}đ</span>
+              <span>{discountPreview ? "Tổng thanh toán:" : "Tạm tính:"}</span>
+              <span>{Number(discountPreview?.final_price ?? currentPrice).toLocaleString()}đ</span>
             </div>
           </div>
+          {!discountPreview && discountCode && <p className="form-hint">Mã giảm giá sẽ được kiểm tra khi thanh toán. Chọn “Áp dụng” để xem số tiền dự kiến.</p>}
           <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "flex-start", gap: "6px" }}>
             <Info size={14} style={{ flexShrink: "0", marginTop: "2px" }} />
             Hệ thống sẽ trừ tiền trực tiếp vào tài khoản của bạn và hiển thị thông tin đăng nhập ngay sau khi hoàn thành.
@@ -595,16 +671,18 @@ export default function AccountDetail() {
               justifyContent: "center"
             }}
           >
-            <img 
+            <SafeImage
               src={activeImg} 
-              alt="Zoomed view" 
+              alt={`Ảnh phóng to của tài khoản ${account.id}`}
+              width={1200}
+              height={800}
               style={{
                 transform: `scale(${zoomScale})`,
                 transition: "transform 0.15s ease-out",
                 maxHeight: "80vh",
                 maxWidth: "85vw",
                 objectFit: "contain",
-                borderRadius: 0,
+                borderRadius: "12px",
                 cursor: "grab"
               }}
             />

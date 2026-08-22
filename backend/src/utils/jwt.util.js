@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 
 export function generateAccessToken(user) {
   return jwt.sign(
@@ -7,9 +8,10 @@ export function generateAccessToken(user) {
       username: user.username,
       level: user.level,
     },
-    process.env.JWT_ACCESS_SECRET,
+    env.jwt.accessSecret,
     {
-      expiresIn: "30m",
+      expiresIn: env.jwt.accessTtl,
+      algorithm: "HS256",
     },
   );
 }
@@ -19,9 +21,10 @@ export function generateRefreshToken(user) {
     {
       id: user.id,
     },
-    process.env.JWT_REFRESH_SECRET,
+    env.jwt.refreshSecret,
     {
-      expiresIn: "30d",
+      expiresIn: env.jwt.refreshTtl,
+      algorithm: "HS256",
     },
   );
 }

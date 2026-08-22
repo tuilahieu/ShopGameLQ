@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../api/api";
 import { User, Lock, UserPlus, AlertCircle } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import TurnstileCaptcha from "../../components/TurnstileCaptcha";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -22,6 +23,10 @@ export default function Register() {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaResetRef = useRef(null);
+  const captchaEnabled = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
+  const onCaptchaToken = useCallback((token) => setCaptchaToken(token), []);
 
   async function submit(e) {
     e.preventDefault();
@@ -31,16 +36,22 @@ export default function Register() {
       setErrorMsg("Mật khẩu xác nhận không khớp!");
       return;
     }
+    if (captchaEnabled && !captchaToken) {
+      setErrorMsg("Vui lòng hoàn tất xác minh captcha.");
+      return;
+    }
 
     setLoading(true);
     try {
       await api.post("/auth/register", {
         username: form.username,
-        password: form.password
+        password: form.password,
+        captcha_token: captchaToken || undefined,
       });
       alert("Đăng ký thành công! Hãy đăng nhập để tiếp tục mua acc.");
       navigate("/login");
     } catch (error) {
+      captchaResetRef.current?.();
       setErrorMsg(error.response?.data?.message || "Đăng ký thất bại. Tên đăng nhập có thể đã tồn tại.");
     } finally {
       setLoading(false);
@@ -82,7 +93,9 @@ export default function Register() {
             </label>
             <input
               type="password"
-              placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+              minLength={10}
+              maxLength={128}
+              placeholder="Nhập mật khẩu (tối thiểu 10 ký tự)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
@@ -95,6 +108,8 @@ export default function Register() {
             </label>
             <input
               type="password"
+              minLength={10}
+              maxLength={128}
               placeholder="Nhập lại mật khẩu"
               value={form.confirmPassword}
               onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
@@ -102,7 +117,9 @@ export default function Register() {
             />
           </div>
 
-          <button disabled={loading} className="btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }}>
+          <TurnstileCaptcha onToken={onCaptchaToken} resetRef={captchaResetRef} />
+
+          <button disabled={loading || (captchaEnabled && !captchaToken)} className="btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }}>
             <UserPlus size={16} /> {loading ? "Đang xử lý..." : "Đăng ký tài khoản"}
           </button>
         </form>

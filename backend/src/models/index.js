@@ -9,6 +9,7 @@ import { Discount } from "./discount.model.js";
 import { Setting } from "./setting.model.js";
 import { HistoryLog } from "./historyLog.model.js";
 import { Bank } from "./bank.model.js";
+import { IdempotencyKey } from "./idempotencyKey.model.js";
 
 /**
  * Category -> AccountType
@@ -76,11 +77,11 @@ Order.belongsTo(User, {
 });
 
 /**
- * GameAccount -> Orders
+ * GameAccount -> Order (an inventory account can be sold exactly once)
  */
-GameAccount.hasMany(Order, {
+GameAccount.hasOne(Order, {
   foreignKey: "acc_id",
-  as: "orders",
+  as: "order",
 });
 
 Order.belongsTo(GameAccount, {
@@ -165,4 +166,5 @@ export {
   Setting,
   HistoryLog,
   Bank,
+  IdempotencyKey,
 };

@@ -54,7 +54,7 @@ export default function AdminTransactions() {
 
   return (
     <div>
-      <h1 className="page-title">Quản lý giao dịch (Transactions)</h1>
+      <h1 className="page-title">Lịch sử giao dịch</h1>
 
       {/* Search and Filters */}
       <div className="filter-wrapper" style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -96,8 +96,10 @@ export default function AdminTransactions() {
           </thead>
 
           <tbody>
-            {items.map((t) => (
-              <tr key={t.id}>
+            {items.map((t) => {
+              const amount = Number(t.amount || 0);
+              const isAdd = amount > 0;
+              return <tr key={t.id}>
                 <td>{t.id}</td>
                 <td>
                   <span style={{ fontWeight: "600", color: "var(--cyan-color)" }}>
@@ -106,7 +108,7 @@ export default function AdminTransactions() {
                 </td>
                 <td>
                   <span style={{
-                    color: t.type === "add" || t.type === "ctv_earn" ? "var(--green-color)" : "var(--accent-color)",
+                    color: isAdd ? "var(--green-color)" : "var(--danger-color)",
                     fontWeight: "bold",
                     textTransform: "uppercase",
                     fontSize: "0.8rem"
@@ -115,14 +117,13 @@ export default function AdminTransactions() {
                   </span>
                 </td>
                 <td style={{ fontWeight: "bold" }}>
-                  {t.type === "add" || t.type === "ctv_earn" ? "+" : "-"}
-                  {Number(t.amount).toLocaleString()}đ
+                  {isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ
                 </td>
                 <td style={{ color: "var(--text-secondary)" }}>{Number(t.balance_before).toLocaleString()}đ</td>
                 <td style={{ color: "var(--text-secondary)" }}>{Number(t.balance_after).toLocaleString()}đ</td>
                 <td style={{ fontSize: "0.9rem" }}>{t.description}</td>
-              </tr>
-            ))}
+              </tr>;
+            })}
             {items.length === 0 && (
               <tr>
                 <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>

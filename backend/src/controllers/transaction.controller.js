@@ -1,13 +1,11 @@
 import { Transaction } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
+import { parsePagination } from "../utils/pagination.util.js";
 
 export async function getMyTransactions(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const { count, rows } = await Transaction.findAndCountAll({
       where: {

@@ -1,6 +1,8 @@
-import { GameAccount, Order, User } from "../models/index.js";
+import { GameAccount, Order, Transaction, User } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
+import { parsePagination } from "../utils/pagination.util.js";
+import { decryptCredential } from "../utils/credential.util.js";
 
 export async function getCtvDashboard(req, res) {
   try {
@@ -12,7 +14,7 @@ export async function getCtvDashboard(req, res) {
       soldAccounts,
       hiddenAccounts,
       totalOrders,
-      orderSum,
+      earnedSum,
     ] = await Promise.all([
       GameAccount.count({
         where: {
@@ -53,20 +55,11 @@ export async function getCtvDashboard(req, res) {
         ],
       }),
 
-      Order.sum("final_price", {
-        include: [
-          {
-            model: GameAccount,
-            as: "account",
-            where: {
-              seller_id: sellerId,
-            },
-          },
-        ],
-      }),
+      Transaction.sum("amount", { where: { user_id: sellerId, type: "ctv_earn" } }),
     ]);
 
-    const totalEarned = orderSum || 0;
+    // A CTV earns the recorded commission, not the gross price of all listings.
+    const totalEarned = Number(earnedSum || 0);
 
     return successResponse(res, "Lấy dữ liệu CTV thành công", {
       totalAccounts,
@@ -85,9 +78,7 @@ export async function getCtvDashboard(req, res) {
 
 export async function getCtvAccounts(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const where = {
       seller_id: req.user.id,
@@ -112,7 +103,8 @@ export async function getCtvAccounts(req, res) {
     });
 
     return successResponse(res, "Lấy danh sách tài khoản của CTV thành công", {
-      accounts: rows,
+      // The query is scoped to seller_id = req.user.id, so a CTV may view only credentials it owns.
+      accounts: rows.map((account) => ({ ...account.toJSON(), login: decryptCredential(account.login) })),
       pagination: {
         page,
         limit,
@@ -129,9 +121,7 @@ export async function getCtvAccounts(req, res) {
 
 export async function getCtvOrders(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const { count, rows } = await Order.findAndCountAll({
       include: [

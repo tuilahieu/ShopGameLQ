@@ -4,6 +4,7 @@ import { Copy, Check, Info, QrCode } from "lucide-react";
 import api from "../../api/api";
 import { updateSEO } from "../../utils/seo";
 import Modal from "../../components/Modal";
+import SafeImage from "../../components/SafeImage";
 
 export default function Recharge() {
   const token = localStorage.getItem("accessToken");
@@ -41,7 +42,7 @@ export default function Recharge() {
   useEffect(() => {
     updateSEO({
       title: "Nạp Tiền Vào Tài Khoản - Tự Động Siêu Tốc",
-      description: "Hệ thống nạp tiền tự động qua ngân hàng, ví MoMo, ATM siêu tốc. Hỗ trợ cộng tiền tự động sau 30 giây giao dịch.",
+      description: "Hướng dẫn nạp tiền vào ví qua ngân hàng hoặc ví điện tử với nội dung chuyển khoản chính xác.",
       keywords: "nap tien shop acc, nap ATM, nap momo, nap tu dong"
     });
   }, []);
@@ -73,7 +74,7 @@ export default function Recharge() {
         <div style={{ maxWidth: "500px", margin: "0 auto", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "16px", padding: "40px" }}>
           <h2>Yêu Cầu Đăng Nhập</h2>
           <p style={{ color: "var(--text-secondary)", margin: "16px 0 24px" }}>
-            Vui lòng đăng nhập tài khoản của bạn để nhận cú pháp nạp tiền chính xác và thực hiện giao dịch nạp ví tự động.
+            Vui lòng đăng nhập để nhận đúng nội dung chuyển khoản của tài khoản bạn.
           </p>
           <div style={{ display: "flex", gap: "16px", justifyContent: "center" }}>
             <Link to="/login" className="btn-primary" style={{ padding: "10px 24px" }}>Đăng nhập</Link>
@@ -91,7 +92,7 @@ export default function Recharge() {
           <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🛠️</div>
           <h2>Bảo Trì Cổng Nạp Tiền</h2>
           <p style={{ color: "var(--text-secondary)", margin: "16px 0 24px" }}>
-            Hiện tại các cổng nạp tiền tự động (ATM / Ví MoMo) đang trong quá trình bảo trì để nâng cấp dịch vụ. Vui lòng quay lại sau hoặc liên hệ Admin để được hỗ trợ nạp tay nhanh chóng!
+            Hiện chưa có tài khoản ngân hàng đang hoạt động. Vui lòng quay lại sau hoặc liên hệ hỗ trợ để được hướng dẫn.
           </p>
           <div style={{ display: "flex", gap: "16px", justifyContent: "center" }}>
             <a href="https://zalo.me/0999999999" target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "10px 24px" }}>
@@ -115,7 +116,7 @@ export default function Recharge() {
         <div className="recharge-instructions" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <h3>🏦 THÔNG TIN CHUYỂN KHOẢN</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", margin: 0 }}>
-            Bạn vui lòng chuyển khoản đúng số tài khoản và cú pháp bên dưới. Số dư sẽ tự động cộng vào tài khoản sau 1-3 phút.
+            Chuyển khoản đúng số tài khoản và nội dung bên dưới để hệ thống đối soát. Nếu số dư chưa cập nhật, hãy giữ biên lai và liên hệ hỗ trợ.
           </p>
 
           {banksLoading ? (
@@ -234,7 +235,7 @@ export default function Recharge() {
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "flex-start", gap: "6px", margin: 0 }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: "2px", color: "var(--gold-color)" }} />
             <span>
-              <strong>Chú ý:</strong> Phải ghi đúng nội dung chuyển khoản là <code>NAPTIEN {user.username}</code> để hệ thống tự động cộng tiền. Nếu ghi sai nội dung vui lòng liên hệ Admin để được hỗ trợ thủ công.
+              <strong>Chú ý:</strong> Phải ghi đúng nội dung <code>NAPTIEN {user.username}</code>. Không chia sẻ mật khẩu hoặc mã OTP; nếu có vấn đề, liên hệ hỗ trợ kèm biên lai giao dịch.
             </span>
           </p>
         </div>
@@ -252,9 +253,12 @@ export default function Recharge() {
           </p>
 
           {activeBank ? (
-            <img 
+            <SafeImage
               src={qrUrl} 
-              alt="VietQR code" 
+              alt={`Mã QR nạp tiền ${activeBank.name}`}
+              width={160}
+              height={160}
+              fallbackLabel="Không thể tạo mã QR"
               style={{ 
                 maxWidth: "160px", 
                 height: "auto", 

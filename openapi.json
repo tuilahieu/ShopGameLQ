@@ -1,0 +1,2204 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Shop Liên Quân API - OpenAPI Spec",
+    "version": "1.0.0",
+    "description": "Tài liệu OpenAPI 3.0 / JSON API đầy đủ cho hệ thống website bán tài khoản game Liên Quân Mobile.",
+    "contact": {
+      "name": "API Support",
+      "email": "support@shoplienquan.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Nhập JWT Access Token dạng: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "username": {
+            "type": "string",
+            "example": "user123"
+          },
+          "level": {
+            "type": "integer",
+            "example": 0,
+            "description": "0: Member, 1: CTV, 99: Admin"
+          },
+          "money": {
+            "type": "integer",
+            "example": 500000,
+            "description": "Số dư tài khoản (VNĐ)"
+          },
+          "tong_nap": {
+            "type": "integer",
+            "example": 1000000,
+            "description": "Tổng số tiền đã nạp (VNĐ)"
+          },
+          "banned": {
+            "type": "boolean",
+            "example": false
+          },
+          "ip": {
+            "type": "string",
+            "example": "127.0.0.1"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Acc Liên Quân"
+          },
+          "noidung": {
+            "type": "string",
+            "example": "Danh mục tài khoản Liên Quân Mobile"
+          },
+          "type": {
+            "type": "string",
+            "example": "lienquan"
+          },
+          "status": {
+            "type": "integer",
+            "example": 1,
+            "description": "1: Hoạt động, 0: Ẩn"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccountType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "danhmuc_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Nick Rank Cao"
+          },
+          "img": {
+            "type": "string",
+            "example": "https://domain.com/images/thumb.jpg"
+          },
+          "noidung": {
+            "type": "string",
+            "example": "Chi tiết loại tài khoản rank cao"
+          },
+          "camket": {
+            "type": "string",
+            "example": "Cam kết đúng mô tả, bảo hành 100%"
+          },
+          "view": {
+            "type": "integer",
+            "example": 150
+          },
+          "buy": {
+            "type": "integer",
+            "example": 25
+          },
+          "status": {
+            "type": "integer",
+            "example": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "GameAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 101
+          },
+          "loai_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "buyer_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 5
+          },
+          "seller_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "thong_tin": {
+            "type": "string",
+            "example": "Acc Rank Cao Thủ - 80 Tướng"
+          },
+          "list_thong_tin": {
+            "type": "string",
+            "example": "Rank: Cao Thủ | Tướng: 80 | Trang phục: 50"
+          },
+          "img": {
+            "type": "string",
+            "example": "https://domain.com/uploads/acc101.jpg"
+          },
+          "list_img": {
+            "type": "string",
+            "example": "[\"img1.jpg\", \"img2.jpg\"]"
+          },
+          "login": {
+            "type": "string",
+            "description": "Thông tin tài khoản/mật khẩu đăng nhập (chỉ trả về khi xem đơn hàng)",
+            "example": "user_game|pass_game"
+          },
+          "gia": {
+            "type": "integer",
+            "example": 250000
+          },
+          "ck": {
+            "type": "integer",
+            "example": 0,
+            "description": "Phần trăm chiết khấu cho CTV"
+          },
+          "status": {
+            "type": "integer",
+            "example": 0,
+            "description": "0: Đang bán, 1: Đã bán, 2: Đã ẩn"
+          },
+          "ngaymua": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 50
+          },
+          "user_id": {
+            "type": "integer",
+            "example": 5
+          },
+          "acc_id": {
+            "type": "integer",
+            "example": 101
+          },
+          "original_price": {
+            "type": "integer",
+            "example": 250000
+          },
+          "sale_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "sale_price": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "discount_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "discount_amount": {
+            "type": "integer",
+            "example": 25000
+          },
+          "final_price": {
+            "type": "integer",
+            "example": 225000
+          },
+          "status": {
+            "type": "integer",
+            "example": 1,
+            "description": "1: Thành công"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 88
+          },
+          "user_id": {
+            "type": "integer",
+            "example": 5
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "deposit",
+              "buy_acc",
+              "refund",
+              "admin_add",
+              "admin_sub",
+              "ctv_earn"
+            ],
+            "example": "buy_acc"
+          },
+          "amount": {
+            "type": "integer",
+            "example": -225000
+          },
+          "balance_before": {
+            "type": "integer",
+            "example": 500000
+          },
+          "balance_after": {
+            "type": "integer",
+            "example": 275000
+          },
+          "reference_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 50
+          },
+          "description": {
+            "type": "string",
+            "example": "Thanh toán mua tài khoản #101"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Discount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "magiamgia": {
+            "type": "string",
+            "example": "WELCOME10"
+          },
+          "theo": {
+            "type": "string",
+            "enum": [
+              "phantram",
+              "tienmat"
+            ],
+            "example": "phantram"
+          },
+          "giamgia": {
+            "type": "integer",
+            "example": 10
+          },
+          "soluong": {
+            "type": "integer",
+            "example": 100
+          },
+          "status": {
+            "type": "integer",
+            "example": 1
+          },
+          "batdau": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ketthuc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Bank": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "MBBank"
+          },
+          "bank_id": {
+            "type": "string",
+            "example": "MB"
+          },
+          "account_no": {
+            "type": "string",
+            "example": "0987654321"
+          },
+          "account_name": {
+            "type": "string",
+            "example": "NGUYEN VAN A"
+          },
+          "logo": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "example": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Setting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "ten_web": {
+            "type": "string",
+            "example": "Shop Liên Quân Uy Tín"
+          },
+          "logo": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner": {
+            "type": "string",
+            "nullable": true
+          },
+          "thongbao": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "message": {
+            "type": "string",
+            "example": "Thao tác thành công"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Thông tin không hợp lệ hoặc không tìm thấy dữ liệu"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/upload": {
+      "post": {
+        "summary": "Upload ảnh lên hệ thống",
+        "tags": [
+          "Upload"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File ảnh (jpg, png, webp...)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "url": {
+                      "type": "string",
+                      "example": "/uploads/1722400000000-image.png"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions": {
+      "get": {
+        "summary": "Lấy lịch sử giao dịch của tôi",
+        "tags": [
+          "Transaction"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "summary": "Lấy cấu hình website",
+        "tags": [
+          "Setting"
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "summary": "Lấy thông tin cá nhân",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin cá nhân thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          }
+        }
+      }
+    },
+    "/api/profile/change-password": {
+      "post": {
+        "summary": "Đổi mật khẩu",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "oldPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "oldPassword": {
+                    "type": "string",
+                    "example": "12345678"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "example": "87654321"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đổi mật khẩu thành công"
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          }
+        }
+      }
+    },
+    "/api/orders/buy": {
+      "post": {
+        "summary": "Mua tài khoản",
+        "tags": [
+          "Order"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16
+            },
+            "description": "Khóa duy nhất cho đúng một lần bấm mua; dùng lại khi retry cùng yêu cầu."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "account_id"
+                ],
+                "properties": {
+                  "account_id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "discount_code": {
+                    "type": "string",
+                    "example": "HELLO10",
+                    "description": "Mã giảm giá, có thể bỏ trống"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mua tài khoản thành công"
+          },
+          "400": {
+            "description": "Số dư không đủ, tài khoản đã bán hoặc mã giảm giá không hợp lệ"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Tài khoản bị khóa hoặc không có quyền"
+          },
+          "404": {
+            "description": "Không tìm thấy tài khoản hoặc mã giảm giá"
+          }
+        }
+      }
+    },
+    "/api/orders/my": {
+      "get": {
+        "summary": "Danh sách đơn hàng của tôi",
+        "tags": [
+          "Order"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        }
+      }
+    },
+    "/api/orders/{id}": {
+      "get": {
+        "summary": "Chi tiết đơn hàng",
+        "tags": [
+          "Order"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "404": {
+            "description": "Không tìm thấy đơn hàng"
+          }
+        }
+      }
+    },
+    "/api/home": {
+      "get": {
+        "summary": "Dữ liệu trang chủ",
+        "tags": [
+          "Home"
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          }
+        }
+      }
+    },
+    "/api/discount/check": {
+      "post": {
+        "summary": "Kiểm tra mã giảm giá",
+        "tags": [
+          "Discount"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "account_id"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "example": "HELLO10"
+                  },
+                  "account_id": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ctv/dashboard": {
+      "get": {
+        "summary": "Thống kê CTV",
+        "tags": [
+          "CTV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy dữ liệu CTV thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Không có quyền CTV"
+          }
+        }
+      }
+    },
+    "/api/ctv/accounts": {
+      "get": {
+        "summary": "Danh sách tài khoản do CTV đăng",
+        "tags": [
+          "CTV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "integer"
+            },
+            "required": false,
+            "description": "0 đang bán, 1 đã bán, 2 đã ẩn"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách tài khoản của CTV thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Không có quyền CTV"
+          }
+        }
+      }
+    },
+    "/api/ctv/orders": {
+      "get": {
+        "summary": "Danh sách đơn hàng từ tài khoản của CTV",
+        "tags": [
+          "CTV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy đơn hàng của CTV thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Không có quyền CTV"
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "summary": "Lấy danh sách danh mục tài khoản",
+        "tags": [
+          "Category"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách danh mục thành công"
+          }
+        }
+      },
+      "post": {
+        "summary": "Thêm danh mục tài khoản",
+        "tags": [
+          "Category"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Acc Liên Quân"
+                  },
+                  "noidung": {
+                    "type": "string",
+                    "example": "Danh mục bán tài khoản Liên Quân"
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "lienquan"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thêm danh mục thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "get": {
+        "summary": "Lấy chi tiết danh mục tài khoản",
+        "tags": [
+          "Category"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID danh mục"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin danh mục thành công"
+          },
+          "404": {
+            "description": "Không tìm thấy danh mục"
+          }
+        }
+      },
+      "put": {
+        "summary": "Cập nhật danh mục tài khoản",
+        "tags": [
+          "Category"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID danh mục"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Acc Liên Quân Mobile"
+                  },
+                  "noidung": {
+                    "type": "string",
+                    "example": "Danh mục tài khoản tự chọn"
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "lienquan"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cập nhật danh mục thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          },
+          "404": {
+            "description": "Danh mục không tồn tại"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Ẩn danh mục tài khoản",
+        "tags": [
+          "Category"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID danh mục"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ẩn danh mục thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          },
+          "404": {
+            "description": "Danh mục không tồn tại"
+          }
+        }
+      }
+    },
+    "/api/banks": {
+      "get": {
+        "summary": "Lấy danh sách ngân hàng / ví điện tử nạp tiền",
+        "tags": [
+          "Bank"
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách ngân hàng thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bank"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Đăng ký tài khoản",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "admin123"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "12345678"
+                  },
+                  "captcha_token": {
+                    "type": "string",
+                    "description": "Bắt buộc khi CAPTCHA_ENABLED=true."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đăng ký thành công"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Đăng nhập",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "admin123"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "12345678"
+                  },
+                  "captcha_token": {
+                    "type": "string",
+                    "description": "Bắt buộc khi CAPTCHA_ENABLED=true."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đăng nhập thành công"
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "Làm mới access token",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refreshToken"
+                ],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "example": "your_refresh_token_here"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Làm mới token thành công"
+          },
+          "400": {
+            "description": "Thiếu refresh token"
+          },
+          "401": {
+            "description": "Refresh token không hợp lệ hoặc đã hết hạn"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Lấy thông tin tài khoản hiện tại",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin tài khoản thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Đăng xuất",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đăng xuất thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          }
+        }
+      }
+    },
+    "/api/admin/dashboard": {
+      "get": {
+        "summary": "Thống kê dashboard admin",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy dữ liệu dashboard thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Không có quyền admin"
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "summary": "Danh sách người dùng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách người dùng thành công"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Không có quyền admin"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "put": {
+        "summary": "Cập nhật người dùng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/users/{id}/money": {
+      "post": {
+        "summary": "Cộng hoặc trừ tiền người dùng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16
+            },
+            "description": "Khóa duy nhất cho một lần điều chỉnh số dư; giữ nguyên khi retry."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "amount"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "add",
+                      "sub"
+                    ]
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "example": 100000
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Admin cộng tiền test"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cập nhật số dư thành công"
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ"
+          },
+          "404": {
+            "description": "Không tìm thấy người dùng"
+          }
+        }
+      }
+    },
+    "/api/admin/accounts": {
+      "get": {
+        "summary": "Danh sách tài khoản game",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/orders": {
+      "get": {
+        "summary": "Danh sách đơn hàng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/transactions": {
+      "get": {
+        "summary": "Danh sách giao dịch",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/sales": {
+      "get": {
+        "summary": "Danh sách sale",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Thêm sale",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/sales/{id}": {
+      "put": {
+        "summary": "Cập nhật sale",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Tắt sale",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/discounts": {
+      "get": {
+        "summary": "Danh sách mã giảm giá",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Thêm mã giảm giá",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/discounts/{id}": {
+      "put": {
+        "summary": "Cập nhật mã giảm giá",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Tắt mã giảm giá",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/setting": {
+      "get": {
+        "summary": "Lấy cấu hình website",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy cấu hình website thành công"
+          }
+        }
+      },
+      "put": {
+        "summary": "Cập nhật cấu hình website",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật cấu hình website thành công"
+          }
+        }
+      }
+    },
+    "/api/admin/logs": {
+      "get": {
+        "summary": "Lịch sử hoạt động hệ thống",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy lịch sử hoạt động thành công"
+          }
+        }
+      }
+    },
+    "/api/admin/banks": {
+      "get": {
+        "summary": "Danh sách ngân hàng admin quản lý",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách thành công"
+          }
+        }
+      },
+      "post": {
+        "summary": "Thêm ngân hàng nạp tiền mới",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bank_name",
+                  "account_number",
+                  "account_holder"
+                ],
+                "properties": {
+                  "bank_name": {
+                    "type": "string",
+                    "example": "MBBank"
+                  },
+                  "account_number": {
+                    "type": "string",
+                    "example": "0987654321"
+                  },
+                  "account_holder": {
+                    "type": "string",
+                    "example": "NGUYEN VAN A"
+                  },
+                  "qr_template": {
+                    "type": "string",
+                    "example": "https://img.vietqr.io/image/MB-0987654321-compact2.png"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thêm thành công"
+          }
+        }
+      }
+    },
+    "/api/admin/banks/{id}": {
+      "put": {
+        "summary": "Cập nhật thông tin ngân hàng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cập nhật thành công"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Xóa / ẩn ngân hàng",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Xóa thành công"
+          }
+        }
+      }
+    },
+    "/api/account-types": {
+      "get": {
+        "summary": "Lấy danh sách loại tài khoản",
+        "tags": [
+          "AccountType"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "danhmuc_id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": false,
+            "description": "Lọc theo ID danh mục"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách loại tài khoản thành công"
+          }
+        }
+      },
+      "post": {
+        "summary": "Thêm loại tài khoản",
+        "tags": [
+          "AccountType"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "danhmuc_id",
+                  "name"
+                ],
+                "properties": {
+                  "danhmuc_id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Nick rank cao"
+                  },
+                  "img": {
+                    "type": "string",
+                    "example": "https://example.com/image.png"
+                  },
+                  "noidung": {
+                    "type": "string",
+                    "example": "Loại tài khoản có rank cao, nhiều tướng"
+                  },
+                  "camket": {
+                    "type": "string",
+                    "example": "Cam kết đúng thông tin, bảo hành theo chính sách shop"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thêm loại tài khoản thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          }
+        }
+      }
+    },
+    "/api/account-types/{id}/accounts": {
+      "get": {
+        "summary": "Lấy danh sách tài khoản theo loại",
+        "tags": [
+          "AccountType"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID loại tài khoản"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price_asc",
+                "price_desc"
+              ]
+            },
+            "required": false,
+            "description": "Sắp xếp theo giá"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách tài khoản theo loại thành công"
+          },
+          "404": {
+            "description": "Không tìm thấy loại tài khoản"
+          }
+        }
+      }
+    },
+    "/api/account-types/{id}": {
+      "get": {
+        "summary": "Lấy chi tiết loại tài khoản",
+        "tags": [
+          "AccountType"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID loại tài khoản"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy thông tin loại tài khoản thành công"
+          },
+          "404": {
+            "description": "Không tìm thấy loại tài khoản"
+          }
+        }
+      },
+      "put": {
+        "summary": "Cập nhật loại tài khoản",
+        "tags": [
+          "AccountType"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID loại tài khoản"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "danhmuc_id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Nick Liên Quân VIP"
+                  },
+                  "img": {
+                    "type": "string",
+                    "example": "https://example.com/image.png"
+                  },
+                  "noidung": {
+                    "type": "string",
+                    "example": "Cập nhật nội dung loại tài khoản"
+                  },
+                  "camket": {
+                    "type": "string",
+                    "example": "Cập nhật cam kết"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cập nhật loại tài khoản thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          },
+          "404": {
+            "description": "Không tìm thấy loại tài khoản"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Ẩn loại tài khoản",
+        "tags": [
+          "AccountType"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID loại tài khoản"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ẩn loại tài khoản thành công"
+          },
+          "401": {
+            "description": "Vui lòng đăng nhập để tiếp tục"
+          },
+          "403": {
+            "description": "Bạn không có quyền quản trị hệ thống"
+          },
+          "404": {
+            "description": "Không tìm thấy loại tài khoản"
+          }
+        }
+      }
+    },
+    "/api/accounts": {
+      "get": {
+        "summary": "Lấy danh sách tài khoản đang bán",
+        "tags": [
+          "Account"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "loai_id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Lọc theo loại tài khoản"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price_asc",
+                "price_desc"
+              ]
+            },
+            "description": "Sắp xếp theo giá"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Thêm tài khoản game",
+        "tags": [
+          "Account"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "loai_id",
+                  "gia",
+                  "login"
+                ],
+                "properties": {
+                  "loai_id": {
+                    "type": "integer"
+                  },
+                  "thong_tin": {
+                    "type": "string"
+                  },
+                  "list_thong_tin": {
+                    "type": "string"
+                  },
+                  "img": {
+                    "type": "string"
+                  },
+                  "list_img": {
+                    "type": "string"
+                  },
+                  "login": {
+                    "type": "string"
+                  },
+                  "gia": {
+                    "type": "integer"
+                  },
+                  "ck": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounts/{id}": {
+      "get": {
+        "summary": "Lấy chi tiết tài khoản đang bán",
+        "tags": [
+          "Account"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID tài khoản"
+          }
+        ]
+      },
+      "put": {
+        "summary": "Cập nhật tài khoản",
+        "tags": [
+          "Account"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Ẩn tài khoản",
+        "tags": [
+          "Account"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "tags": []
+}

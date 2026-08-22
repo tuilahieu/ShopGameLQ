@@ -91,13 +91,26 @@ export async function getHome(req, res) {
         };
       });
 
+    // Never expose payment secrets or executable admin-managed code to anonymous clients.
+    const publicSetting = setting ? {
+      ten_web: setting.ten_web,
+      logo: setting.logo,
+      favicon: setting.favicon,
+      banner: setting.banner,
+      background: setting.background,
+      fb_admin: setting.fb_admin,
+      sdt_admin: setting.sdt_admin,
+      email: setting.email,
+      thongbao: setting.thongbao,
+    } : {};
+
     return successResponse(res, "Lấy dữ liệu trang chủ thành công", {
       totalAccounts,
       categories,
       accountTypes,
       latestAccounts,
       accountCountByType,
-      setting,
+      setting: publicSetting,
       flashSaleAccounts,
     });
   } catch (error) {

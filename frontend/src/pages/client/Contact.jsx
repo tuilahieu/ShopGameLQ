@@ -41,7 +41,7 @@ export default function Contact() {
       <div className="contact-card-container">
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "3rem", marginBottom: "16px" }}>💬</div>
-          <h2 style={{ color: "white", marginBottom: "10px" }}>HỖ TRỢ TRỰC TUYẾN 24/7</h2>
+          <h2 style={{ color: "var(--text-primary)", marginBottom: "10px" }}>HỖ TRỢ TRỰC TUYẾN 24/7</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", lineHeight: "1.6" }}>
             Nếu bạn có bất kỳ câu hỏi nào về việc giao dịch tài khoản, nạp tiền ví, hoặc cần bảo hành, vui lòng liên hệ với đội ngũ CSKH qua các kênh hỗ trợ trực tuyến bên dưới.
           </p>
@@ -55,7 +55,7 @@ export default function Contact() {
               </div>
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Chat Zalo hỗ trợ</div>
-                <strong style={{ color: "white" }}>{phoneDisplay}</strong>
+                <strong style={{ color: "var(--text-primary)" }}>{phoneDisplay}</strong>
               </div>
             </div>
             <a href={zaloLink} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>
@@ -71,7 +71,7 @@ export default function Contact() {
                 </div>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Facebook Messenger</div>
-                  <strong style={{ color: "white" }}>Messenger CSKH</strong>
+                  <strong style={{ color: "var(--text-primary)" }}>Messenger CSKH</strong>
                 </div>
               </div>
               <a href={fbLink} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>

@@ -2,7 +2,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Sun, Moon, Monitor } from "lucide-react";
 
 export default function ThemeToggle({ compact = false }) {
-  const { theme, resolved, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   // Cycle: system → light → dark → system
   function cycle() {

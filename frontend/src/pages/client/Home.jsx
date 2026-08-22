@@ -1,9 +1,49 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { Layers, Flame, Gamepad2 } from "lucide-react";
+import { Flame } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import AccountCard from "../../components/AccountCard";
+import SafeImage from "../../components/SafeImage";
+
+function SaleCountdown({ endTimes, onExpired }) {
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const endTime = Math.min(...endTimes.filter((value) => value > Date.now()));
+    if (!Number.isFinite(endTime)) {
+      setTimeLeft("Đã kết thúc");
+      return undefined;
+    }
+
+    let hasExpired = false;
+    const updateTimer = () => {
+      const diff = endTime - Date.now();
+      if (diff <= 0) {
+        setTimeLeft("Đã kết thúc");
+        if (!hasExpired) {
+          hasExpired = true;
+          onExpired();
+        }
+        return true;
+      }
+
+      const hours = Math.floor(diff / 3_600_000);
+      const minutes = Math.floor((diff % 3_600_000) / 60_000);
+      const seconds = Math.floor((diff % 60_000) / 1_000);
+      setTimeLeft(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
+      return false;
+    };
+
+    if (updateTimer()) return undefined;
+    const intervalId = window.setInterval(() => {
+      if (updateTimer()) window.clearInterval(intervalId);
+    }, 1_000);
+    return () => window.clearInterval(intervalId);
+  }, [endTimes, onExpired]);
+
+  return <div className="flash-sale-timer" aria-live="polite">Kết thúc sau <span>{timeLeft || "--:--:--"}</span></div>;
+}
 
 export default function Home() {
   const [data, setData] = useState({
@@ -15,15 +55,17 @@ export default function Home() {
     flashSaleAccounts: [],
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeCat, setActiveCat] = useState("all");
-  const [timeLeft, setTimeLeft] = useState("");
 
   async function loadHome() {
+    setLoadError("");
     try {
       const res = await api.get("/home");
       setData(res.data.data);
     } catch (error) {
       console.error(error);
+      setLoadError(error.response?.data?.message || "Không thể tải dữ liệu cửa hàng.");
     } finally {
       setLoading(false);
     }
@@ -38,47 +80,9 @@ export default function Home() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!data.flashSaleAccounts || data.flashSaleAccounts.length === 0) {
-      return;
-    }
-
-    // Find the closest active flash sale that is expiring soonest
-    const activeSales = data.flashSaleAccounts
-      .map(acc => new Date(acc.sale_detail.ketthuc).getTime())
-      .filter(endTime => endTime > Date.now());
-
-    if (activeSales.length === 0) {
-      setTimeLeft("ĐÃ KẾT THÚC");
-      return;
-    }
-
-    const minEndTime = Math.min(...activeSales);
-
-    function updateTimer() {
-      const now = Date.now();
-      const diff = minEndTime - now;
-
-      if (diff <= 0) {
-        setTimeLeft("ĐÃ KẾT THÚC");
-        clearInterval(timerInterval);
-        loadHome(); // reload data when sale expires
-        return;
-      }
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      const formatted = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-      setTimeLeft(formatted);
-    }
-
-    updateTimer();
-    const timerInterval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, [data.flashSaleAccounts]);
+  const saleEndTimes = (data.flashSaleAccounts || [])
+      .map((account) => new Date(account.sale_detail?.ketthuc).getTime())
+      .filter((endTime) => Number.isFinite(endTime));
 
   const displayedCategories = activeCat === "all"
     ? data.categories?.filter((cat) => Number(cat.status) === 1) || []
@@ -86,97 +90,20 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "var(--bg-primary)",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div className="premium-loader-container">
-          <div className="loader-ring"></div>
-          <div className="loader-ring-inner"></div>
-          <div className="loader-icon-box">
-            <Gamepad2 className="loader-gamepad" size={36} />
-          </div>
-        </div>
-        
-        <style>{`
-          .premium-loader-container {
-            position: relative;
-            width: 100px;
-            height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .loader-ring {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            border-top-color: var(--accent-color);
-            border-bottom-color: var(--gold-color);
-            animation: loader-spin 1.5s cubic-bezier(0.53, 0.21, 0.29, 0.67) infinite;
-          }
-          .loader-ring-inner {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-left-color: var(--cyan-color);
-            border-right-color: var(--accent-color);
-            animation: loader-spin-reverse 1.2s linear infinite;
-            opacity: 0.8;
-          }
-          .loader-icon-box {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 50px;
-            height: 50px;
-            background: var(--bg-secondary);
-            border-radius: 50%;
-            box-shadow: 0 0 20px var(--accent-glow);
-            animation: pulse-glow 2s ease-in-out infinite;
-            border: 1px solid var(--border-color);
-          }
-          .loader-gamepad {
-            color: var(--accent-color);
-            animation: gamepad-bounce 2s ease-in-out infinite;
-          }
-          @keyframes loader-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes loader-spin-reverse {
-            0% { transform: rotate(360deg); }
-            100% { transform: rotate(0deg); }
-          }
-          @keyframes pulse-glow {
-            0%, 100% {
-              box-shadow: 0 0 15px var(--accent-glow);
-              transform: scale(0.95);
-            }
-            50% {
-              box-shadow: 0 0 30px var(--accent-glow);
-              transform: scale(1.05);
-            }
-          }
-          @keyframes gamepad-bounce {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-2px) rotate(-5deg); }
-            75% { transform: translateY(2px) rotate(5deg); }
-          }
-        `}</style>
+      <div className="page-container catalogue-skeleton" aria-busy="true" aria-label="Đang tải cửa hàng">
+        <div className="skeleton-banner" />
+        <div className="skeleton-heading" />
+        <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="page-container empty-state">
+        <h1 className="page-title">Không thể tải cửa hàng</h1>
+        <p>{loadError}</p>
+        <button className="btn-primary" onClick={loadHome}>Tải lại</button>
       </div>
     );
   }
@@ -188,15 +115,18 @@ export default function Home() {
         {/* Banner Card (Left side) */}
         <div className="home-banner-card">
           {data.setting?.banner ? (
-            <img
+            <SafeImage
               src={data.setting.banner}
-              alt="Website Banner"
+              alt="Banner cửa hàng"
+              width={1180}
+              height={460}
+              decoding="async"
+              fallbackLabel="Banner chưa sẵn sàng"
             />
           ) : (
             <div className="home-banner-placeholder">
-              <span>🎮</span>
               <p>{data.setting?.ten_web || "Shop Game"}</p>
-              <small>Admin vui lòng cấu hình ảnh banner trong trang quản trị</small>
+              <small>Kho tài khoản game được cập nhật thường xuyên.</small>
             </div>
           )}
         </div>
@@ -245,13 +175,11 @@ export default function Home() {
               <Flame size={28} style={{ color: "var(--accent-color)", fill: "var(--accent-color)" }} />
               FLASH SALE
             </h2>
-            <div className="flash-sale-timer">
-              KẾT THÚC SAU: <span>{timeLeft || "00:00:00"}</span>
-            </div>
+            <SaleCountdown endTimes={saleEndTimes} onExpired={loadHome} />
           </div>
           <div className="account-grid">
-            {data.flashSaleAccounts.map((acc) => (
-              <AccountCard key={acc.id} acc={acc} />
+            {data.flashSaleAccounts.map((acc, index) => (
+              <AccountCard key={acc.id} acc={acc} priority={index < 2} />
             ))}
           </div>
         </div>
@@ -320,7 +248,15 @@ export default function Home() {
                         return (
                           <Link to={`/accounts?loai_id=${type.id}`} className="category-card" key={type.id}>
                             <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                              <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} loading="lazy" />
+                              <SafeImage
+                                src={type.img}
+                                alt={`Ảnh danh mục ${type.name}`}
+                                width={500}
+                                height={260}
+                                loading="lazy"
+                                decoding="async"
+                                fallbackLabel="Chưa có ảnh danh mục"
+                              />
                             </div>
                             <div className="category-info">
                               <h3>{type.name}</h3>

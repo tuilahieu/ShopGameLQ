@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
-import { X, Search } from "lucide-react";
 
 export default function AdminSales() {
   const [items, setItems] = useState([]);
@@ -131,8 +130,8 @@ export default function AdminSales() {
     });
 
     // Fetch account details to show hints if editing
-    api.get(`/accounts/${item.acc_id}`).then(res => {
-      setSelectedAccDetails(res.data.data);
+    api.get("/admin/accounts", { params: { id: item.acc_id, limit: 1 } }).then(res => {
+      setSelectedAccDetails(res.data.data?.accounts?.[0] || null);
     }).catch(() => {});
   }
 

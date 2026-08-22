@@ -4,27 +4,36 @@ import { Users, Gamepad2, Eye, EyeOff, ShoppingBag, History, Landmark } from "lu
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    api.get("/admin/dashboard").then((res) => {
+  async function loadDashboard() {
+    setError("");
+    try {
+      const res = await api.get("/admin/dashboard");
       setData(res.data.data);
-    });
-  }, []);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Không thể tải số liệu tổng quan.");
+    }
+  }
 
-  if (!data) return <div style={{ color: "var(--text-secondary)", padding: "24px" }}>Đang tải thống kê...</div>;
+  useEffect(() => { loadDashboard(); }, []);
+
+  if (!data && !error) return <div className="empty-state">Đang tải số liệu tổng quan...</div>;
+  if (error) return <div className="empty-state"><p>{error}</p><button className="btn-primary" onClick={loadDashboard}>Thử lại</button></div>;
 
   return (
     <div>
-      <h1 className="page-title">Dashboard</h1>
+      <h1 className="page-title">Tổng quan hệ thống</h1>
 
       <div className="card-grid">
         <div className="dashboard-card">
-          <h3>Thành viên (Users)</h3>
+          <h3>Thành viên</h3>
           <strong>{data.totalUsers}</strong>
           <Users className="card-icon" size={36} />
         </div>
         <div className="dashboard-card">
-          <h3>Tổng Accounts</h3>
+          <h3>Tổng tài khoản</h3>
           <strong>{data.totalAccounts}</strong>
           <Gamepad2 className="card-icon" size={36} />
         </div>
@@ -44,12 +53,12 @@ export default function AdminDashboard() {
           <EyeOff className="card-icon" size={36} />
         </div>
         <div className="dashboard-card">
-          <h3>Đơn hàng (Orders)</h3>
+          <h3>Đơn hàng</h3>
           <strong>{data.totalOrders}</strong>
           <ShoppingBag className="card-icon" size={36} />
         </div>
         <div className="dashboard-card">
-          <h3>Giao dịch (Transactions)</h3>
+          <h3>Giao dịch</h3>
           <strong>{data.totalTransactions}</strong>
           <History className="card-icon" size={36} />
         </div>

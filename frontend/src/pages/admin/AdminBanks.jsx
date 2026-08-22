@@ -46,10 +46,10 @@ export default function AdminBanks() {
   }
 
   async function remove(id) {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa ngân hàng này?")) return;
+    if (!window.confirm("Ẩn tài khoản ngân hàng này khỏi trang nạp tiền?")) return;
     try {
       await api.delete(`/admin/banks/${id}`);
-      alert("Đã xóa ngân hàng thành công!");
+      alert("Đã ẩn tài khoản ngân hàng khỏi trang nạp tiền.");
       load();
     } catch (err) {
       console.error(err);

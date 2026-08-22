@@ -8,10 +8,16 @@ import {
 import jwt from "jsonwebtoken";
 import { hashToken } from "../utils/hash.util.js";
 import { User } from "../models/index.js";
+import { env } from "../config/env.js";
+
+function normalizeUsername(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
 
 export async function register(req, res) {
   try {
-    const { username, password } = req.body;
+    const username = normalizeUsername(req.body.username);
+    const { password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -20,17 +26,17 @@ export async function register(req, res) {
       });
     }
 
-    if (username.length < 4) {
+    if (!/^[A-Za-z0-9_.-]{4,50}$/.test(username)) {
       return res.status(400).json({
         success: false,
-        message: "Tên đăng nhập phải có ít nhất 4 ký tự",
+        message: "Tên đăng nhập dài 4-50 ký tự và chỉ gồm chữ, số, '.', '_' hoặc '-'",
       });
     }
 
-    if (password.length < 6) {
+    if (typeof password !== "string" || password.length < 10 || password.length > 128) {
       return res.status(400).json({
         success: false,
-        message: "Mật khẩu phải có ít nhất 6 ký tự",
+        message: "Mật khẩu phải có từ 10 đến 128 ký tự",
       });
     }
 
@@ -44,12 +50,12 @@ export async function register(req, res) {
       return errorResponse(res, "Tên đăng nhập đã tồn tại", 409);
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
       username,
       password: hashedPassword,
-      ip: req.ip,
+      ip: req.clientIp,
     });
 
     return successResponse(res, "Đăng ký tài khoản thành công", {
@@ -68,7 +74,8 @@ export async function register(req, res) {
 
 export async function login(req, res) {
   try {
-    const { username, password } = req.body;
+    const username = normalizeUsername(req.body.username);
+    const { password } = req.body;
 
     if (!username || !password) {
       return errorResponse(res, "Vui lòng nhập tên đăng nhập và mật khẩu", 400);
@@ -109,10 +116,10 @@ export async function login(req, res) {
     await user.update({
       refresh_token_hash: hashToken(refreshToken),
       refresh_token_expires_at: refreshTokenExpiresAt,
-      ip: req.ip,
+      ip: req.clientIp,
     });
 
-    await writeLog(user.id, `Đăng nhập thành công`, req.ip);
+    await writeLog(user.id, `Đăng nhập thành công`, req.clientIp);
 
     return successResponse(res, "Đăng nhập thành công", {
       accessToken,
@@ -140,7 +147,7 @@ export async function refreshToken(req, res) {
       return errorResponse(res, "Thiếu refresh token", 400);
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refreshToken, env.jwt.refreshSecret, { algorithms: ["HS256"] });
 
     const user = await User.findOne({
       where: {
@@ -164,10 +171,19 @@ export async function refreshToken(req, res) {
       return errorResponse(res, "Refresh token đã hết hạn", 401);
     }
 
+    // Rotate refresh tokens so a stolen token cannot be replayed indefinitely.
     const accessToken = generateAccessToken(user);
+    const nextRefreshToken = generateRefreshToken(user);
+    const refreshTokenExpiresAt = new Date();
+    refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 30);
+    await user.update({
+      refresh_token_hash: hashToken(nextRefreshToken),
+      refresh_token_expires_at: refreshTokenExpiresAt,
+    });
 
     return successResponse(res, "Làm mới token thành công", {
       accessToken,
+      refreshToken: nextRefreshToken,
     });
   } catch (error) {
     return errorResponse(
