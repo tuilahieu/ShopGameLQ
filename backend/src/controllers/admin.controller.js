@@ -11,13 +11,67 @@ import {
   Setting,
   HistoryLog,
   Bank,
+  IdempotencyKey,
 } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
 import { writeLog } from "../utils/log.util.js";
+import { parsePagination } from "../utils/pagination.util.js";
+import { parseMoney, requirePositiveMoney } from "../utils/money.util.js";
+import { applyWalletMutation } from "../services/wallet.service.js";
+import { decryptCredential } from "../utils/credential.util.js";
+import { completeIdempotencyKey, getIdempotencyInput, reserveIdempotencyKey } from "../services/idempotency.service.js";
+import {
+  parseDate,
+  parsePercentage,
+  parsePositiveId,
+  validateDiscountDefinition,
+  validateSalePrice,
+} from "../services/pricing.service.js";
 
 function toNumber(value) {
   return Number(value || 0);
+}
+
+function parseBinaryStatus(value, fieldName = "Trạng thái") {
+  if (![0, 1, "0", "1", false, true].includes(value)) {
+    throw Object.assign(new Error(`${fieldName} không hợp lệ`), { status: 400 });
+  }
+  return Number(value) === 1 || value === true ? 1 : 0;
+}
+
+async function validateSaleInput(values, { transaction, excludeId = null, lockedAccount = null } = {}) {
+  const accId = parsePositiveId(values.acc_id, "acc_id");
+  const account = lockedAccount || await GameAccount.findByPk(accId, { transaction, lock: transaction ? true : undefined });
+  if (!account) throw Object.assign(new Error("Tài khoản không tồn tại"), { status: 404 });
+  if (Number(account.status) !== 0) throw Object.assign(new Error("Chỉ có thể tạo sale cho tài khoản đang bán"), { status: 409 });
+
+  const start = parseDate(values.batdau, "Thời gian bắt đầu");
+  const end = parseDate(values.ketthuc, "Thời gian kết thúc");
+  if (end <= start) throw Object.assign(new Error("Thời gian kết thúc phải sau thời gian bắt đầu"), { status: 400 });
+  const status = parseBinaryStatus(values.status);
+  const salePrice = validateSalePrice(account.gia, values.sale_price);
+
+  if (salePrice >= Number(account.gia)) {
+    throw Object.assign(new Error("Giá sale phải thấp hơn giá bán gốc để áp dụng khuyến mãi"), { status: 400 });
+  }
+
+  if (status === 1) {
+    const overlaps = await Sale.findOne({
+      where: {
+        acc_id: accId,
+        status: 1,
+        ...(excludeId && { id: { [Op.ne]: excludeId } }),
+        batdau: { [Op.lte]: end },
+        ketthuc: { [Op.gte]: start },
+      },
+      transaction,
+      lock: transaction ? true : undefined,
+    });
+    if (overlaps) throw Object.assign(new Error("Tài khoản đã có sale trùng khoảng thời gian"), { status: 409 });
+  }
+
+  return { acc_id: accId, sale_price: salePrice, batdau: start, ketthuc: end, status };
 }
 
 export async function getAdminDashboard(req, res) {
@@ -60,9 +114,7 @@ export async function getAdminDashboard(req, res) {
 
 export async function getAdminUsers(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const where = {};
     if (req.query.search) {
@@ -107,10 +159,17 @@ export async function updateAdminUser(req, res) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
 
-    await user.update({
-      ...(level !== undefined && { level }),
-      ...(banned !== undefined && { banned }),
-    });
+    if (Number(id) === Number(req.user.id) && (level !== undefined || banned === true || Number(banned) === 1)) {
+      return errorResponse(res, "Không thể tự thay đổi quyền hoặc khóa chính tài khoản admin đang dùng", 400);
+    }
+    if (level !== undefined && ![0, 1, 99].includes(Number(level))) {
+      return errorResponse(res, "Cấp tài khoản không hợp lệ", 400);
+    }
+    if (banned !== undefined && ![true, false, 0, 1, "0", "1"].includes(banned)) {
+      return errorResponse(res, "Trạng thái khóa không hợp lệ", 400);
+    }
+    await user.update({ ...(level !== undefined && { level: Number(level) }), ...(banned !== undefined && { banned: Number(banned) === 1 || banned === true }) });
+    await writeLog(req.user.id, `Cập nhật người dùng #${user.id}`, req.clientIp);
 
     return successResponse(res, "Cập nhật người dùng thành công", {
       id: user.id,
@@ -126,22 +185,45 @@ export async function updateAdminUser(req, res) {
 
 export async function updateUserMoney(req, res) {
   const dbTransaction = await sequelize.transaction();
+  let finished = false;
+  let idempotencyInput;
+  let targetUserId;
 
   try {
     const { id } = req.params;
     const { type, amount, description } = req.body;
+    const userId = parsePositiveId(id, "user_id");
+    targetUserId = userId;
+    idempotencyInput = getIdempotencyInput(req, { required: true });
+
+    const idempotency = await reserveIdempotencyKey({
+      scope: `admin-money:${req.user.id}:${userId}`,
+      input: idempotencyInput,
+      transaction: dbTransaction,
+    });
+    if (idempotency?.replay) {
+      await dbTransaction.commit();
+      finished = true;
+      return successResponse(res, "Yêu cầu điều chỉnh số dư đã được xử lý trước đó", idempotency.replay.response_body);
+    }
 
     if (!["add", "sub"].includes(type)) {
       await dbTransaction.rollback();
       return errorResponse(res, "Loại thao tác không hợp lệ", 400);
     }
 
-    if (!amount || Number(amount) <= 0) {
+    const moneyAmount = requirePositiveMoney(amount);
+    if (!moneyAmount) {
       await dbTransaction.rollback();
       return errorResponse(res, "Số tiền không hợp lệ", 400);
     }
+    const auditDescription = typeof description === "string" ? description.trim() : "";
+    if (auditDescription.length < 3 || auditDescription.length > 500) {
+      await dbTransaction.rollback();
+      return errorResponse(res, "Vui lòng nhập lý do điều chỉnh từ 3 đến 500 ký tự", 400);
+    }
 
-    const user = await User.findByPk(id, {
+    const user = await User.findByPk(userId, {
       transaction: dbTransaction,
       lock: true,
     });
@@ -151,70 +233,60 @@ export async function updateUserMoney(req, res) {
       return errorResponse(res, "Không tìm thấy người dùng", 404);
     }
 
-    const moneyAmount = Number(amount);
-    const balanceBefore = Number(user.money);
-
-    const balanceAfter =
-      type === "add"
-        ? balanceBefore + moneyAmount
-        : balanceBefore - moneyAmount;
-
-    if (balanceAfter < 0) {
-      await dbTransaction.rollback();
-      return errorResponse(res, "Số dư người dùng không đủ để trừ", 400);
+    const { balanceBefore, balanceAfter } = await applyWalletMutation({
+      user, amount: moneyAmount, direction: type === "add" ? 1 : -1,
+      type: type === "add" ? "admin_add" : "admin_sub",
+      description: auditDescription,
+      transaction: dbTransaction,
+    });
+    if (type === "add") {
+      const totalDeposit = parseMoney(user.tong_nap);
+      const nextTotalDeposit = totalDeposit === null ? null : totalDeposit + moneyAmount;
+      if (!Number.isSafeInteger(nextTotalDeposit)) {
+        throw Object.assign(new Error("Tổng tiền nạp không hợp lệ"), { status: 409 });
+      }
+      await user.update({ tong_nap: nextTotalDeposit }, { transaction: dbTransaction });
     }
 
-    await user.update(
-      {
-        money: balanceAfter,
-        ...(type === "add" && {
-          tong_nap: Number(user.tong_nap) + moneyAmount,
-        }),
-      },
-      {
-        transaction: dbTransaction,
-      },
-    );
-
-    await Transaction.create(
-      {
-        user_id: user.id,
-        type: type === "add" ? "admin_add" : "admin_sub",
-        amount: type === "add" ? moneyAmount : -moneyAmount,
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
-        reference_id: null,
-        description:
-          description ||
-          (type === "add" ? "Admin cộng tiền" : "Admin trừ tiền"),
-      },
-      {
-        transaction: dbTransaction,
-      },
-    );
-
-    await dbTransaction.commit();
-
-    return successResponse(res, "Cập nhật số dư thành công", {
+    const responseData = {
       user_id: user.id,
       balance_before: balanceBefore,
       balance_after: balanceAfter,
-    });
+    };
+    await completeIdempotencyKey(idempotency, { status: 200, body: responseData, transaction: dbTransaction });
+
+    await dbTransaction.commit();
+    finished = true;
+    writeLog(req.user.id, `${type === "add" ? "Cộng" : "Trừ"} ${moneyAmount} vào ví người dùng #${user.id}`, req.clientIp);
+
+    return successResponse(res, "Cập nhật số dư thành công", responseData);
   } catch (error) {
-    await dbTransaction.rollback();
+    if (!finished) await dbTransaction.rollback();
+
+    if (error.name === "SequelizeUniqueConstraintError" && idempotencyInput) {
+      const completedRequest = await IdempotencyKey.findOne({
+        where: { scope: `admin-money:${req.user.id}:${targetUserId}`, key: idempotencyInput.key, status: "completed" },
+      });
+      if (completedRequest?.request_hash === idempotencyInput.requestHash) {
+        return successResponse(res, "Yêu cầu điều chỉnh số dư đã được xử lý trước đó", completedRequest.response_body);
+      }
+    }
 
     console.error("UPDATE USER MONEY ERROR:", error);
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status);
   }
 }
 
 export async function getAdminAccounts(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const where = {};
+
+    if (req.query.id) {
+      where.id = req.query.id;
+    }
 
     if (req.query.status !== undefined && req.query.status !== "") {
       where.status = req.query.status;
@@ -248,7 +320,8 @@ export async function getAdminAccounts(req, res) {
     });
 
     return successResponse(res, "Lấy danh sách tài khoản thành công", {
-      accounts: rows,
+      // This route is admin-only; decrypt only at the final response boundary.
+      accounts: rows.map((account) => ({ ...account.toJSON(), login: decryptCredential(account.login) })),
       pagination: {
         page,
         limit,
@@ -264,9 +337,7 @@ export async function getAdminAccounts(req, res) {
 
 export async function getAdminOrders(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const where = {};
 
@@ -313,9 +384,7 @@ export async function getAdminOrders(req, res) {
 
 export async function getAdminTransactions(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const where = {};
 
@@ -395,65 +464,64 @@ export async function getAdminSales(req, res) {
 }
 
 export async function createAdminSale(req, res) {
+  const dbTransaction = await sequelize.transaction();
+  let finished = false;
   try {
     const { acc_id, sale_price, batdau, ketthuc, status = 1 } = req.body;
-
-    if (!acc_id || !sale_price || !batdau || !ketthuc) {
-      return errorResponse(res, "Vui lòng nhập đầy đủ thông tin sale", 400);
-    }
-
-    const account = await GameAccount.findByPk(acc_id);
-
-    if (!account) {
-      return errorResponse(res, "Tài khoản không tồn tại", 404);
-    }
-
-    const sale = await Sale.create({
-      acc_id,
-      sale_price,
-      batdau,
-      ketthuc,
-      status,
-    });
+    const saleData = await validateSaleInput({ acc_id, sale_price, batdau, ketthuc, status }, { transaction: dbTransaction });
+    const sale = await Sale.create(saleData, { transaction: dbTransaction });
+    await dbTransaction.commit();
+    finished = true;
 
     return successResponse(res, "Thêm sale thành công", sale);
   } catch (error) {
+    if (!finished) await dbTransaction.rollback();
     console.error("CREATE ADMIN SALE ERROR:", error);
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status);
   }
 }
 
 export async function updateAdminSale(req, res) {
+  const dbTransaction = await sequelize.transaction();
+  let finished = false;
   try {
     const { id } = req.params;
     const { acc_id, sale_price, batdau, ketthuc, status } = req.body;
 
-    const sale = await Sale.findByPk(id);
+    const saleId = parsePositiveId(id, "sale_id");
+    // Keep the lock order identical to checkout: account first, then sale.
+    // This avoids a checkout/admin-edit deadlock under load.
+    const snapshot = await Sale.findByPk(saleId, { transaction: dbTransaction });
 
-    if (!sale) {
+    if (!snapshot) {
+      await dbTransaction.rollback();
       return errorResponse(res, "Không tìm thấy sale", 404);
     }
-
-    if (acc_id !== undefined) {
-      const account = await GameAccount.findByPk(acc_id);
-
-      if (!account) {
-        return errorResponse(res, "Tài khoản không tồn tại", 404);
-      }
+    const intendedAccountId = parsePositiveId(acc_id ?? snapshot.acc_id, "acc_id");
+    const lockedAccount = await GameAccount.findByPk(intendedAccountId, { transaction: dbTransaction, lock: true });
+    if (!lockedAccount) throw Object.assign(new Error("Tài khoản không tồn tại"), { status: 404 });
+    const sale = await Sale.findByPk(saleId, { transaction: dbTransaction, lock: true });
+    if (!sale || (acc_id === undefined && Number(sale.acc_id) !== intendedAccountId)) {
+      throw Object.assign(new Error("Sale vừa được thay đổi, vui lòng thử lại"), { status: 409 });
     }
-
-    await sale.update({
-      ...(acc_id !== undefined && { acc_id }),
-      ...(sale_price !== undefined && { sale_price }),
-      ...(batdau !== undefined && { batdau }),
-      ...(ketthuc !== undefined && { ketthuc }),
-      ...(status !== undefined && { status }),
-    });
+    const saleData = await validateSaleInput({
+      acc_id: acc_id ?? sale.acc_id,
+      sale_price: sale_price ?? sale.sale_price,
+      batdau: batdau ?? sale.batdau,
+      ketthuc: ketthuc ?? sale.ketthuc,
+      status: status ?? sale.status,
+    }, { transaction: dbTransaction, excludeId: sale.id, lockedAccount });
+    await sale.update(saleData, { transaction: dbTransaction });
+    await dbTransaction.commit();
+    finished = true;
 
     return successResponse(res, "Cập nhật sale thành công", sale);
   } catch (error) {
+    if (!finished) await dbTransaction.rollback();
     console.error("UPDATE ADMIN SALE ERROR:", error);
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status);
   }
 }
 
@@ -507,23 +575,8 @@ export async function createAdminDiscount(req, res) {
       status = 1,
     } = req.body;
 
-    if (!magiamgia || !giamgia) {
-      return errorResponse(
-        res,
-        "Vui lòng nhập mã giảm giá và giá trị giảm",
-        400,
-      );
-    }
-
-    const discount = await Discount.create({
-      magiamgia,
-      giamgia,
-      theo,
-      batdau,
-      ketthuc,
-      soluong,
-      status,
-    });
+    const discountData = validateDiscountDefinition({ magiamgia, giamgia, theo, batdau, ketthuc, soluong, status });
+    const discount = await Discount.create(discountData);
 
     return successResponse(res, "Thêm mã giảm giá thành công", discount);
   } catch (error) {
@@ -533,7 +586,8 @@ export async function createAdminDiscount(req, res) {
       return errorResponse(res, "Mã giảm giá đã tồn tại", 409);
     }
 
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const statusCode = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, statusCode === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, statusCode);
   }
 }
 
@@ -550,15 +604,16 @@ export async function updateAdminDiscount(req, res) {
       return errorResponse(res, "Không tìm thấy mã giảm giá", 404);
     }
 
-    await discount.update({
-      ...(magiamgia !== undefined && { magiamgia }),
-      ...(giamgia !== undefined && { giamgia }),
-      ...(theo !== undefined && { theo }),
-      ...(batdau !== undefined && { batdau }),
-      ...(ketthuc !== undefined && { ketthuc }),
-      ...(soluong !== undefined && { soluong }),
-      ...(status !== undefined && { status }),
+    const discountData = validateDiscountDefinition({
+      magiamgia: magiamgia ?? discount.magiamgia,
+      giamgia: giamgia ?? discount.giamgia,
+      theo: theo ?? discount.theo,
+      batdau: batdau ?? discount.batdau,
+      ketthuc: ketthuc ?? discount.ketthuc,
+      soluong: soluong ?? discount.soluong,
+      status: status ?? discount.status,
     });
+    await discount.update(discountData);
 
     return successResponse(res, "Cập nhật mã giảm giá thành công", discount);
   } catch (error) {
@@ -568,7 +623,8 @@ export async function updateAdminDiscount(req, res) {
       return errorResponse(res, "Mã giảm giá đã tồn tại", 409);
     }
 
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const statusCode = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, statusCode === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, statusCode);
   }
 }
 
@@ -633,8 +689,11 @@ export async function updateAdminSetting(req, res) {
       sepay_secret,
       ck_ctv,
       thongbao,
-      js_web,
     } = req.body;
+
+    const commissionRate = ck_ctv === undefined
+      ? undefined
+      : parsePercentage(ck_ctv, "Chiết khấu CTV", { min: 0, max: 100 });
 
     await setting.update({
       ...(ten_web !== undefined && { ten_web }),
@@ -646,15 +705,14 @@ export async function updateAdminSetting(req, res) {
       ...(sdt_admin !== undefined && { sdt_admin }),
       ...(email !== undefined && { email }),
       ...(sepay_secret !== undefined && { sepay_secret }),
-      ...(ck_ctv !== undefined && { ck_ctv }),
+      ...(commissionRate !== undefined && { ck_ctv: commissionRate }),
       ...(thongbao !== undefined && { thongbao }),
-      ...(js_web !== undefined && { js_web }),
     });
 
     await writeLog(
       req.user.id,
       `Admin ${req.user.username} cập nhật cấu hình website`,
-      req.ip,
+      req.clientIp,
     );
 
     return successResponse(
@@ -670,9 +728,7 @@ export async function updateAdminSetting(req, res) {
 
 export async function getAdminLogs(req, res) {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const { count, rows } = await HistoryLog.findAndCountAll({
       include: [
@@ -727,7 +783,7 @@ export async function createAdminBank(req, res) {
       bank_id,
       status: status !== undefined ? Number(status) : 1,
     });
-    await writeLog(req.user.id, `Thêm ngân hàng mới: ${name} (${account_no})`, req.ip);
+    await writeLog(req.user.id, `Thêm ngân hàng mới: ${name} (${account_no})`, req.clientIp);
     return successResponse(res, "Thêm ngân hàng thành công", bank, 201);
   } catch (error) {
     console.error("CREATE ADMIN BANK ERROR:", error);
@@ -750,7 +806,7 @@ export async function updateAdminBank(req, res) {
       bank_id: bank_id !== undefined ? bank_id : bank.bank_id,
       status: status !== undefined ? Number(status) : bank.status,
     });
-    await writeLog(req.user.id, `Cập nhật ngân hàng ID ${id}`, req.ip);
+    await writeLog(req.user.id, `Cập nhật ngân hàng ID ${id}`, req.clientIp);
     return successResponse(res, "Cập nhật ngân hàng thành công", bank);
   } catch (error) {
     console.error("UPDATE ADMIN BANK ERROR:", error);
@@ -767,12 +823,12 @@ export async function deleteAdminBank(req, res) {
     }
     const name = bank.name;
     const account_no = bank.account_no;
-    await bank.destroy();
-    await writeLog(req.user.id, `Xóa ngân hàng: ${name} (${account_no})`, req.ip);
+    // Keep historic payment instructions auditable; remove it from public selection instead.
+    await bank.update({ status: 0 });
+    await writeLog(req.user.id, `Xóa ngân hàng: ${name} (${account_no})`, req.clientIp);
     return successResponse(res, "Xóa ngân hàng thành công");
   } catch (error) {
     console.error("DELETE ADMIN BANK ERROR:", error);
     return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
   }
 }
-

@@ -4,28 +4,67 @@ import {
   User,
   GameAccount,
   Order,
-  Transaction,
   Sale,
   Discount,
   Setting,
+  IdempotencyKey,
 } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
 import { writeLog } from "../utils/log.util.js";
+import { decryptCredential } from "../utils/credential.util.js";
+import { applyWalletMutation } from "../services/wallet.service.js";
+import { completeIdempotencyKey, getIdempotencyInput, reserveIdempotencyKey } from "../services/idempotency.service.js";
+import {
+  calculateDiscountAmount,
+  ensureDiscountIsAvailable,
+  normalizeDiscountCode,
+  parsePercentage,
+  parsePositiveId,
+  parseSafeBalance,
+  resolveAccountPricing,
+} from "../services/pricing.service.js";
+import { buildActiveSaleWhere } from "../services/sale.service.js";
+
+async function attachPurchasedCredential(payload, userId, transaction) {
+  // Never persist a decrypted credential inside idempotency_keys. It is resolved
+  // again from the account that is already owned by this exact user.
+  const { login: _legacyLogin, ...safePayload } = payload || {};
+  const accountId = parsePositiveId(safePayload.account_id, "account_id");
+  const account = await GameAccount.findOne({
+    where: { id: accountId, buyer_id: userId, status: 1 },
+    attributes: ["login"],
+    transaction,
+  });
+  if (!account) throw Object.assign(new Error("Không thể xác minh tài khoản đã mua"), { status: 409 });
+  return { ...safePayload, login: decryptCredential(account.login) };
+}
 
 export async function buyAccount(req, res) {
   const dbTransaction = await sequelize.transaction();
+  let finished = false;
+  let idempotencyInput;
+  let userId;
 
   try {
-    const userId = req.user.id;
-    const { account_id, discount_code } = req.body;
+    userId = req.user.id;
+    const accountId = parsePositiveId(req.body.account_id, "account_id");
+    const discountCode = req.body.discount_code ? normalizeDiscountCode(req.body.discount_code) : null;
+    idempotencyInput = getIdempotencyInput(req, { required: true });
 
-    if (!account_id) {
-      await dbTransaction.rollback();
-      return errorResponse(res, "Vui lòng chọn tài khoản cần mua", 400);
+    const idempotency = await reserveIdempotencyKey({
+      scope: `buy-account:${userId}`,
+      input: idempotencyInput,
+      transaction: dbTransaction,
+    });
+    if (idempotency?.replay) {
+      const responseData = await attachPurchasedCredential(idempotency.replay.response_body, userId, dbTransaction);
+      await dbTransaction.commit();
+      finished = true;
+      return successResponse(res, "Yêu cầu mua hàng đã được xử lý trước đó", responseData);
     }
 
-    const account = await GameAccount.findByPk(account_id, {
+    const account = await GameAccount.findByPk(accountId, {
       transaction: dbTransaction,
       lock: true,
     });
@@ -38,6 +77,14 @@ export async function buyAccount(req, res) {
     if (Number(account.status) !== 0) {
       await dbTransaction.rollback();
       return errorResponse(res, "Tài khoản này đã được bán", 400);
+    }
+
+    // A CTV must not self-purchase a listing because that bypasses the intended
+    // seller/commission separation. Administrators may do this for operational
+    // testing and account recovery workflows.
+    if (Number(account.seller_id) === Number(userId) && Number(req.user.level) === 1) {
+      await dbTransaction.rollback();
+      return errorResponse(res, "CTV không thể tự mua tài khoản do chính mình đăng bán", 403);
     }
 
     const user = await User.findByPk(userId, {
@@ -62,33 +109,25 @@ export async function buyAccount(req, res) {
 
     const now = new Date();
 
-    const originalPrice = Number(account.gia);
-    let saleId = null;
-    let salePrice = null;
-    let priceAfterSale = originalPrice;
-
     const sale = await Sale.findOne({
-      where: {
-        acc_id: account.id,
-        status: 1,
-      },
+      where: buildActiveSaleWhere({ now, accountId: account.id }),
       transaction: dbTransaction,
       lock: true,
+      order: [["id", "DESC"]],
     });
-
-    if (sale && now >= new Date(sale.batdau) && now <= new Date(sale.ketthuc)) {
-      saleId = sale.id;
-      salePrice = Number(sale.sale_price);
-      priceAfterSale = salePrice;
-    }
+    const pricing = resolveAccountPricing(account, sale, { status: 409 });
+    const originalPrice = pricing.originalPrice;
+    const saleId = pricing.saleId;
+    const salePrice = pricing.salePrice;
+    const priceAfterSale = pricing.finalPrice;
 
     let discountId = null;
     let discountAmount = 0;
 
-    if (discount_code) {
+    if (discountCode) {
       const discount = await Discount.findOne({
         where: {
-          magiamgia: discount_code,
+          magiamgia: discountCode,
           status: 1,
         },
         transaction: dbTransaction,
@@ -100,34 +139,11 @@ export async function buyAccount(req, res) {
         return errorResponse(res, "Mã giảm giá không tồn tại", 404);
       }
 
-      if (discount.batdau && now < new Date(discount.batdau)) {
-        await dbTransaction.rollback();
-        return errorResponse(res, "Mã giảm giá chưa có hiệu lực", 400);
-      }
-
-      if (discount.ketthuc && now > new Date(discount.ketthuc)) {
-        await dbTransaction.rollback();
-        return errorResponse(res, "Mã giảm giá đã hết hạn", 400);
-      }
-
-      if (Number(discount.soluong) <= 0) {
-        await dbTransaction.rollback();
-        return errorResponse(res, "Mã giảm giá đã hết lượt sử dụng", 400);
-      }
+      ensureDiscountIsAvailable(discount, now);
 
       discountId = discount.id;
 
-      if (discount.theo === "phantram") {
-        discountAmount = Math.floor(
-          (priceAfterSale * Number(discount.giamgia)) / 100,
-        );
-      } else {
-        discountAmount = Number(discount.giamgia);
-      }
-
-      if (discountAmount > priceAfterSale) {
-        discountAmount = priceAfterSale;
-      }
+      discountAmount = calculateDiscountAmount(priceAfterSale, discount, { status: 409 });
 
       await discount.update(
         {
@@ -141,50 +157,17 @@ export async function buyAccount(req, res) {
 
     const finalPrice = priceAfterSale - discountAmount;
 
-    if (finalPrice < 0) {
-      await User.update({ banned: 1 }, { where: { id: user.id } });
+    if (!Number.isSafeInteger(finalPrice) || finalPrice <= 0) {
       await dbTransaction.rollback();
-      return errorResponse(res, "Giao dịch không hợp lệ. Tài khoản của bạn đã bị khóa.", 403);
+      finished = true;
+      return errorResponse(res, "Giao dịch có giá trị không hợp lệ", 409);
     }
 
-    if (Number(user.money) < finalPrice) {
-      if (Number(user.money) < 0) {
-        await User.update({ banned: 1 }, { where: { id: user.id } });
-        await dbTransaction.rollback();
-        return errorResponse(res, "Giao dịch bất thường. Tài khoản của bạn đã bị khóa.", 403);
-      }
+    if (parseSafeBalance(user.money) < finalPrice) {
       await dbTransaction.rollback();
+      finished = true;
       return errorResponse(res, "Số dư không đủ để mua tài khoản này", 400);
     }
-
-    const balanceBefore = Number(user.money);
-    const balanceAfter = balanceBefore - finalPrice;
-
-    if (balanceAfter < 0 || balanceBefore < 0) {
-      await User.update({ banned: 1 }, { where: { id: user.id } });
-      await dbTransaction.rollback();
-      return errorResponse(res, "Giao dịch bất thường. Tài khoản của bạn đã bị khóa.", 403);
-    }
-
-    await user.update(
-      {
-        money: balanceAfter,
-      },
-      {
-        transaction: dbTransaction,
-      },
-    );
-
-    await account.update(
-      {
-        status: 1,
-        buyer_id: user.id,
-        ngaymua: new Date(),
-      },
-      {
-        transaction: dbTransaction,
-      },
-    );
 
     const order = await Order.create(
       {
@@ -208,24 +191,17 @@ export async function buyAccount(req, res) {
       },
     );
 
-    await Transaction.create(
-      {
-        user_id: user.id,
-        type: "buy_acc",
+    const { balanceAfter } = await applyWalletMutation({
+      user,
+      amount: finalPrice,
+      direction: -1,
+      type: "buy_acc",
+      referenceId: order.id,
+      description: `Mua tài khoản #${account.id}`,
+      transaction: dbTransaction,
+    });
 
-        amount: finalPrice,
-
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
-
-        reference_id: order.id,
-
-        description: `Mua tài khoản #${account.id}`,
-      },
-      {
-        transaction: dbTransaction,
-      },
-    );
+    await account.update({ status: 1, buyer_id: user.id, ngaymua: new Date() }, { transaction: dbTransaction });
 
     // CTV commission earning logic
     if (account.seller_id) {
@@ -234,40 +210,20 @@ export async function buyAccount(req, res) {
         lock: true,
       });
       if (seller && Number(seller.level) === 1) {
-        const setting = await Setting.findOne({ transaction: dbTransaction });
-        const ckCtv = setting ? Number(setting.ck_ctv || 0) : 0;
-        const ctvEarn = Math.floor(finalPrice * (100 - ckCtv) / 100);
+        const setting = await Setting.findOne({ transaction: dbTransaction, lock: true });
+        const ckCtv = parsePercentage(setting?.ck_ctv ?? 0, "Chiết khấu CTV", { min: 0, max: 100 });
+        const ctvEarn = Math.floor((finalPrice * ckCtv) / 100);
 
         if (ctvEarn > 0) {
-          const ctvBalanceBefore = Number(seller.money);
-          const ctvBalanceAfter = ctvBalanceBefore + ctvEarn;
-
-          await seller.update(
-            { money: ctvBalanceAfter },
-            { transaction: dbTransaction }
-          );
-
-          await Transaction.create(
-            {
-              user_id: seller.id,
-              type: "ctv_earn",
-              amount: ctvEarn,
-              balance_before: ctvBalanceBefore,
-              balance_after: ctvBalanceAfter,
-              reference_id: order.id,
-              description: `Bán tài khoản #${account.id} (Chiết khấu shop: ${ckCtv}%)`,
-            },
-            {
-              transaction: dbTransaction,
-            }
-          );
+          await applyWalletMutation({
+            user: seller, amount: ctvEarn, direction: 1, type: "ctv_earn", referenceId: order.id,
+            description: `Hoa hồng bán tài khoản #${account.id} (${ckCtv}%)`, transaction: dbTransaction,
+          });
         }
       }
     }
 
-    await dbTransaction.commit();
-
-    return successResponse(res, "Mua tài khoản thành công", {
+    const responsePayload = {
       order_id: order.id,
       account_id: account.id,
       original_price: originalPrice,
@@ -275,14 +231,29 @@ export async function buyAccount(req, res) {
       discount_amount: discountAmount,
       final_price: finalPrice,
       balance_after: balanceAfter,
-      login: account.login,
-    });
+    };
+    await completeIdempotencyKey(idempotency, { status: 200, body: responsePayload, transaction: dbTransaction });
+    await dbTransaction.commit();
+    finished = true;
+    writeLog(user.id, `Mua tài khoản #${account.id}, đơn #${order.id}`, req.clientIp);
+    return successResponse(res, "Mua tài khoản thành công", await attachPurchasedCredential(responsePayload, userId));
   } catch (error) {
-    await dbTransaction.rollback();
+    if (!finished) await dbTransaction.rollback();
+
+    // A concurrent retry may race while creating the unique key. MySQL releases the
+    // conflicting statement only after the original transaction commits, so replay it.
+    if (error.name === "SequelizeUniqueConstraintError" && idempotencyInput) {
+      const completedRequest = await IdempotencyKey.findOne({
+        where: { scope: `buy-account:${userId}`, key: idempotencyInput.key, status: "completed" },
+      });
+      if (completedRequest?.request_hash === idempotencyInput.requestHash) {
+        return successResponse(res, "Yêu cầu mua hàng đã được xử lý trước đó", await attachPurchasedCredential(completedRequest.response_body, userId));
+      }
+    }
 
     console.error("BUY ACCOUNT ERROR:", error);
 
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    return errorResponse(res, error.status >= 400 && error.status < 500 ? error.message : "Có lỗi xảy ra, vui lòng thử lại sau", error.status >= 400 && error.status < 500 ? error.status : 500);
   }
 }
 
@@ -333,7 +304,9 @@ export async function getOrderDetail(req, res) {
       return errorResponse(res, "Không tìm thấy đơn hàng", 404);
     }
 
-    return successResponse(res, "Lấy thông tin đơn hàng thành công", order);
+    const orderData = order.toJSON();
+    if (orderData.account?.login) orderData.account.login = decryptCredential(orderData.account.login);
+    return successResponse(res, "Lấy thông tin đơn hàng thành công", orderData);
   } catch (error) {
     console.error("GET ORDER DETAIL ERROR:", error);
 

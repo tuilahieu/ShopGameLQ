@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
-import { Key, CreditCard, History, Check, AlertCircle } from "lucide-react";
+import { Key, CreditCard, History, Check, AlertCircle, ChevronDown } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 
 export default function Profile() {
   const token = localStorage.getItem("accessToken");
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // Change password form
   const [passwordForm, setPasswordForm] = useState({
@@ -21,6 +23,7 @@ export default function Profile() {
 
   async function loadProfileAndTx() {
     setLoading(true);
+    setLoadError("");
     try {
       const [profileRes, txRes] = await Promise.all([
         api.get("/profile"),
@@ -32,6 +35,7 @@ export default function Profile() {
       setTransactions(list);
     } catch (err) {
       console.error("Failed to load profile data:", err);
+      setLoadError(err.response?.data?.message || "Không thể tải thông tin cá nhân.");
     } finally {
       setLoading(false);
     }
@@ -46,18 +50,25 @@ export default function Profile() {
       return;
     }
 
+    if (passwordForm.newPassword.length < 10) {
+      setPwStatus({ type: "error", msg: "Mật khẩu mới cần tối thiểu 10 ký tự." });
+      return;
+    }
+
     setPwLoading(true);
     try {
       await api.post("/profile/change-password", {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword
       });
-      setPwStatus({ type: "success", msg: "Đổi mật khẩu thành công!" });
+      setPwStatus({ type: "success", msg: "Đổi mật khẩu thành công. Bạn cần đăng nhập lại để tiếp tục." });
       setPasswordForm({
         oldPassword: "",
         newPassword: "",
         confirmNewPassword: ""
       });
+      localStorage.clear();
+      window.setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
       setPwStatus({ 
         type: "error", 
@@ -84,14 +95,14 @@ export default function Profile() {
 
   if (!token) {
     return (
-      <div className="page-container" style={{ textAlign: "center", padding: "80px 24px" }}>
-        <div style={{ maxWidth: "500px", margin: "0 auto", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "16px", padding: "40px" }}>
-          <h2>Yêu Cầu Đăng Nhập</h2>
-          <p style={{ color: "var(--text-secondary)", margin: "16px 0 24px" }}>
+      <div className="page-container profile-page">
+        <section className="recharge-access-state">
+          <h1>Đăng nhập để xem hồ sơ</h1>
+          <p>
             Vui lòng đăng nhập để truy cập trang cá nhân của bạn.
           </p>
-          <Link to="/login" className="btn-primary" style={{ padding: "10px 24px" }}>Đăng nhập ngay</Link>
-        </div>
+          <Link to="/login" className="btn-primary">Đăng nhập</Link>
+        </section>
       </div>
     );
   }
@@ -105,52 +116,41 @@ export default function Profile() {
   })();
 
   return (
-    <div className="page-container">
-      <h1 className="page-title" style={{ marginBottom: "32px" }}>TÀI KHOẢN CÁ NHÂN</h1>
+    <div className="page-container profile-page">
+      <header className="customer-page-heading">
+        <span className="storefront-section-kicker">Hồ sơ & bảo mật</span>
+        <h1>Tài khoản cá nhân</h1>
+        <p>Kiểm tra số dư, lịch sử giao dịch và bảo vệ tài khoản của bạn.</p>
+      </header>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 0" }}>
-          <div style={{ display: "inline-block", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid var(--accent-color)", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", marginBottom: "16px" }}></div>
-          <div style={{ color: "var(--text-secondary)" }}>Đang tải thông tin cá nhân...</div>
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
+        <div className="customer-loading-state" aria-live="polite">Đang tải thông tin cá nhân…</div>
+      ) : loadError || !profile ? (
+        <div className="empty-state"><p>{loadError || "Không tìm thấy thông tin tài khoản."}</p><button className="btn-primary" onClick={loadProfileAndTx}>Tải lại</button></div>
       ) : (
         <div className="profile-layout">
           {/* Sidebar user card */}
           <div className="profile-sidebar-card">
-            <img 
-              src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile?.username || "default"}`} 
-              alt="Avatar" 
-              style={{ width: "80px", height: "80px", borderRadius: "50%", background: "var(--bg-tertiary)", padding: "4px", border: "2px solid var(--border-color)", objectFit: "cover" }} 
-            />
+            <div className="profile-avatar" aria-label={`Tài khoản ${profile?.username || ""}`}>
+              {(profile?.username || "?").slice(0, 1).toUpperCase()}
+            </div>
             
-            <div style={{ marginTop: "8px" }}>
-              <h3 style={{ color: "var(--text-primary)", fontSize: "1.25rem", fontWeight: "700" }}>{profile?.username}</h3>
-              <span style={{ fontSize: "0.85rem", color: "var(--cyan-color)", fontWeight: "600" }}>{roleText}</span>
+            <div className="profile-identity">
+              <h2>{profile?.username}</h2>
+              <span>{roleText}</span>
             </div>
 
-            <div style={{ width: "100%", borderTop: "1px solid var(--border-color)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "12px", textAlign: "left" }}>
-              <div style={{ display: "flex", justifySelf: "space-between", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Tên tài khoản:</span>
-                <strong style={{ color: "var(--text-primary)" }}>{profile?.username}</strong>
-              </div>
-              <div style={{ display: "flex", justifySelf: "space-between", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Số dư ví:</span>
-                <strong style={{ color: "var(--gold-color)" }}>{Number(profile?.money || 0).toLocaleString()}đ</strong>
-              </div>
-              <div style={{ display: "flex", justifySelf: "space-between", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Trạng thái:</span>
-                <span style={{ color: Number(profile?.banned) === 1 ? "var(--accent-color)" : "var(--green-color)", fontWeight: "600", fontSize: "0.9rem" }}>
-                  {Number(profile?.banned) === 1 ? "Bị khóa" : "Hoạt động"}
-                </span>
-              </div>
-            </div>
+            <dl className="profile-summary">
+              <div><dt>Tên tài khoản</dt><dd>{profile?.username}</dd></div>
+              <div><dt>Số dư ví</dt><dd className="profile-balance">{Number(profile?.money || 0).toLocaleString()}đ</dd></div>
+              <div><dt>Trạng thái</dt><dd className={Number(profile?.banned) === 1 ? "is-banned" : "is-active"}>{Number(profile?.banned) === 1 ? "Bị khóa" : "Hoạt động"}</dd></div>
+            </dl>
 
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
-              <Link to="/nap-tien" className="btn-primary" style={{ width: "100%", fontSize: "0.9rem", padding: "8px" }}>
+            <div className="profile-quick-actions">
+              <Link to="/nap-tien" className="btn-primary">
                 <CreditCard size={14} /> Nạp tiền ví
               </Link>
-              <Link to="/my-orders" className="btn-outline" style={{ width: "100%", fontSize: "0.9rem", padding: "8px" }}>
+              <Link to="/my-orders" className="btn-outline">
                 <History size={14} /> Lịch sử mua nick
               </Link>
             </div>
@@ -159,75 +159,111 @@ export default function Profile() {
           {/* Main profile content */}
           <div className="profile-main-content">
             {/* Change password section */}
-            <div className="profile-section-card">
-              <h3><Key size={18} /> ĐỔI MẬT KHẨU TÀI KHOẢN</h3>
-              
-              {pwStatus.msg && (
-                <div 
-                  className={pwStatus.type === "success" ? "alert-error" : "alert-error"} 
-                  style={{ 
-                    background: pwStatus.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                    border: `1px solid ${pwStatus.type === "success" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-                    color: pwStatus.type === "success" ? "#34d399" : "#f87171",
-                    marginBottom: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  }}
-                >
-                  {pwStatus.type === "success" ? <Check size={16} /> : <AlertCircle size={16} />}
-                  <span>{pwStatus.msg}</span>
-                </div>
-              )}
+            <details className="profile-section-card profile-password-disclosure">
+              <summary className="profile-password-summary">
+                <span className="profile-password-summary-main">
+                  <Key size={20} aria-hidden="true" />
+                  <span>
+                    <strong>Đổi mật khẩu</strong>
+                    <small>Chỉ mở khi bạn cần cập nhật mật khẩu</small>
+                  </span>
+                </span>
+                <span className="profile-password-summary-action" aria-hidden="true">
+                  <span className="profile-password-closed-label">Mở</span>
+                  <span className="profile-password-open-label">Thu gọn</span>
+                  <ChevronDown size={18} />
+                </span>
+              </summary>
 
-              <form onSubmit={handlePasswordChange} className="profile-password-form">
-                <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-                  <label>Mật khẩu hiện tại</label>
-                  <input 
-                    type="password" 
-                    placeholder="Nhập mật khẩu hiện tại"
-                    value={passwordForm.oldPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
-                    required
-                  />
-                </div>
+              <div className="profile-password-content">
+                {pwStatus.msg && (
+                  <div className={`profile-form-status ${pwStatus.type}`} role={pwStatus.type === "error" ? "alert" : "status"}>
+                    {pwStatus.type === "success" ? <Check size={16} aria-hidden="true" /> : <AlertCircle size={16} aria-hidden="true" />}
+                    <span>{pwStatus.msg}</span>
+                  </div>
+                )}
 
-                <div className="form-group-premium">
-                  <label>Mật khẩu mới</label>
-                  <input 
-                    type="password" 
-                    placeholder="Tối thiểu 6 ký tự"
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    required
-                  />
-                </div>
+                <form onSubmit={handlePasswordChange} className="profile-password-form">
+                  <div className="form-group-premium profile-current-password">
+                    <label htmlFor="current-password">Mật khẩu hiện tại</label>
+                    <input
+                      id="current-password"
+                      name="currentPassword"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Nhập mật khẩu hiện tại"
+                      value={passwordForm.oldPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+                      required
+                    />
+                  </div>
 
-                <div className="form-group-premium">
-                  <label>Nhập lại mật khẩu mới</label>
-                  <input 
-                    type="password" 
-                    placeholder="Xác nhận lại mật khẩu mới"
-                    value={passwordForm.confirmNewPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
-                    required
-                  />
-                </div>
+                  <div className="form-group-premium">
+                    <label htmlFor="new-password">Mật khẩu mới</label>
+                    <input
+                      id="new-password"
+                      name="newPassword"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={10}
+                      maxLength={128}
+                      placeholder="Tối thiểu 10 ký tự"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      required
+                    />
+                  </div>
 
-                <button disabled={pwLoading} className="btn-primary profile-submit-btn" style={{ padding: "10px 24px", gridColumn: "1 / -1" }}>
-                  {pwLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
-                </button>
-              </form>
-            </div>
+                  <div className="form-group-premium">
+                    <label htmlFor="confirm-new-password">Nhập lại mật khẩu mới</label>
+                    <input
+                      id="confirm-new-password"
+                      name="confirmNewPassword"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={10}
+                      maxLength={128}
+                      placeholder="Xác nhận lại mật khẩu mới"
+                      value={passwordForm.confirmNewPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <button disabled={pwLoading} aria-busy={pwLoading} className="btn-primary profile-submit-btn">
+                    {pwLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
+                  </button>
+                </form>
+              </div>
+            </details>
 
             {/* Transaction history section */}
             <div className="profile-section-card">
-              <h3><History size={18} /> LỊCH SỬ BIẾN ĐỘNG SỐ DƯ</h3>
+              <h2><History size={19} aria-hidden="true" /> Biến động số dư</h2>
 
               {transactions.length === 0 ? (
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>Không có lịch sử biến động số dư ví nào.</p>
+                <p className="profile-empty-copy">Chưa có giao dịch ví nào.</p>
               ) : (
-                <div className="table-wrapper">
+                <>
+                <div className="transaction-mobile-list">
+                  {transactions.map((tx) => {
+                    const amount = Number(tx.amount || 0);
+                    const isAdd = amount > 0;
+                    return (
+                      <article className="transaction-mobile-card" key={tx.id}>
+                        <div>
+                          <strong>{tx.description || tx.type}</strong>
+                          <span>#{tx.id} · {new Date(tx.created_at || tx.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <strong className={isAdd ? "amount-add" : "amount-sub"}>{isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ</strong>
+                          <span>Sau GD: {Number(tx.balance_after).toLocaleString()}đ</span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                <div className="table-wrapper transaction-desktop-table">
                   <table className="table-premium">
                     <thead>
                       <tr>
@@ -240,13 +276,14 @@ export default function Profile() {
                     </thead>
                     <tbody>
                       {transactions.map((tx) => {
-                        const isAdd = tx.type === "recharge" || tx.type === "admin_add" || (tx.description && tx.description.toLowerCase().includes("cộng"));
+                        const amount = Number(tx.amount || 0);
+                        const isAdd = amount > 0;
                         return (
                           <tr key={tx.id}>
                             <td style={{ fontWeight: "500", color: "var(--text-primary)" }}>#{tx.id}</td>
                             <td>{tx.description || tx.type}</td>
                             <td className={isAdd ? "amount-add" : "amount-sub"}>
-                              {isAdd ? "+" : "-"}{Number(tx.amount).toLocaleString()}đ
+                              {isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ
                             </td>
                             <td>{Number(tx.balance_after).toLocaleString()}đ</td>
                             <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
@@ -258,6 +295,7 @@ export default function Profile() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           </div>

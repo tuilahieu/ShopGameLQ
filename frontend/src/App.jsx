@@ -1,38 +1,43 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
-
-import ClientLayout from "./layouts/ClientLayout";
-import Home from "./pages/client/Home";
-import Accounts from "./pages/client/Accounts";
-import AccountDetail from "./pages/client/AccountDetail";
-import Login from "./pages/client/Login";
-import Register from "./pages/client/Register";
-import MyOrders from "./pages/client/MyOrders";
-import Recharge from "./pages/client/Recharge";
-import Profile from "./pages/client/Profile";
-import Terms from "./pages/client/Terms";
-import Contact from "./pages/client/Contact";
-
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminAccounts from "./pages/admin/AdminAccounts";
-import AdminOrders from "./pages/admin/AdminOrders";
-import AdminTransactions from "./pages/admin/AdminTransactions";
-import AdminSales from "./pages/admin/AdminSales";
-import AdminDiscounts from "./pages/admin/AdminDiscounts";
-import AdminSetting from "./pages/admin/AdminSetting";
-import AdminLogs from "./pages/admin/AdminLogs";
-import AdminCategories from "./pages/admin/AdminCategories";
-import AdminAccountTypes from "./pages/admin/AdminAccountTypes";
-import AdminBanks from "./pages/admin/AdminBanks";
-
-import CtvLayout from "./layouts/CtvLayout";
-import CtvDashboard from "./pages/ctv/CtvDashboard";
-import CtvAccounts from "./pages/ctv/CtvAccounts";
-import CtvOrders from "./pages/ctv/CtvOrders";
-
 import { ThemeProvider } from "./context/ThemeContext";
+import AppLoader from "./components/AppLoader";
+
+// Keep the first bundle limited to routing, theme and the loading shell. Each
+// page is fetched only when its route is needed, especially admin screens that
+// should never affect a customer's initial mobile load.
+const ClientLayout = lazy(() => import("./layouts/ClientLayout"));
+const Home = lazy(() => import("./pages/client/Home"));
+const Accounts = lazy(() => import("./pages/client/Accounts"));
+const AccountDetail = lazy(() => import("./pages/client/AccountDetail"));
+const Login = lazy(() => import("./pages/client/Login"));
+const Register = lazy(() => import("./pages/client/Register"));
+const MyOrders = lazy(() => import("./pages/client/MyOrders"));
+const Recharge = lazy(() => import("./pages/client/Recharge"));
+const Profile = lazy(() => import("./pages/client/Profile"));
+const Terms = lazy(() => import("./pages/client/Terms"));
+const Contact = lazy(() => import("./pages/client/Contact"));
+const NotFound = lazy(() => import("./pages/client/NotFound"));
+
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminAccounts = lazy(() => import("./pages/admin/AdminAccounts"));
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
+const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
+const AdminSales = lazy(() => import("./pages/admin/AdminSales"));
+const AdminDiscounts = lazy(() => import("./pages/admin/AdminDiscounts"));
+const AdminSetting = lazy(() => import("./pages/admin/AdminSetting"));
+const AdminLogs = lazy(() => import("./pages/admin/AdminLogs"));
+const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
+const AdminAccountTypes = lazy(() => import("./pages/admin/AdminAccountTypes"));
+const AdminBanks = lazy(() => import("./pages/admin/AdminBanks"));
+
+const CtvLayout = lazy(() => import("./layouts/CtvLayout"));
+const CtvDashboard = lazy(() => import("./pages/ctv/CtvDashboard"));
+const CtvAccounts = lazy(() => import("./pages/ctv/CtvAccounts"));
+const CtvOrders = lazy(() => import("./pages/ctv/CtvOrders"));
 
 function AdminProtected({ children }) {
   const token = localStorage.getItem("accessToken");
@@ -59,6 +64,7 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <Suspense fallback={<AppLoader />}>
         <Routes>
           <Route element={<ClientLayout />}>
           <Route path="/" element={<Home />} />
@@ -71,6 +77,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
 
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -110,10 +117,9 @@ export default function App() {
           <Route path="orders" element={<CtvOrders />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+        </Suspense>
       </BrowserRouter>
     </ThemeProvider>
   );
 }
-

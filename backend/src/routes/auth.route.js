@@ -7,8 +7,11 @@ import {
   me,
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { captchaMiddleware } from "../middlewares/captcha.middleware.js";
+import { createRateLimit } from "../config/http.js";
 
 const router = Router();
+const authRateLimit = createRateLimit({ windowMs: 15 * 60_000, max: 10 });
 
 /**
  * @swagger
@@ -32,11 +35,14 @@ const router = Router();
  *               password:
  *                 type: string
  *                 example: "12345678"
+ *               captcha_token:
+ *                 type: string
+ *                 description: Bắt buộc khi CAPTCHA_ENABLED=true.
  *     responses:
  *       200:
  *         description: Đăng ký thành công
  */
-router.post("/register", register);
+router.post("/register", authRateLimit, captchaMiddleware, register);
 /**
  * @swagger
  * /api/auth/login:
@@ -59,11 +65,14 @@ router.post("/register", register);
  *               password:
  *                 type: string
  *                 example: "12345678"
+ *               captcha_token:
+ *                 type: string
+ *                 description: Bắt buộc khi CAPTCHA_ENABLED=true.
  *     responses:
  *       200:
  *         description: Đăng nhập thành công
  */
-router.post("/login", login);
+router.post("/login", authRateLimit, captchaMiddleware, login);
 /**
  * @swagger
  * /api/auth/refresh:
@@ -97,7 +106,7 @@ router.post("/login", login);
  *       401:
  *         description: Refresh token không hợp lệ hoặc đã hết hạn
  */
-router.post("/refresh", refreshToken);
+router.post("/refresh", authRateLimit, refreshToken);
 
 /**
  * @swagger

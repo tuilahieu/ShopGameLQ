@@ -1,9 +1,9 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Wallet, Home, ListFilter, CreditCard, History, MessageCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
-import RecentPurchases from "../components/RecentPurchases";
+import SafeImage from "../components/SafeImage";
 
 export default function ClientLayout() {
   const navigate = useNavigate();
@@ -16,6 +16,92 @@ export default function ClientLayout() {
   const [setting, setSetting] = useState(() => {
     return JSON.parse(localStorage.getItem("setting") || "{}");
   });
+  const [flashSaleCount, setFlashSaleCount] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const drawerTriggerRef = useRef(null);
+  const profileMenuRef = useRef(null);
+  const profileTriggerRef = useRef(null);
+
+  // Close drawer upon navigation
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement;
+    const drawer = drawerRef.current;
+    const drawerTrigger = drawerTriggerRef.current;
+    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+    document.body.style.overflow = "hidden";
+    drawer?.querySelector(focusableSelector)?.focus();
+
+    function handleDrawerKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !drawer) return;
+      const focusable = [...drawer.querySelectorAll(focusableSelector)];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleDrawerKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleDrawerKeyDown);
+      if (
+        previouslyFocused instanceof HTMLElement
+        && previouslyFocused !== document.body
+        && document.contains(previouslyFocused)
+      ) {
+        previouslyFocused.focus();
+      } else {
+        drawerTrigger?.focus();
+      }
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return undefined;
+
+    function closeProfileMenu(event) {
+      if (event.key === "Escape") {
+        setIsProfileMenuOpen(false);
+        profileTriggerRef.current?.focus();
+      }
+    }
+
+    function closeOnOutsideClick(event) {
+      if (!profileMenuRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", closeProfileMenu);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("keydown", closeProfileMenu);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
+  }, [isProfileMenuOpen]);
 
   // Periodically refresh profile data to sync wallet balance and details
   async function fetchProfile() {
@@ -44,6 +130,7 @@ export default function ClientLayout() {
           document.title = updatedSetting.ten_web;
         }
       }
+      setFlashSaleCount(Array.isArray(res.data?.data?.flashSaleAccounts) ? res.data.data.flashSaleAccounts.length : 0);
     } catch (err) {
       console.error("Failed to sync settings:", err);
     }
@@ -51,66 +138,21 @@ export default function ClientLayout() {
 
   useEffect(() => {
     fetchProfile();
-  }, [location.pathname, token]); // Re-fetch on navigate to keep balance accurate
+  }, [location.pathname, token]);
 
   useEffect(() => {
     fetchSettings();
   }, []);
 
-  // Dynamic script/HTML injection from Admin Settings (js_web)
-  useEffect(() => {
-    if (setting?.js_web) {
-      // 1. Remove previous custom scripts/elements to avoid duplicate runs
-      const oldScripts = document.querySelectorAll(".custom-web-js");
-      oldScripts.forEach((el) => el.remove());
-
-      // 2. Parse and inject elements
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = setting.js_web.trim();
-
-      const hasScripts = tempDiv.getElementsByTagName("script").length > 0;
-
-      if (hasScripts) {
-        // Iterate through parsed nodes to support both script tags and other markup (e.g. style, div, link)
-        Array.from(tempDiv.childNodes).forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node;
-            if (el.tagName === "SCRIPT") {
-              const newScript = document.createElement("script");
-              newScript.className = "custom-web-js";
-              // Copy all attributes (src, async, defer, etc.)
-              Array.from(el.attributes).forEach((attr) => {
-                newScript.setAttribute(attr.name, attr.value);
-              });
-              newScript.textContent = el.textContent;
-              document.body.appendChild(newScript);
-            } else {
-              // Clone and append non-script tags (style, link, custom divs)
-              const clone = el.cloneNode(true);
-              clone.classList.add("custom-web-js");
-              document.body.appendChild(clone);
-            }
-          } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-            const textSpan = document.createElement("span");
-            textSpan.className = "custom-web-js";
-            textSpan.textContent = node.textContent;
-            document.body.appendChild(textSpan);
-          }
-        });
-      } else {
-        // No script tags found, treat the setting string as raw JavaScript code
-        const newScript = document.createElement("script");
-        newScript.className = "custom-web-js";
-        newScript.textContent = setting.js_web;
-        document.body.appendChild(newScript);
-      }
+  async function logout() {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // The local session must still be cleared when its token is already invalid.
     }
-  }, [setting?.js_web]);
-
-  function logout() {
     localStorage.clear();
     navigate("/");
-    window.location.reload(); // Hard reload to reset state
+    window.location.reload();
   }
 
   const zaloLink = setting.sdt_admin ? `https://zalo.me/${setting.sdt_admin.replace(/\D/g, "")}` : "https://zalo.me/0999999999";
@@ -119,101 +161,103 @@ export default function ClientLayout() {
 
   return (
     <div className="client-page">
+      <a className="skip-link" href="#noi-dung-chinh">Bỏ qua điều hướng</a>
       <header className="client-header">
         <Link to="/" className="client-logo">
           {setting.logo ? (
-            <img src={setting.logo} alt={setting.ten_web || "Logo"} style={{ maxHeight: "45px", width: "auto" }} />
+            <SafeImage
+              src={setting.logo}
+              alt={`Logo ${setting.ten_web || "cửa hàng"}`}
+              width={132}
+              height={32}
+              style={{ maxHeight: "45px" }}
+              fallbackLabel={setting.ten_web || "Cửa hàng game"}
+            />
           ) : (
-            <>🎮 {setting.ten_web || "Shopgameliqi"}</>
+            <>{setting.ten_web || "Shopgameliqi"}</>
           )}
         </Link>
 
         <nav className="client-nav">
-          <NavLink to="/" end className={({ isActive }) => isActive ? "active" : ""}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-              <Home size={15} /> Trang chủ
-            </span>
+          <NavLink to="/" end className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+            <Home size={15} />
+            <span>Trang chủ</span>
           </NavLink>
           
-          <NavLink to="/accounts" className={({ isActive }) => isActive ? "active" : ""}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-              <ListFilter size={15} /> Kho tài khoản
-            </span>
+          <NavLink to="/accounts" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+            <ListFilter size={15} />
+            <span>Kho tài khoản</span>
           </NavLink>
           
-          <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "active" : ""}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-              <CreditCard size={15} /> Nạp tiền
-            </span>
+          <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+            <CreditCard size={15} />
+            <span>Nạp tiền</span>
           </NavLink>
 
           {token && (
-            <>
-              <NavLink to="/my-orders" className={({ isActive }) => isActive ? "active" : ""}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                  <History size={15} /> Đã mua
-                </span>
-              </NavLink>
-              <NavLink to="/profile" className={({ isActive }) => isActive ? "active" : ""}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                  <User size={15} /> Cá nhân
-                </span>
-              </NavLink>
-              {Number(user.level) === 99 && (
-                <NavLink to="/admin" className={({ isActive }) => isActive ? "active" : ""}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: "var(--accent-color)", fontWeight: "600" }}>
-                    Admin
-                  </span>
-                </NavLink>
-              )}
-              {Number(user.level) === 1 && (
-                <NavLink to="/ctv" className={({ isActive }) => isActive ? "active" : ""}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: "var(--cyan-color)", fontWeight: "600" }}>
-                    Cộng tác viên
-                  </span>
-                </NavLink>
-              )}
-            </>
+            <NavLink to="/my-orders" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+              <History size={15} />
+              <span>Đã mua</span>
+            </NavLink>
           )}
         </nav>
 
         <div className={`client-actions ${token ? "logged-in" : "logged-out"}`}>
-          <ThemeToggle />
           {token ? (
             <>
-              <Link to="/profile" className="wallet-display">
-                <Wallet size={14} style={{ color: "var(--gold-color)" }} />
-                <span>Số dư:</span>
+              <Link
+                to="/profile"
+                className="wallet-display"
+                title="Mở hồ sơ cá nhân"
+                aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+              >
+                <Wallet size={14} style={{ color: "var(--gold-color)", flexShrink: 0 }} />
+                <span>Hồ sơ · Số dư:</span>
                 <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
               </Link>
 
-              <Link to="/profile" className="user-badge" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <User size={16} />
-                <span>{user.username}</span>
-              </Link>
-
-              {Number(user.level) === 99 && (
-                <Link to="/admin" className="btn-outline" style={{ padding: "6px 12px", fontSize: "0.85rem" }}>
-                  Admin
-                </Link>
-              )}
-
-              {Number(user.level) === 1 && (
-                <Link to="/ctv" className="btn-outline" style={{ padding: "6px 12px", fontSize: "0.85rem" }}>
-                  Cộng tác viên
-                </Link>
-              )}
-
-              <button onClick={logout} className="logout-link" title="Đăng xuất" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                <LogOut size={16} />
-              </button>
+              <div className="client-profile-menu" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  ref={profileTriggerRef}
+                  className="user-badge client-profile-trigger"
+                  aria-expanded={isProfileMenuOpen}
+                  aria-controls="desktop-profile-menu"
+                  onClick={() => setIsProfileMenuOpen((open) => !open)}
+                >
+                  <User size={15} aria-hidden="true" />
+                  <span>{user.username || "Tài khoản"}</span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+                {isProfileMenuOpen && (
+                  <div id="desktop-profile-menu" className="client-profile-popover">
+                    <nav aria-label="Tài khoản và quản trị">
+                      <Link to="/profile"><User size={17} aria-hidden="true" /> Hồ sơ cá nhân</Link>
+                      {Number(user.level) === 99 && (
+                        <Link to="/admin" className="role-link"><Shield size={17} aria-hidden="true" /> Quản trị hệ thống</Link>
+                      )}
+                      {Number(user.level) === 1 && (
+                        <Link to="/ctv" className="role-link"><Briefcase size={17} aria-hidden="true" /> Khu vực CTV</Link>
+                      )}
+                    </nav>
+                    <div className="client-profile-theme">
+                      <span>Giao diện</span>
+                      <ThemeToggle />
+                    </div>
+                    <button type="button" className="client-profile-logout" onClick={logout}>
+                      <LogOut size={17} aria-hidden="true" /> Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-outline" style={{ padding: "8px 16px" }}>
+              <ThemeToggle compact={true} />
+              <Link to="/login" className="btn-outline desktop-auth-action">
                 Đăng nhập
               </Link>
-              <Link to="/register" className="btn-primary" style={{ padding: "8px 16px" }}>
+              <Link to="/register" className="btn-primary desktop-auth-action">
                 Đăng ký
               </Link>
             </>
@@ -221,55 +265,211 @@ export default function ClientLayout() {
         </div>
       </header>
 
-      {/* Mobile Top Bar (logo + user info) — only visible on mobile */}
+      {/* Mobile Top Bar (sticky on mobile) */}
       <div className="mobile-topbar">
-        <Link to="/" className="mobile-topbar-logo">
-          {setting.logo ? (
-            <img src={setting.logo} alt={setting.ten_web || "Logo"} style={{ maxHeight: "36px", width: "auto" }} />
-          ) : (
-            <span>{setting.ten_web || "Shopgameliqi"}</span>
-          )}
-        </Link>
+        <div className="mobile-topbar-left">
+          <Link to="/" className="mobile-topbar-logo">
+            {setting.logo ? (
+              <SafeImage
+                src={setting.logo}
+                alt={`Logo ${setting.ten_web || "cửa hàng"}`}
+                width={116}
+                height={30}
+                style={{ maxHeight: "30px" }}
+                fallbackLabel={setting.ten_web || "Cửa hàng"}
+              />
+            ) : (
+              <span>{setting.ten_web || "ShopGameLiQi"}</span>
+            )}
+          </Link>
+        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <ThemeToggle compact={true} />
-          <div className="mobile-topbar-right">
-          {token ? (
-            <>
-              <Link to="/profile" className="mobile-topbar-wallet">
-                <Wallet size={13} />
-                <span>{Number(user.money || 0).toLocaleString()}đ</span>
-              </Link>
-              <Link to="/profile" className="mobile-topbar-user">
-                <User size={13} />
-                <span>{user.username}</span>
-              </Link>
-              <button onClick={logout} className="mobile-topbar-logout" title="Đăng xuất">
-                <LogOut size={15} />
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="mobile-topbar-btn outline">Đăng nhập</Link>
-              <Link to="/register" className="mobile-topbar-btn primary">Đăng ký</Link>
-            </>
+        <div className="mobile-topbar-right">
+          {token && (
+            <Link
+              to="/profile"
+              className="mobile-topbar-account"
+              aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+            >
+              <User size={18} aria-hidden="true" />
+              <span className="mobile-topbar-account-copy">
+                <small>Hồ sơ của tôi</small>
+                <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
+              </span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </Link>
           )}
-          </div>
         </div>
       </div>
 
-      {/* Recent Activity Ticker */}
-      <RecentPurchases />
+      {flashSaleCount > 0 && (
+        <Link
+          to={{ pathname: "/", hash: "#flash-sale-title" }}
+          className="flash-sale-ticker"
+          aria-label={`Flash Sale đang diễn ra với ${flashSaleCount} tài khoản giảm giá. Xem ngay.`}
+        >
+          <span className="flash-sale-ticker-viewport">
+            <span className="flash-sale-ticker-track">
+              <span className="flash-sale-ticker-message">
+                <Flame size={16} aria-hidden="true" />
+                FLASH SALE: CÓ {flashSaleCount} TÀI KHOẢN ĐANG GIẢM GIÁ · XEM NGAY
+              </span>
+              <span className="flash-sale-ticker-message" aria-hidden="true">
+                <Flame size={16} />
+                FLASH SALE: CÓ {flashSaleCount} TÀI KHOẢN ĐANG GIẢM GIÁ · XEM NGAY
+              </span>
+            </span>
+          </span>
+        </Link>
+      )}
 
-      <main style={{ flexGrow: 1 }}>
+      {/* Mobile Slide-Out Drawer Menu */}
+      {isMobileMenuOpen && (
+        <div className="mobile-drawer-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
+          <aside
+            id="mobile-account-drawer"
+            ref={drawerRef}
+            className="mobile-drawer-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-drawer-header">
+              <strong id="mobile-drawer-title">Tài khoản & hỗ trợ</strong>
+              <button
+                type="button"
+                className="mobile-drawer-close-btn"
+                onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Đóng menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {token ? (
+              <Link to="/profile" className="mobile-drawer-usercard">
+                <div className="mobile-drawer-avatar">
+                  <User size={22} />
+                </div>
+                <div className="mobile-drawer-userinfo">
+                  <h4>{user.username}</h4>
+                  <div className="mobile-drawer-balance">
+                    <Wallet size={13} style={{ color: "var(--gold-color)" }} />
+                    <span>Số dư: <strong>{Number(user.money || 0).toLocaleString()}đ</strong></span>
+                  </div>
+                </div>
+                {Number(user.level) === 99 && <span className="badge-role admin">Admin</span>}
+                {Number(user.level) === 1 && <span className="badge-role ctv">CTV</span>}
+              </Link>
+            ) : (
+              <div className="mobile-drawer-guest-actions">
+                <Link to="/login" className="btn-outline">
+                  Đăng nhập
+                </Link>
+                <Link to="/register" className="btn-primary">
+                  Đăng ký
+                </Link>
+              </div>
+            )}
+
+            <div className="mobile-drawer-nav">
+              {token && (
+                <>
+                  <NavLink to="/profile" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                    <User size={18} />
+                    <span>Thông tin cá nhân</span>
+                  </NavLink>
+
+                  {Number(user.level) === 99 && (
+                    <NavLink to="/admin" className={({ isActive }) => isActive ? "mobile-drawer-link admin active" : "mobile-drawer-link admin"}>
+                      <Shield size={18} />
+                      <span>Trang quản trị (Admin)</span>
+                    </NavLink>
+                  )}
+
+                  {Number(user.level) === 1 && (
+                    <NavLink to="/ctv" className={({ isActive }) => isActive ? "mobile-drawer-link ctv active" : "mobile-drawer-link ctv"}>
+                      <Briefcase size={18} />
+                      <span>Trang CTV</span>
+                    </NavLink>
+                  )}
+                </>
+              )}
+
+              <hr className="mobile-drawer-divider" />
+
+              <NavLink to="/terms" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                <FileText size={18} />
+                <span>Chính sách & Bảo hành</span>
+              </NavLink>
+              
+              <NavLink to="/contact" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                <Phone size={18} />
+                <span>Liên hệ hỗ trợ</span>
+              </NavLink>
+            </div>
+
+            <div className="mobile-drawer-footer">
+              <div className="mobile-drawer-theme-box">
+                <span>Chủ đề hiển thị</span>
+                <ThemeToggle />
+              </div>
+              {token && (
+                <button type="button" className="mobile-drawer-logout-btn" onClick={logout}>
+                  <LogOut size={16} />
+                  <span>Đăng xuất</span>
+                </button>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      <main id="noi-dung-chinh" tabIndex={-1} style={{ flexGrow: 1 }}>
         <Outlet />
       </main>
 
       <footer className="client-footer">
-        <div className="footer-grid">
+        <div className="footer-mobile">
+          <div className="footer-mobile-intro">
+            <h2>Cần hỗ trợ mua acc?</h2>
+            <p>Nhắn shop khi cần tư vấn hoặc hỗ trợ đơn hàng.</p>
+          </div>
+
+          <div className="footer-mobile-actions">
+            <a className="footer-mobile-action is-primary" href={zaloLink} target="_blank" rel="noreferrer">
+              <MessageCircle size={19} aria-hidden="true" />
+              <span>
+                <strong>Chat Zalo</strong>
+                <small>{phoneDisplay}</small>
+              </span>
+            </a>
+            <Link className="footer-mobile-action" to="/contact">
+              <Phone size={19} aria-hidden="true" />
+              <span>
+                <strong>Liên hệ shop</strong>
+                <small>Hỗ trợ đơn hàng</small>
+              </span>
+            </Link>
+          </div>
+
+          <div className="footer-mobile-assurance">
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span><strong>MUA ACC MINH BẠCH</strong> · Nhận thông tin sau khi thanh toán thành công.</span>
+          </div>
+
+          <Link className="footer-mobile-policy" to="/terms">
+            <FileText size={18} aria-hidden="true" />
+            <span>Điều khoản &amp; bảo hành</span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </Link>
+        </div>
+
+        <div className="footer-grid footer-desktop">
           <div className="footer-brand">
-            <h3>🎮 {setting.ten_web || "Shopgameliqi"}</h3>
-            <p>Hệ thống cung cấp nick Liên Quân Mobile chất lượng cao, an toàn, giao thông tin tự động ngay lập tức sau 2 giây giao dịch.</p>
+            <h3>{setting.ten_web || "Shopgameliqi"}</h3>
+            <p>Kho tài khoản game với thông tin rõ ràng và hỗ trợ khi cần thiết.</p>
           </div>
           <div className="footer-links">
             <h4>HỆ THỐNG</h4>
@@ -301,37 +501,20 @@ export default function ClientLayout() {
               </li>
             </ul>
           </div>
+          <div className="footer-links footer-assurance">
+            <h4>MUA ACC MINH BẠCH</h4>
+            <p>Thông tin tài khoản chỉ hiển thị sau khi thanh toán thành công.</p>
+            <Link to="/terms">Xem điều khoản &amp; bảo hành</Link>
+          </div>
         </div>
         <div className="footer-bottom">
-          <div>© {new Date().getFullYear()} {setting.ten_web || "Shopgameliqi"} - Hệ thống bán tài khoản game tự động uy tín.</div>
-          <div>All rights reserved.</div>
+          <div>© {new Date().getFullYear()} {setting.ten_web || "Shopgameliqi"}</div>
+          <div className="footer-bottom-rights">Hệ thống bán tài khoản game tự động · All rights reserved.</div>
         </div>
       </footer>
 
-      {/* Floating Contact Widgets (Zalo & Facebook) */}
-      <div className="floating-contact-widgets">
-        <a 
-          href={zaloLink} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="contact-widget-btn widget-zalo" 
-          title="Chat Zalo hỗ trợ"
-        >
-          Zalo
-        </a>
-        <a 
-          href={fbLink} 
-          target="_blank" 
-          rel="noreferrer" 
-          className="contact-widget-btn widget-fb" 
-          title="Chat Facebook hỗ trợ"
-        >
-          <MessageCircle size={22} />
-        </a>
-      </div>
-
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav">
+      {/* Floating Mobile Bottom Navigation Dock (Luôn luôn nổi lên trên cùng) */}
+      <nav className="mobile-bottom-nav" aria-label="Điều hướng chính trên di động">
         <NavLink to="/" end className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
           <Home size={20} />
           <span>Trang chủ</span>
@@ -348,24 +531,29 @@ export default function ClientLayout() {
         </NavLink>
 
         {token ? (
-          <>
-            <NavLink to="/my-orders" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
-              <History size={20} />
-              <span>Đã mua</span>
-            </NavLink>
-            <NavLink to="/profile" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
-              <User size={20} />
-              <span>Cá nhân</span>
-            </NavLink>
-          </>
+          <NavLink to="/my-orders" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
+            <History size={20} />
+            <span>Đã mua</span>
+          </NavLink>
         ) : (
-          <>
-            <NavLink to="/login" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
-              <User size={20} />
-              <span>Đăng nhập</span>
-            </NavLink>
-          </>
+          <NavLink to="/login" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
+            <User size={20} />
+            <span>Đăng nhập</span>
+          </NavLink>
         )}
+
+        <button
+          type="button"
+          ref={drawerTriggerRef}
+          className={`mobile-nav-item ${isMobileMenuOpen ? "active" : ""}`}
+          onClick={() => setIsMobileMenuOpen(true)}
+          aria-label={token ? "Mở tài khoản và hỗ trợ" : "Mở menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-account-drawer"
+        >
+          {token ? <User size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+          <span>{token ? "Tôi" : "Menu"}</span>
+        </button>
       </nav>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Upload, Pencil, Trash2, Plus, X, ShoppingBag } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
 
 const STATUS_MAP = {
   0: { label: "Đang bán", color: "var(--green-color)" },
@@ -9,7 +10,7 @@ const STATUS_MAP = {
 };
 
 function buildDefaultThongTin() {
-  return `Đổi được thông tin\nGiá rẻ sale sập sàn`;
+  return `Đổi được thông tin\nHỗ trợ bảo hành`;
 }
 
 function buildDefaultLogin(zalo) {
@@ -36,9 +37,8 @@ export default function AdminAccounts() {
       list_img: "0",
       login: buildDefaultLogin(zalo),
       gia: "",
-      is_sale: 0,
-      original_price: "",
-      final_price: "",
+      is_sale: false,
+      sale_price: "",
       status: 0,
     };
   }
@@ -102,11 +102,17 @@ export default function AdminAccounts() {
   async function saveAccount() {
     if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản!");
     if (!form.gia) return alert("Vui lòng nhập giá bán!");
+    if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
+      return alert("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
+    }
+    const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
+    delete payload.is_sale;
+    delete payload.status;
 
     try {
       if (editingId) {
         // Update mode — single account
-        await api.put(`/accounts/${editingId}`, form);
+        await api.put(`/accounts/${editingId}`, payload);
         alert("Cập nhật thành công!");
         closeForm();
         loadData();
@@ -125,7 +131,7 @@ export default function AdminAccounts() {
       let failed = 0;
       for (const loginLine of lines) {
         try {
-          await api.post("/accounts", { ...form, login: loginLine });
+          await api.post("/accounts", { ...payload, login: loginLine });
           success++;
         } catch {
           failed++;
@@ -146,7 +152,7 @@ export default function AdminAccounts() {
   }
 
   async function deleteAccount(id) {
-    if (!window.confirm("Xác nhận xóa tài khoản #" + id + "?")) return;
+    if (!window.confirm("Ẩn tài khoản #" + id + " khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.")) return;
     try {
       await api.delete(`/accounts/${id}`);
       loadData();
@@ -157,13 +163,13 @@ export default function AdminAccounts() {
 
   async function deleteSelected() {
     if (selected.size === 0) return;
-    if (!window.confirm(`Xác nhận xóa ${selected.size} tài khoản đã chọn? Hành động này không thể hoàn tác!`)) return;
+    if (!window.confirm(`Ẩn ${selected.size} tài khoản đã chọn khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.`)) return;
     let ok = 0, fail = 0;
     for (const id of selected) {
       try { await api.delete(`/accounts/${id}`); ok++; }
       catch { fail++; }
     }
-    alert(fail > 0 ? `Đã xóa ${ok}/${selected.size}, ${fail} lỗi.` : `✅ Đã xóa ${ok} tài khoản!`);
+    alert(fail > 0 ? `Đã ẩn ${ok}/${selected.size}, ${fail} lỗi.` : `Đã ẩn ${ok} tài khoản.`);
     loadData();
   }
 
@@ -193,9 +199,8 @@ export default function AdminAccounts() {
       list_img: acc.list_img ?? "0",
       login: acc.login || "",
       gia: acc.gia || "",
-      is_sale: acc.is_sale || 0,
-      original_price: acc.original_price || "",
-      final_price: acc.final_price || "",
+      is_sale: Number(acc.sale_price) > 0,
+      sale_price: acc.sale_price || "",
       status: acc.status ?? 0,
     });
     setShowForm(true);
@@ -264,27 +269,36 @@ export default function AdminAccounts() {
               </select>
             </div>
 
-            {/* Sale */}
-            <div className="form-group-premium">
-              <label>Sale giá</label>
-              <select value={form.is_sale} onChange={(e) => set("is_sale", Number(e.target.value))}>
-                <option value={0}>Không sale</option>
-                <option value={1}>Đang sale</option>
-              </select>
+            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
+              <label htmlFor="listing-sale-enabled">Sale giá cho riêng account này</label>
+              <label className="admin-listing-sale-toggle" htmlFor="listing-sale-enabled">
+                <input
+                  id="listing-sale-enabled"
+                  type="checkbox"
+                  checked={form.is_sale}
+                  onChange={(e) => setForm((prev) => ({ ...prev, is_sale: e.target.checked, sale_price: e.target.checked ? prev.sale_price : "" }))}
+                />
+                <span>Hiện giá giảm trực tiếp trên thẻ acc và trang chi tiết</span>
+              </label>
+              {form.is_sale && (
+                <>
+                  <input
+                    id="listing-sale-price"
+                    name="sale_price"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    placeholder="Ví dụ: 100000"
+                    value={form.sale_price}
+                    onChange={(e) => set("sale_price", e.target.value)}
+                    aria-describedby="listing-sale-price-help"
+                  />
+                  <small id="listing-sale-price-help" className="form-hint">
+                    Giá gốc {Number(form.gia || 0).toLocaleString()}đ · Nhập giá sale thấp hơn giá gốc.
+                  </small>
+                </>
+              )}
             </div>
-
-            {form.is_sale == 1 && (
-              <>
-                <div className="form-group-premium">
-                  <label>Giá gốc (đ)</label>
-                  <input type="number" placeholder="VD: 80000" value={form.original_price} onChange={(e) => set("original_price", e.target.value)} />
-                </div>
-                <div className="form-group-premium">
-                  <label>Giá sale (đ)</label>
-                  <input type="number" placeholder="VD: 50000" value={form.final_price} onChange={(e) => set("final_price", e.target.value)} />
-                </div>
-              </>
-            )}
 
             {/* Ảnh đại diện */}
             <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
@@ -323,9 +337,12 @@ export default function AdminAccounts() {
               </div>
               {form.img && (
                 <div style={{ marginTop: "12px" }}>
-                  <img
+                  <SafeImage
                     src={form.img}
-                    alt="Preview"
+                    alt="Xem trước ảnh tài khoản"
+                    width={214}
+                    height={120}
+                    fallbackLabel="Ảnh không tải được"
                     style={{
                       maxHeight: "120px",
                       borderRadius: "8px",
@@ -519,10 +536,15 @@ export default function AdminAccounts() {
                   <td style={{ fontWeight: 700, color: "var(--text-secondary)", fontSize: "0.85rem" }}>#{acc.id}</td>
 
                   <td>
-                    {acc.img
-                      ? <img src={acc.img} alt="" style={{ width: "60px", height: "44px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }} />
-                      : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                    }
+                    <SafeImage
+                      src={acc.img}
+                      alt={`Ảnh tài khoản mã số ${acc.id}`}
+                      width={60}
+                      height={44}
+                      fallbackClassName="table-image-fallback"
+                      style={{ width: "60px", height: "44px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }}
+                      fallbackLabel="Chưa có ảnh"
+                    />
                   </td>
 
                   <td>
@@ -530,14 +552,12 @@ export default function AdminAccounts() {
                   </td>
 
                   <td>
-                    {acc.is_sale ? (
+                    {Number(acc.sale_price) > 0 && Number(acc.sale_price) < Number(acc.gia) ? (
                       <div>
-                        <del style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{Number(acc.original_price || 0).toLocaleString()}đ</del>
-                        <div style={{ color: "var(--accent-color)", fontWeight: 700, fontSize: "0.95rem" }}>{Number(acc.final_price || 0).toLocaleString()}đ</div>
+                        <del style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{Number(acc.gia).toLocaleString()}đ</del>
+                        <div style={{ color: "var(--accent-color)", fontWeight: 700, fontSize: "0.95rem" }}>{Number(acc.sale_price).toLocaleString()}đ</div>
                       </div>
-                    ) : (
-                      <strong style={{ color: "var(--gold-color)" }}>{Number(acc.gia || 0).toLocaleString()}đ</strong>
-                    )}
+                    ) : <strong style={{ color: "var(--gold-color)" }}>{Number(acc.gia || 0).toLocaleString()}đ</strong>}
                   </td>
 
                   <td style={{ maxWidth: "220px" }}>

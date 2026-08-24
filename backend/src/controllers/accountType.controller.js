@@ -1,6 +1,7 @@
 import { AccountType, Category, GameAccount } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
+import { parsePagination } from "../utils/pagination.util.js";
 
 export async function getAccountTypes(req, res) {
   try {
@@ -62,9 +63,7 @@ export async function getAccountTypeAccounts(req, res) {
   try {
     const { id } = req.params;
 
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 20);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = parsePagination(req.query);
 
     const accountType = await AccountType.findOne({
       where: {
@@ -207,23 +206,10 @@ export async function deleteAccountType(req, res) {
       return errorResponse(res, "Không tìm thấy loại tài khoản", 404);
     }
 
-    const { GameAccount, Order, Sale } = await import("../models/index.js");
+    // Preserve all existing listings and their order history; hide only the catalog entry.
+    await accountType.update({ status: 0 });
 
-    // Get all game accounts under this type
-    const gameAccounts = await GameAccount.findAll({ where: { loai_id: id } });
-    const gameAccountIds = gameAccounts.map(a => a.id);
-
-    if (gameAccountIds.length > 0) {
-      // Delete all sales and orders for these game accounts
-      await Sale.destroy({ where: { acc_id: gameAccountIds } });
-      await Order.destroy({ where: { acc_id: gameAccountIds } });
-      // Delete game accounts
-      await GameAccount.destroy({ where: { id: gameAccountIds } });
-    }
-
-    await accountType.destroy();
-
-    return successResponse(res, "Xóa loại tài khoản và các dữ liệu liên quan thành công");
+    return successResponse(res, "Đã ẩn loại tài khoản khỏi phía khách hàng");
   } catch (error) {
     console.error("DELETE ACCOUNT TYPE ERROR:", error);
 

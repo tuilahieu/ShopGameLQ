@@ -71,8 +71,8 @@ export async function changePassword(req, res) {
       return errorResponse(res, "Vui lòng nhập đầy đủ thông tin", 400);
     }
 
-    if (newPassword.length < 6) {
-      return errorResponse(res, "Mật khẩu mới phải có ít nhất 6 ký tự", 400);
+    if (typeof newPassword !== "string" || newPassword.length < 10 || newPassword.length > 128) {
+      return errorResponse(res, "Mật khẩu mới phải có từ 10 đến 128 ký tự", 400);
     }
 
     const user = await User.findByPk(req.user.id);
@@ -87,7 +87,7 @@ export async function changePassword(req, res) {
       return errorResponse(res, "Mật khẩu hiện tại không chính xác", 400);
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await user.update({
       password: hashedPassword,
@@ -95,7 +95,7 @@ export async function changePassword(req, res) {
       refresh_token_expires_at: null,
     });
 
-    await writeLog(user.id, "Người dùng đổi mật khẩu", req.ip);
+    await writeLog(user.id, "Người dùng đổi mật khẩu", req.clientIp);
 
     return successResponse(
       res,

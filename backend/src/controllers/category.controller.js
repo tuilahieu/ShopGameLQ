@@ -109,32 +109,10 @@ export async function deleteCategory(req, res) {
       return errorResponse(res, "Không tìm thấy danh mục", 404);
     }
 
-    const { AccountType, GameAccount, Order, Sale } = await import("../models/index.js");
+    // Do not cascade-delete accounts/orders: these are business and audit records.
+    await category.update({ status: 0 });
 
-    // Get all account types under this category
-    const accountTypes = await AccountType.findAll({ where: { danhmuc_id: id } });
-    const accountTypeIds = accountTypes.map(t => t.id);
-
-    if (accountTypeIds.length > 0) {
-      // Get all game accounts under these account types
-      const gameAccounts = await GameAccount.findAll({ where: { loai_id: accountTypeIds } });
-      const gameAccountIds = gameAccounts.map(a => a.id);
-
-      if (gameAccountIds.length > 0) {
-        // Delete all sales and orders for these game accounts
-        await Sale.destroy({ where: { acc_id: gameAccountIds } });
-        await Order.destroy({ where: { acc_id: gameAccountIds } });
-        // Delete game accounts
-        await GameAccount.destroy({ where: { id: gameAccountIds } });
-      }
-
-      // Delete account types
-      await AccountType.destroy({ where: { id: accountTypeIds } });
-    }
-
-    await category.destroy();
-
-    return successResponse(res, "Xóa danh mục và các dữ liệu liên quan thành công");
+    return successResponse(res, "Đã ẩn danh mục khỏi phía khách hàng");
   } catch (error) {
     console.error("DELETE CATEGORY ERROR:", error);
 

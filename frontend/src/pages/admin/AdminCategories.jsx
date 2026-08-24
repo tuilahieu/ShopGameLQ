@@ -60,7 +60,7 @@ export default function AdminCategories() {
   }
 
   async function remove(id) {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.")) return;
+    if (!window.confirm("Ẩn danh mục này khỏi phía khách hàng? Các dữ liệu đã có vẫn được lưu giữ.")) return;
     try {
       const res = await api.delete(`/categories/${id}`);
       alert(res.data?.message || "Xóa danh mục thành công");

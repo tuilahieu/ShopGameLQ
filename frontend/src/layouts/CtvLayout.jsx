@@ -1,23 +1,55 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { BarChart2, Gamepad2, ShoppingBag, LogOut, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { BarChart2, Gamepad2, ShoppingBag, LogOut, ArrowLeft, Menu, X } from "lucide-react";
 import ThemeToggle from "../components/ThemeToggle";
+import api from "../api/api";
 
 export default function CtvLayout() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  function logout() {
+  async function logout() {
+    try { await api.post("/auth/logout"); } catch { /* Clear the local session regardless. */ }
     localStorage.clear();
     navigate("/login");
   }
 
   return (
     <div className="admin-container">
+      <header className="admin-mobile-topbar">
+        <strong>Trung tâm cộng tác viên</strong>
+        <button
+          type="button"
+          className="admin-mobile-menu-button"
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Mở menu cộng tác viên"
+          aria-expanded={mobileMenuOpen}
+        >
+          <Menu size={20} />
+        </button>
+      </header>
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="admin-menu-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Đóng menu cộng tác viên"
+        />
+      )}
       {/* Sidebar */}
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${mobileMenuOpen ? "is-open" : ""}`}>
         <h2>
-          <span>🤝 PANEL CTV</span>
+          <span>TRUNG TÂM CỘNG TÁC VIÊN</span>
         </h2>
+        <button
+          type="button"
+          className="admin-drawer-close"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Đóng menu cộng tác viên"
+        >
+          <X size={18} />
+        </button>
         
         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
           <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Cộng tác viên</span>
@@ -30,13 +62,13 @@ export default function CtvLayout() {
 
         <hr style={{ border: "0", borderTop: "1px solid rgba(255,255,255,0.05)", margin: "4px 0" }} />
 
-        <nav className="admin-nav-links">
+        <nav className="admin-nav-links" onClick={() => setMobileMenuOpen(false)}>
           <NavLink to="/ctv" end className={({ isActive }) => isActive ? "active" : ""}>
-            <BarChart2 size={16} /> Dashboard
+            <BarChart2 size={16} /> Tổng quan
           </NavLink>
 
           <NavLink to="/ctv/accounts" className={({ isActive }) => isActive ? "active" : ""}>
-            <Gamepad2 size={16} /> Quản lý Accounts
+            <Gamepad2 size={16} /> Quản lý tài khoản
           </NavLink>
 
           <NavLink to="/ctv/orders" className={({ isActive }) => isActive ? "active" : ""}>

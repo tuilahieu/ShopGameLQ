@@ -97,6 +97,13 @@ router.put("/users/:id", updateAdminUser);
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 16
+ *         description: Khóa duy nhất cho một lần điều chỉnh số dư; giữ nguyên khi retry.
  *     requestBody:
  *       required: true
  *       content:
@@ -294,9 +301,98 @@ router.put("/setting", updateAdminSetting);
  */
 router.get("/logs", getAdminLogs);
 
+/**
+ * @swagger
+ * /api/admin/banks:
+ *   get:
+ *     summary: Danh sách ngân hàng admin quản lý
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách thành công
+ */
 router.get("/banks", getAdminBanks);
+
+/**
+ * @swagger
+ * /api/admin/banks:
+ *   post:
+ *     summary: Thêm ngân hàng nạp tiền mới
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - bank_name
+ *               - account_number
+ *               - account_holder
+ *             properties:
+ *               bank_name:
+ *                 type: string
+ *                 example: MBBank
+ *               account_number:
+ *                 type: string
+ *                 example: "0987654321"
+ *               account_holder:
+ *                 type: string
+ *                 example: NGUYEN VAN A
+ *               qr_template:
+ *                 type: string
+ *                 example: https://img.vietqr.io/image/MB-0987654321-compact2.png
+ *               status:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Thêm thành công
+ */
 router.post("/banks", createAdminBank);
+
+/**
+ * @swagger
+ * /api/admin/banks/{id}:
+ *   put:
+ *     summary: Cập nhật thông tin ngân hàng
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ */
 router.put("/banks/:id", updateAdminBank);
+
+/**
+ * @swagger
+ * /api/admin/banks/{id}:
+ *   delete:
+ *     summary: Xóa / ẩn ngân hàng
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Xóa thành công
+ */
 router.delete("/banks/:id", deleteAdminBank);
 
 export default router;

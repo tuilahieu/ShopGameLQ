@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Edit2, EyeOff, Upload, RefreshCw } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
     loai_id: firstTypeId,
-    thong_tin: "Giá rẻ Sale hè\nĐổi được thông tin và mật khẩu",
+    thong_tin: "Đổi được thông tin và mật khẩu\nHỗ trợ bảo hành",
     list_thong_tin: "0",
     img: "",
     list_img: "0",
     login: "liên hệ Zalo admin | để được nhận account #ID",
     gia: "",
+    is_sale: false,
+    sale_price: "",
   };
 }
 
@@ -80,13 +83,18 @@ export default function CtvAccounts() {
     if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản");
     if (!form.gia || Number(form.gia) < 0) return alert("Vui lòng nhập giá bán hợp lệ");
     if (!form.login) return alert("Vui lòng điền thông tin đăng nhập");
+    if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
+      return alert("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
+    }
+    const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
+    delete payload.is_sale;
 
     try {
       if (editingId) {
-        await api.put(`/accounts/${editingId}`, form);
+        await api.put(`/accounts/${editingId}`, payload);
         alert("Cập nhật tài khoản thành công!");
       } else {
-        await api.post("/accounts", form);
+        await api.post("/accounts", payload);
         alert("Đăng bán tài khoản thành công!");
       }
       resetForm();
@@ -119,6 +127,8 @@ export default function CtvAccounts() {
       list_img: acc.list_img || "0",
       login: acc.login || "",
       gia: acc.gia || "",
+      is_sale: Number(acc.sale_price) > 0,
+      sale_price: acc.sale_price || "",
     });
   }
 
@@ -162,6 +172,35 @@ export default function CtvAccounts() {
             />
           </div>
 
+          <div className="form-group-premium">
+            <label htmlFor="ctv-listing-sale-enabled">Sale giá cho acc này</label>
+            <label className="admin-listing-sale-toggle" htmlFor="ctv-listing-sale-enabled">
+              <input
+                id="ctv-listing-sale-enabled"
+                type="checkbox"
+                checked={form.is_sale}
+                onChange={(e) => setForm((prev) => ({ ...prev, is_sale: e.target.checked, sale_price: e.target.checked ? prev.sale_price : "" }))}
+              />
+              <span>Hiện giá giảm cho khách</span>
+            </label>
+            {form.is_sale && (
+              <>
+                <input
+                  id="ctv-listing-sale-price"
+                  name="sale_price"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  placeholder="Nhập giá sale"
+                  value={form.sale_price}
+                  onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
+                  aria-describedby="ctv-listing-sale-price-help"
+                />
+                <small id="ctv-listing-sale-price-help" className="form-hint">Giá gốc {Number(form.gia || 0).toLocaleString()}đ · Giá sale phải thấp hơn giá gốc.</small>
+              </>
+            )}
+          </div>
+
           <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
             <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <Upload size={14} /> Ảnh đại diện (Thumbnail URL)
@@ -179,9 +218,12 @@ export default function CtvAccounts() {
               </label>
             </div>
             {form.img && (
-              <img
+              <SafeImage
                 src={form.img}
-                alt="Preview"
+                alt="Xem trước ảnh tài khoản"
+                width={120}
+                height={70}
+                fallbackLabel="Ảnh không tải được"
                 style={{ width: "120px", height: "70px", objectFit: "cover", borderRadius: "8px", marginTop: "10px", border: "1px solid var(--border-color)" }}
               />
             )}
@@ -230,7 +272,7 @@ export default function CtvAccounts() {
             <button type="submit" className="small-btn">
               {editingId ? "Cập nhật" : "Thêm mới"}
             </button>
-            {(editingId || form.thong_tin !== "Giá rẻ Sale hè\nĐổi được thông tin và mật khẩu" || form.login !== "liên hệ Zalo admin | để được nhận account #ID" || form.gia) && (
+            {(editingId || form.thong_tin !== "Đổi được thông tin và mật khẩu\nHỗ trợ bảo hành" || form.login !== "liên hệ Zalo admin | để được nhận account #ID" || form.gia) && (
               <button type="button" className="btn-outline" onClick={resetForm} style={{ padding: "8px 16px" }}>
                 Hủy / Reset
               </button>
@@ -286,14 +328,22 @@ export default function CtvAccounts() {
                     <tr key={acc.id}>
                       <td>#{acc.id}</td>
                       <td>
-                        {acc.img ? (
-                          <img src={acc.img} alt="" style={{ width: "65px", height: "38px", objectFit: "cover", borderRadius: "4px" }} />
-                        ) : (
-                          "Không có ảnh"
-                        )}
+                        <SafeImage
+                          src={acc.img}
+                          alt={`Ảnh tài khoản mã số ${acc.id}`}
+                          width={65}
+                          height={38}
+                          fallbackClassName="table-image-fallback"
+                          style={{ width: "65px", height: "38px", objectFit: "cover", borderRadius: "4px" }}
+                          fallbackLabel="Chưa có ảnh"
+                        />
                       </td>
                       <td><span style={{ color: "var(--cyan-color)", fontWeight: "600" }}>{accType?.name || `Loại #${acc.loai_id}`}</span></td>
-                      <td style={{ fontWeight: "600" }}>{Number(acc.gia).toLocaleString()}đ</td>
+                      <td style={{ fontWeight: "600" }}>
+                        {Number(acc.sale_price) > 0 && Number(acc.sale_price) < Number(acc.gia) ? (
+                          <><del style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginRight: "6px" }}>{Number(acc.gia).toLocaleString()}đ</del><strong style={{ color: "var(--accent-color)" }}>{Number(acc.sale_price).toLocaleString()}đ</strong></>
+                        ) : `${Number(acc.gia).toLocaleString()}đ`}
+                      </td>
                       <td style={{ fontSize: "0.9rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {acc.thong_tin || "N/A"}
                       </td>

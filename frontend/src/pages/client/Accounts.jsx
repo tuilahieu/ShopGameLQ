@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
-import { Filter, SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Layers, Gamepad2 } from "lucide-react";
+import SafeImage from "../../components/SafeImage";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
 
 export default function Accounts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -12,6 +14,8 @@ export default function Accounts() {
   const [types, setTypes] = useState([]);
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [catalogueLoaded, setCatalogueLoaded] = useState(false);
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -30,32 +34,40 @@ export default function Accounts() {
 
   async function loadData() {
     setLoading(true);
+    setLoadError("");
     try {
+      // Account types rarely change during one customer session. Avoid loading
+      // the full catalogue again for each pagination/sort interaction.
+      const homeRequest = catalogueLoaded ? null : api.get("/home");
+
       if (loaiId) {
-        // Fetch accounts, types and count map
-        const [accRes, homeRes] = await Promise.all([
+        const [homeRes, accRes] = await Promise.all([
+          homeRequest,
           api.get("/accounts", {
             params: {
               loai_id: loaiId,
               sort: sort || undefined,
-              page: page,
-              limit: 12
+              page,
+              limit: 12,
             },
           }),
-          api.get("/home"),
         ]);
-
+        if (homeRes) {
+          setTypes(homeRes.data?.data?.accountTypes || []);
+          setCounts(homeRes.data?.data?.accountCountByType || {});
+          setCatalogueLoaded(true);
+        }
         setAccounts(accRes.data?.data?.accounts || []);
         if (accRes.data?.data?.pagination) {
           setPagination(accRes.data.data.pagination);
         }
-        setTypes(homeRes.data?.data?.accountTypes || []);
-        setCounts(homeRes.data?.data?.accountCountByType || {});
       } else {
-        // If no loai_id, only fetch types & counts to let users choose
-        const homeRes = await api.get("/home");
-        setTypes(homeRes.data?.data?.accountTypes || []);
-        setCounts(homeRes.data?.data?.accountCountByType || {});
+        const homeRes = homeRequest ? await homeRequest : null;
+        if (homeRes) {
+          setTypes(homeRes.data?.data?.accountTypes || []);
+          setCounts(homeRes.data?.data?.accountCountByType || {});
+          setCatalogueLoaded(true);
+        }
         setAccounts([]);
         setPagination({
           page: 1,
@@ -66,6 +78,7 @@ export default function Accounts() {
       }
     } catch (error) {
       console.error(error);
+      setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
     } finally {
       setLoading(false);
     }
@@ -115,85 +128,55 @@ export default function Accounts() {
   }, [loaiId, selectedType]);
 
   return (
-    <div className="page-container">
+    <div className="page-container catalogue-page">
       {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "100px 0", gap: "16px" }}>
-          <div className="premium-loader-container-small">
-            <div className="loader-ring-small"></div>
-            <div className="loader-icon-box-small">
-              <Gamepad2 className="loader-gamepad-small" size={20} />
-            </div>
-          </div>
-          <style>{`
-            .premium-loader-container-small {
-              position: relative;
-              width: 50px;
-              height: 50px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .loader-ring-small {
-              position: absolute;
-              width: 44px;
-              height: 44px;
-              border-radius: 50%;
-              border: 2px solid transparent;
-              border-top-color: var(--accent-color);
-              border-bottom-color: var(--cyan-color);
-              animation: loader-spin 1.2s linear infinite;
-            }
-            .loader-icon-box-small {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 30px;
-              height: 30px;
-              background: var(--bg-secondary);
-              border-radius: 50%;
-              border: 1px solid var(--border-color);
-            }
-            .loader-gamepad-small {
-              color: var(--accent-color);
-              animation: pulse-glow-small 1.5s ease-in-out infinite;
-            }
-            @keyframes pulse-glow-small {
-              0%, 100% { opacity: 0.7; transform: scale(0.95); }
-              50% { opacity: 1; transform: scale(1.05); }
-            }
-          `}</style>
+        <div className="catalogue-skeleton" aria-busy="true" aria-label="Đang tải kho tài khoản">
+          <div className="skeleton-heading" />
+          <div className="skeleton-filter" />
+          <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
+        </div>
+      ) : loadError ? (
+        <div className="empty-state">
+          <h2>Không thể tải kho tài khoản</h2>
+          <p>{loadError}</p>
+          <button className="btn-primary" onClick={loadData}>Tải lại</button>
         </div>
       ) : !loaiId ? (
         /* Render Category Types Selection List when no specific type selected */
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-          <div className="section-header" style={{ marginBottom: "12px", justifyContent: "center", textAlign: "center" }}>
-            <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "1.8rem" }}>
-              <Layers size={28} style={{ color: "var(--accent-color)" }} />
-              CHỌN DANH MỤC ACC GAME
-            </h1>
+        <div className="catalogue-category-view">
+          <div className="catalogue-heading">
+            <span className="storefront-section-kicker"><Layers size={17} aria-hidden="true" /> Kho tài khoản</span>
+            <h1 className="page-title">Chọn loại tài khoản</h1>
+            <p>Chọn đúng gói bạn quan tâm để xem acc và giá đang có.</p>
           </div>
           
-          <div className="category-grid">
+          <div className="catalogue-category-grid">
             {types.map((type) => {
               const count = counts[type.id] ?? 0;
               return (
-                <div
-                  className="category-card"
+                <Link
+                  to={`/accounts?loai_id=${type.id}`}
+                  className="catalogue-category-card"
                   key={type.id}
-                  onClick={() => updateFilter("loai_id", type.id.toString())}
-                  style={{ cursor: "pointer", transition: "transform 0.2s" }}
                 >
-                  <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                    <img src={type.img || "https://placehold.co/500x260/111827/ffffff?text=Lien+Quan"} alt={type.name} loading="lazy" />
+                  <div className="catalogue-category-media">
+                    <SafeImage
+                      src={resolveAccountTypeImage(type)}
+                      alt={`Ảnh loại tài khoản ${type.name}`}
+                      width={960}
+                      height={600}
+                      loading="lazy"
+                      decoding="async"
+                      fallbackLabel="Chưa có ảnh loại tài khoản"
+                    />
                   </div>
-                  <div className="category-info">
+                  <div className="catalogue-category-info">
                     <h3>{type.name}</h3>
-                    <div className="category-explore">
-                      <span className="explore-count">Còn <strong>{count}</strong> acc</span>
-                      <span className="explore-cta">Xem ngay &rarr;</span>
-                    </div>
+                    <span className={count > 0 ? "catalogue-stock available" : "catalogue-stock unavailable"}>
+                      {count > 0 ? `${count} tài khoản` : "Tạm hết hàng"}
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -201,45 +184,28 @@ export default function Accounts() {
       ) : (
         /* Render Filtered Accounts Grid when type is selected */
         <>
-          <div className="section-header" style={{ marginBottom: "32px" }}>
-            <h1 className="page-title" style={{ textTransform: "uppercase" }}>{selectedType ? selectedType.name : "KHO TÀI KHOẢN GAME"}</h1>
-            <button onClick={resetFilters} className="btn-outline" style={{ padding: "8px 12px", fontSize: "0.85rem" }}>
-              <RefreshCw size={14} style={{ marginRight: "4px" }} /> Chọn loại khác
-            </button>
-          </div>
-
-          {/* Filter and Sorting Bar */}
-          <div className="filter-wrapper">
-            <div className="filter-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <div className="filter-item">
-                <label><SlidersHorizontal size={12} style={{ display: "inline", marginRight: "4px" }} /> Sắp xếp theo giá</label>
-                <select
-                  className="filter-input"
-                  value={sort}
-                  onChange={(e) => updateFilter("sort", e.target.value)}
-                >
-                  <option value="">Acc mới cập nhật</option>
-                  <option value="price_asc">Giá từ thấp đến cao</option>
-                  <option value="price_desc">Giá từ cao đến thấp</option>
-                </select>
-              </div>
-
-              <div className="filter-item" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
-                <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "12px" }}>
-                  Tìm thấy: <strong>{pagination.total}</strong> nick
-                </span>
-              </div>
+          <div className="catalogue-results-heading">
+            <div>
+              <Link to="/accounts" className="catalogue-back-link"><ArrowLeft size={17} aria-hidden="true" /> Đổi loại tài khoản</Link>
+              <h1 className="page-title">{selectedType ? selectedType.name : "Kho tài khoản game"}</h1>
             </div>
+            <span className="catalogue-result-count"><strong>{pagination.total}</strong> acc đang có</span>
           </div>
 
           {/* Type Info Banner - shown when a specific type is selected */}
           {selectedType && (
             <div className="type-info-banner" style={{ marginBottom: "32px" }}>
-              {selectedType.img && (
-                <div className="type-info-banner-img">
-                  <img src={selectedType.img} alt={selectedType.name} loading="lazy" />
-                </div>
-              )}
+              <div className="type-info-banner-img">
+                <SafeImage
+                  src={resolveAccountTypeImage(selectedType)}
+                  alt={`Ảnh loại tài khoản ${selectedType.name}`}
+                  width={960}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
+                  fallbackLabel="Chưa có ảnh loại tài khoản"
+                />
+              </div>
               <div className="type-info-banner-body">
                 <h2 className="type-info-banner-title">{selectedType.name}</h2>
                 {selectedType.noidung && (
@@ -255,34 +221,47 @@ export default function Accounts() {
             </div>
           )}
 
+          <div className="catalogue-sort-bar">
+            <label htmlFor="account-sort"><SlidersHorizontal size={17} aria-hidden="true" /> Sắp xếp</label>
+            <select
+              id="account-sort"
+              name="sort"
+              className="filter-input"
+              value={sort}
+              onChange={(e) => updateFilter("sort", e.target.value)}
+            >
+              <option value="">Mới cập nhật</option>
+              <option value="price_asc">Giá thấp đến cao</option>
+              <option value="price_desc">Giá cao đến thấp</option>
+            </select>
+          </div>
+
           {accounts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "80px 24px", background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Hiện tại gói tài khoản này đang hết hàng. Vui lòng quay lại sau!</p>
-              <button onClick={resetFilters} className="btn-primary" style={{ marginTop: "16px" }}>
-                Quay lại chọn loại khác
-              </button>
+            <div className="empty-state catalogue-empty-state">
+              <h2>Tạm hết hàng</h2>
+              <p>Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác.</p>
+              <button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>
             </div>
           ) : (
             <>
               <div className="account-grid">
-                {accounts.map((acc) => (
-                  <AccountCard acc={acc} key={acc.id} />
+                {accounts.map((acc, index) => (
+                  <AccountCard acc={acc} key={acc.id} priority={index < 2} />
                 ))}
               </div>
 
               {/* Premium Pagination Controls */}
               {pagination.totalPage > 1 && (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "48px" }}>
+                <nav className="catalogue-pagination" aria-label="Phân trang kho tài khoản">
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page === 1}
                     className="btn-outline"
-                    style={{ padding: "8px 16px", opacity: pagination.page === 1 ? 0.5 : 1, cursor: pagination.page === 1 ? "not-allowed" : "pointer" }}
                   >
                     <ChevronLeft size={16} /> Trước
                   </button>
 
-                  <span style={{ fontSize: "0.95rem", color: "var(--text-secondary)" }}>
+                  <span>
                     Trang <strong>{pagination.page}</strong> / {pagination.totalPage}
                   </span>
 
@@ -290,24 +269,15 @@ export default function Accounts() {
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page === pagination.totalPage}
                     className="btn-outline"
-                    style={{ padding: "8px 16px", opacity: pagination.page === pagination.totalPage ? 0.5 : 1, cursor: pagination.page === pagination.totalPage ? "not-allowed" : "pointer" }}
                   >
                     Sau <ChevronRight size={16} />
                   </button>
-                </div>
+                </nav>
               )}
             </>
           )}
         </>
       )}
-
-      {/* Loading Spin Animation Definition */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -21,16 +21,16 @@ export default function CtvDashboard() {
   }, []);
 
   if (loading) {
-    return <div style={{ color: "var(--text-secondary)", padding: "24px" }}>Đang tải thống kê...</div>;
+    return <div className="empty-state">Đang tải số liệu...</div>;
   }
 
   if (!data) {
-    return <div style={{ color: "var(--accent-color)", padding: "24px" }}>Không thể tải dữ liệu thống kê. Vui lòng thử lại sau.</div>;
+    return <div className="empty-state">Không thể tải dữ liệu thống kê. Vui lòng tải lại trang.</div>;
   }
 
   return (
     <div>
-      <h1 className="page-title">Dashboard Cộng Tác Viên</h1>
+      <h1 className="page-title">Tổng quan cộng tác viên</h1>
 
       <div className="card-grid">
         <div className="dashboard-card">

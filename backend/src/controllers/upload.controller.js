@@ -6,9 +6,9 @@ export async function uploadImage(req, res) {
       return errorResponse(res, "Vui lòng chọn ảnh", 400);
     }
 
-    const url = `${req.protocol}://${req.get(
-      "host",
-    )}/uploads/${req.file.filename}`;
+    // Store a deploy-safe path instead of binding media to localhost, a LAN IP
+    // or the proxy host that happened to receive this upload request.
+    const url = `/uploads/${req.file.filename}`;
 
     return successResponse(res, "Upload ảnh thành công", {
       filename: req.file.filename,

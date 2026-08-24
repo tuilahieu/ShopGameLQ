@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext();
@@ -6,11 +7,11 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "light" || saved === "dark") return saved;
-    return "system";
+    return "light";
   });
 
   // Resolved = actual dark/light (after applying system)
-  const [resolved, setResolved] = useState("dark");
+  const [resolved, setResolved] = useState("light");
 
   useEffect(() => {
     function apply(t) {

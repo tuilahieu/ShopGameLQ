@@ -1,8 +1,15 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { env } from "../config/env.js";
 
-const uploadDir = "uploads";
+const uploadDir = path.resolve(env.uploadDir);
+const extensionByMime = Object.freeze({
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+});
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, {
@@ -16,16 +23,15 @@ const storage = multer.diskStorage({
   },
 
   filename(req, file, cb) {
-    const ext = path.extname(file.originalname);
-
-    cb(null, `${Date.now()}-${Math.random().toString(36).substring(2)}${ext}`);
+    // Never preserve the untrusted original extension. A client may claim an
+    // image MIME type for an .html file; serving it as .html would allow stored
+    // XSS on the shop's own origin.
+    cb(null, `${Date.now()}-${Math.random().toString(36).substring(2)}${extensionByMime[file.mimetype]}`);
   },
 });
 
 function fileFilter(req, file, cb) {
-  const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
-  if (!allowed.includes(file.mimetype)) {
+  if (!extensionByMime[file.mimetype]) {
     return cb(new Error("Chỉ hỗ trợ file ảnh"), false);
   }
 
@@ -37,6 +43,6 @@ export const upload = multer({
   fileFilter,
 
   limits: {
-    fileSize: 25 * 1024 * 1024,
+    fileSize: 8 * 1024 * 1024,
   },
 });
