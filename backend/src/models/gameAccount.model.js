@@ -56,6 +56,14 @@ export const GameAccount = sequelize.define(
       defaultValue: 0,
     },
 
+    // Direct listing sale configured while creating/editing this account.
+    // Flash Sale campaign prices remain in the separate `sale` table.
+    sale_price: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+    },
+
     ck: {
       type: DataTypes.INTEGER,
       allowNull: false,

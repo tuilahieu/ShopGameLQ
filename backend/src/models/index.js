@@ -10,6 +10,8 @@ import { Setting } from "./setting.model.js";
 import { HistoryLog } from "./historyLog.model.js";
 import { Bank } from "./bank.model.js";
 import { IdempotencyKey } from "./idempotencyKey.model.js";
+import { PaymentIntent } from "./paymentIntent.model.js";
+import { PaymentEvent } from "./paymentEvent.model.js";
 
 /**
  * Category -> AccountType
@@ -154,6 +156,15 @@ HistoryLog.belongsTo(User, {
   as: "user",
 });
 
+User.hasMany(PaymentIntent, { foreignKey: "user_id", as: "paymentIntents" });
+PaymentIntent.belongsTo(User, { foreignKey: "user_id", as: "user" });
+Bank.hasMany(PaymentIntent, { foreignKey: "bank_id", as: "paymentIntents" });
+PaymentIntent.belongsTo(Bank, { foreignKey: "bank_id", as: "bank" });
+PaymentIntent.hasMany(PaymentEvent, { foreignKey: "payment_intent_id", as: "events" });
+PaymentEvent.belongsTo(PaymentIntent, { foreignKey: "payment_intent_id", as: "paymentIntent" });
+User.hasMany(PaymentEvent, { foreignKey: "user_id", as: "paymentEvents" });
+PaymentEvent.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
 export {
   User,
   Category,
@@ -167,4 +178,6 @@ export {
   HistoryLog,
   Bank,
   IdempotencyKey,
+  PaymentIntent,
+  PaymentEvent,
 };

@@ -198,6 +198,12 @@
             "type": "integer",
             "example": 250000
           },
+          "sale_price": {
+            "type": "integer",
+            "nullable": true,
+            "example": 200000,
+            "description": "Giá sale cấu hình trực tiếp cho account; khác Flash Sale có thời gian"
+          },
           "ck": {
             "type": "integer",
             "example": 0,
@@ -719,6 +725,9 @@
           },
           "404": {
             "description": "Không tìm thấy tài khoản hoặc mã giảm giá"
+          },
+          "429": {
+            "description": "Một IP chỉ được gửi một yêu cầu mua trong mỗi 3 giây"
           }
         }
       }

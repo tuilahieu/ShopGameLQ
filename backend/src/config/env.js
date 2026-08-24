@@ -72,6 +72,24 @@ function captchaConfig() {
   });
 }
 
+function sepayConfig() {
+  const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET?.trim() || null;
+  // Adding the HMAC secret is sufficient to turn the integration on. Set this
+  // explicitly to false only when temporarily disabling inbound callbacks.
+  const enabled = webhookSecret !== null && process.env.SEPAY_WEBHOOK_ENABLED !== "false";
+  const paymentPrefix = (process.env.SEPAY_PAYMENT_PREFIX || "NAP").trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,12}$/.test(paymentPrefix)) {
+    throw new Error("SEPAY_PAYMENT_PREFIX must contain 2-12 uppercase letters or digits");
+  }
+
+  return Object.freeze({
+    enabled,
+    webhookSecret,
+    paymentPrefix,
+    intentTtlMinutes: asInteger(process.env.SEPAY_PAYMENT_TTL_MINUTES, 15, { min: 5, max: 60 }),
+  });
+}
+
 export const env = Object.freeze({
   nodeEnv: process.env.NODE_ENV || "development",
   isProduction,
@@ -95,5 +113,6 @@ export const env = Object.freeze({
   uploadDir: process.env.UPLOAD_DIR || "uploads",
   maxBodyBytes: process.env.MAX_BODY_BYTES || "1mb",
   captcha: captchaConfig(),
+  sepay: sepayConfig(),
   credentialEncryptionKey: credentialKey(),
 });

@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { swaggerSpec } from "./config/swagger.js";
 import { env } from "./config/env.js";
-import { requestContext, securityHeaders, notFoundHandler, errorHandler, createRateLimit } from "./config/http.js";
+import { requestContext, securityHeaders, notFoundHandler, errorHandler } from "./config/http.js";
 import { sequelize } from "./config/database.js";
 
 import authRoute from "./routes/auth.route.js";
@@ -19,12 +19,12 @@ import discountRoute from "./routes/discount.route.js";
 import homeRoute from "./routes/home.route.js";
 import profileRoute from "./routes/profile.route.js";
 import bankRoute from "./routes/bank.route.js";
+import paymentRoute from "./routes/payment.route.js";
+import { sepayWebhook } from "./controllers/payment.controller.js";
 
 import ctvRoute from "./routes/ctv.route.js";
 import adminRoute from "./routes/admin.route.js";
 import uploadRoute from "./routes/upload.route.js";
-
-const apiRateLimit = createRateLimit({ windowMs: 60_000, max: 300 });
 
 export function createApp() {
   const app = express();
@@ -42,10 +42,12 @@ export function createApp() {
     allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"],
     maxAge: 86_400,
   }));
+  // SePay's HMAC is over the exact bytes it sent. This must be mounted before
+  // express.json(), otherwise parsing and serializing would invalidate it.
+  app.post("/api/payments/sepay/webhook", express.raw({ type: "application/json", limit: env.maxBodyBytes }), sepayWebhook);
   app.use(express.json({ limit: env.maxBodyBytes }));
   app.use(express.urlencoded({ extended: false, limit: env.maxBodyBytes }));
   app.use(cookieParser());
-  app.use(apiRateLimit);
   app.use("/uploads", express.static(path.resolve(env.uploadDir), { fallthrough: false, maxAge: "7d", etag: true }));
 
   app.get("/healthz", (_req, res) => res.status(200).json({ status: "ok" }));
@@ -69,6 +71,7 @@ export function createApp() {
   app.use("/api/profile", profileRoute);
   app.use("/api/upload", uploadRoute);
   app.use("/api/banks", bankRoute);
+  app.use("/api/payments", paymentRoute);
   app.use("/api/ctv", ctvRoute);
   app.use("/api/admin", adminRoute);
   app.use(notFoundHandler);

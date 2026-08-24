@@ -3,8 +3,41 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
-import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, Gamepad2, ZoomIn, X } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, Gamepad2, ZoomIn } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
+import { getAccountPricing } from "../../utils/accountPricing";
+
+function getAccountImages(account) {
+  if (!account) return [];
+
+  const candidates = [account.img];
+  const rawGallery = account.list_img;
+
+  if (Array.isArray(rawGallery)) {
+    candidates.push(...rawGallery);
+  } else if (typeof rawGallery === "string" && rawGallery.trim() && rawGallery.trim() !== "0") {
+    try {
+      const parsed = JSON.parse(rawGallery);
+      if (Array.isArray(parsed)) candidates.push(...parsed);
+      else if (typeof parsed === "string") candidates.push(parsed);
+    } catch {
+      candidates.push(...rawGallery.split(/\r?\n|\s*\|\s*/));
+    }
+  }
+
+  return [...new Set(candidates.map(resolveMediaUrl).filter(Boolean))];
+}
+
+function getAccountHighlights(account) {
+  const raw = String(account?.thong_tin || "").trim();
+  if (!raw || raw === "0") return [];
+
+  return [...new Set(raw
+    .split(/\r?\n|\s*\|\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean))];
+}
 
 export default function AccountDetail() {
   const { id } = useParams();
@@ -22,12 +55,9 @@ export default function AccountDetail() {
   const [activeImg, setActiveImg] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
-  const [imageLoading, setImageLoading] = useState(true);
-
-  // Set image loading state to true when activeImg changes
-  useEffect(() => {
-    setImageLoading(Boolean(activeImg));
-  }, [activeImg]);
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
+  const [isImagePanning, setIsImagePanning] = useState(false);
+  const imagePanStartRef = useRef(null);
   
   // Modal states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -35,6 +65,14 @@ export default function AccountDetail() {
   const [purchaseData, setPurchaseData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [isBuying, setIsBuying] = useState(false);
+  const [userBalance, setUserBalance] = useState(() => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      return storedUser?.money == null ? null : Number(storedUser.money);
+    } catch {
+      return null;
+    }
+  });
   const purchaseKeyRef = useRef(null);
 
   // Clipboard copy feedback
@@ -45,10 +83,9 @@ export default function AccountDetail() {
     setLoadError("");
     try {
       const res = await api.get(`/accounts/${id}`);
-      setAccount(res.data.data);
-      if (res.data.data) {
-        setActiveImg(res.data.data.img || "");
-      }
+      const nextAccount = res.data.data;
+      setAccount(nextAccount);
+      setActiveImg(getAccountImages(nextAccount)[0] || "");
     } catch (error) {
       console.error(error);
       setLoadError(error.response?.data?.message || "Không thể tải thông tin tài khoản. Vui lòng thử lại.");
@@ -58,26 +95,13 @@ export default function AccountDetail() {
   }
 
   // Parse images helper
-  const images = (() => {
-    if (!account) return [];
-    let list = [];
-    if (account.img) list.push(account.img);
-    try {
-      const parsed = account.list_img ? JSON.parse(account.list_img) : [];
-      if (Array.isArray(parsed)) {
-        list = [...list, ...parsed];
-      }
-    } catch {
-      // Ignored
-    }
-    // Remove duplicates
-    return [...new Set(list)];
-  })();
+  const images = getAccountImages(account);
 
   // Parse sub-information details (e.g. rank, heroes count)
   const specs = (() => {
     if (!account) return [];
-    const raw = account.list_thong_tin || account.thong_tin || "";
+    const raw = String(account.list_thong_tin || "").trim();
+    if (!raw || raw === "0") return [];
     const delimiter = raw.includes("|") ? "|" : raw.includes(",") ? "," : "\n";
     return raw
       .split(delimiter)
@@ -96,6 +120,7 @@ export default function AccountDetail() {
       })
       .filter(item => item.value.length > 0);
   })();
+  const highlights = getAccountHighlights(account);
 
   async function buyAccount() {
     if (isBuying) return;
@@ -145,6 +170,12 @@ export default function AccountDetail() {
       navigate(`/login?redirect=${encodeURIComponent(`/account/${id}`)}`);
       return;
     }
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+      setUserBalance(storedUser?.money == null ? null : Number(storedUser.money));
+    } catch {
+      setUserBalance(null);
+    }
     setErrorMsg("");
     setIsConfirmOpen(true);
   }
@@ -155,15 +186,83 @@ export default function AccountDetail() {
     setTimeout(() => setCopiedField(""), 2000);
   }
 
+  function resetImageViewer() {
+    imagePanStartRef.current = null;
+    setIsImagePanning(false);
+    setZoomScale(1);
+    setImagePan({ x: 0, y: 0 });
+  }
+
+  function closeImageViewer() {
+    setIsZoomOpen(false);
+    resetImageViewer();
+  }
+
+  function openImageViewer() {
+    if (!activeImg) return;
+    resetImageViewer();
+    setIsZoomOpen(true);
+  }
+
+  function setImageZoom(nextScale) {
+    const constrainedScale = Math.min(4, Math.max(1, nextScale));
+    setZoomScale(constrainedScale);
+    if (constrainedScale === 1) {
+      setImagePan({ x: 0, y: 0 });
+    }
+  }
+
+  function clampImagePan(nextPan, stage) {
+    const rect = stage.getBoundingClientRect();
+    const maxX = Math.max(0, ((zoomScale - 1) * rect.width) / 2);
+    const maxY = Math.max(0, ((zoomScale - 1) * rect.height) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, nextPan.x)),
+      y: Math.max(-maxY, Math.min(maxY, nextPan.y)),
+    };
+  }
+
+  function handleImagePointerDown(event) {
+    if (zoomScale <= 1 || event.pointerType === "mouse" && event.button !== 0) return;
+    const stage = event.currentTarget;
+    stage.setPointerCapture?.(event.pointerId);
+    imagePanStartRef.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      panX: imagePan.x,
+      panY: imagePan.y,
+    };
+    setIsImagePanning(true);
+  }
+
+  function handleImagePointerMove(event) {
+    const start = imagePanStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    setImagePan(clampImagePan({
+      x: start.panX + event.clientX - start.clientX,
+      y: start.panY + event.clientY - start.clientY,
+    }, event.currentTarget));
+  }
+
+  function handleImagePointerEnd(event) {
+    if (imagePanStartRef.current?.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    imagePanStartRef.current = null;
+    setIsImagePanning(false);
+  }
+
   useEffect(() => {
     loadData();
   }, [id]);
 
   useEffect(() => {
     if (account) {
+      const { currentPrice: seoPrice } = getAccountPricing(account);
       updateSEO({
         title: `Mã Số #${account.id} - Chi Tiết Acc Liên Quân`,
-        description: `Xem chi tiết tài khoản game Liên Quân Mobile mã số #${account.id}. Giá bán: ${Number(account.gia || 0).toLocaleString()}đ. Nhận tài khoản lập tức sau khi thanh toán.`,
+        description: `Xem chi tiết tài khoản game Liên Quân Mobile mã số #${account.id}. Giá bán: ${seoPrice.toLocaleString()}đ. Nhận tài khoản lập tức sau khi thanh toán.`,
         keywords: `acc game #${account.id}, mua nick game #${account.id}, tai khoan lien quan #${account.id}`
       });
     }
@@ -172,8 +271,11 @@ export default function AccountDetail() {
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === "Escape") {
+        imagePanStartRef.current = null;
         setIsZoomOpen(false);
+        setIsImagePanning(false);
         setZoomScale(1);
+        setImagePan({ x: 0, y: 0 });
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -260,83 +362,54 @@ export default function AccountDetail() {
   }
 
   const isSold = Number(account.status) === 1;
-  const currentPrice = Number(account.final_price || account.gia);
+  const {
+    hasSale,
+    originalPrice,
+    currentPrice,
+    savingAmount,
+    discountLabel: saleDiscountLabel,
+  } = getAccountPricing(account);
+  const finalPurchasePrice = Number(discountPreview?.final_price ?? currentPrice);
+  const hasInsufficientBalance = userBalance !== null && userBalance < finalPurchasePrice;
 
   return (
-    <div className="page-container">
-      {/* Back Button */}
-      <div style={{ marginBottom: "24px" }}>
-        <Link to="/accounts" className="btn-outline" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>
-          <ChevronLeft size={16} /> Quay lại kho acc
-        </Link>
-      </div>
-
-      <h1 className="page-title" style={{ marginBottom: "32px" }}>TÀI KHOẢN LIÊN QUÂN MS #{account.id}</h1>
+    <div className="page-container account-detail-page">
+      <Link to="/accounts" className="catalogue-back-link account-detail-back">
+        <ChevronLeft size={17} aria-hidden="true" /> Quay lại kho acc
+      </Link>
 
       <div className="detail-layout">
-        {/* Gallery Image Grid */}
-        <div className="detail-gallery">
-          <div 
-            className="gallery-main" 
-            style={{ position: "relative", cursor: "zoom-in", minHeight: "280px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-secondary)", overflow: "hidden" }}
-            onClick={() => activeImg && setIsZoomOpen(true)}
+        <section className="detail-gallery" aria-label={`Thư viện ảnh tài khoản ${account.id}`}>
+          <button
+            type="button"
+            className="gallery-main"
+            onClick={openImageViewer}
+            disabled={!activeImg}
+            aria-label={activeImg ? `Mở ảnh lớn tài khoản ${account.id}` : "Tài khoản chưa có ảnh"}
           >
-            {imageLoading && (
-              <div className="image-loading-spinner-wrapper" style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "var(--bg-secondary)",
-                zIndex: 2
-              }}>
-                <div className="image-spinner"></div>
-              </div>
-            )}
             <SafeImage
               src={activeImg}
               alt={`Ảnh chi tiết tài khoản Liên Quân mã số ${account.id}`}
               width={800}
               height={560}
-              onLoad={() => setImageLoading(false)}
-              onError={() => setImageLoading(false)}
+              loading="eager"
               decoding="async"
+              fetchPriority="high"
               fallbackLabel="Tài khoản này chưa có ảnh"
-              style={{
-                display: "block",
-                width: "100%",
-                height: "auto",
-                opacity: imageLoading ? 0 : 1,
-                transition: "opacity 0.25s ease-in-out"
-              }}
             />
-            {activeImg && <button
-              onClick={() => setIsZoomOpen(true)}
-              className="small-btn"
-              style={{
-                position: "absolute",
-                bottom: "16px",
-                right: "16px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                opacity: 0.9,
-                zIndex: 10
-              }}
-            >
-              <ZoomIn size={14} /> Xem ảnh lớn
-            </button>}
-          </div>
+            {activeImg && <span className="gallery-zoom-label"><ZoomIn size={16} aria-hidden="true" /> Xem ảnh lớn</span>}
+          </button>
 
           {images.length > 1 && (
-            <div className="gallery-thumbs">
+            <div className="gallery-thumbs" aria-label="Chọn ảnh chi tiết">
               {images.map((img, i) => (
-                <div
+                <button
+                  type="button"
                   key={i}
                   className={`gallery-thumb-item ${activeImg === img ? "active" : ""}`}
                   onClick={() => setActiveImg(img)}
+                  aria-label={`Xem ảnh ${i + 1} của tài khoản ${account.id}`}
+                  aria-pressed={activeImg === img}
                 >
                   <SafeImage
                     src={img}
@@ -347,89 +420,71 @@ export default function AccountDetail() {
                     decoding="async"
                     fallbackLabel="Ảnh lỗi"
                   />
-                </div>
+                </button>
               ))}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Info detail Card */}
-        <div className="detail-info-card">
+        <section className="detail-info-card" aria-labelledby="account-detail-title">
           <div className="detail-badge-row">
-            <span className="badge-id" style={{ position: "static", background: "var(--bg-tertiary)" }}>
-              MÃ SỐ: {account.id}
-            </span>
-            <span className={`tag-spec`} style={{ 
-              background: isSold ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)", 
-              color: isSold ? "var(--accent-color)" : "var(--green-color)",
-              border: `1px solid ${isSold ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)"}`,
-              padding: "4px 10px",
-              borderRadius: "20px",
-              fontWeight: "700"
-            }}>
-              {isSold ? "ĐÃ BÁN" : "ĐANG BÁN"}
+            <span className="detail-account-id">Mã acc #{account.id}</span>
+            <span className={`detail-availability ${isSold ? "unavailable" : "available"}`}>
+              {isSold ? "Hết tài khoản" : "Có thể mua ngay"}
             </span>
           </div>
+          <h1 id="account-detail-title">{account.accountType?.name || "Tài khoản game"} #{account.id}</h1>
 
-          {/* Account Specifications */}
-          <div>
-            <h3 style={{ color: "var(--text-primary)", fontSize: "1.2rem", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "6px" }}>
-              CHI TIẾT TÀI KHOẢN
-            </h3>
-            
-            <table className="detail-specs-table">
-              <tbody>
-                <tr>
-                  <td className="label-spec">Loại nick</td>
-                  <td className="value-spec" style={{ color: "var(--cyan-color)" }}>
-                    {account.accountType?.name || `Loại #${account.loai_id}`}
-                  </td>
-                </tr>
-                {specs.length > 0 ? (
-                  specs.map((item, i) => (
-                    <tr key={i}>
-                      <td className="label-spec">{item.label}</td>
-                      <td className="value-spec">{item.value}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="label-spec">Mô tả</td>
-                    <td className="value-spec">{account.thong_tin || "Tài khoản game đăng bán tự động"}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Price Section */}
-          <div className="detail-price-section">
-            <span style={{ fontWeight: "600", color: "var(--text-secondary)" }}>Giá bán:</span>
-            <div style={{ textAlign: "right" }}>
-              {account.is_sale ? (
-                <>
-                  <del style={{ display: "block", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                    {Number(account.original_price).toLocaleString()}đ
-                  </del>
-                  <strong style={{ fontSize: "1.75rem", color: "var(--gold-color)", fontWeight: "800" }}>
-                    {Number(account.final_price).toLocaleString()}đ
-                  </strong>
-                </>
-              ) : (
-                <strong style={{ fontSize: "1.75rem", color: "var(--gold-color)", fontWeight: "800" }}>
-                  {Number(account.gia).toLocaleString()}đ
-                </strong>
-              )}
+          <div className={`detail-price-section ${hasSale ? "is-sale" : ""}`}>
+            <div className="detail-price-heading">
+              <span>{hasSale ? "Giá sale" : "Giá bán"}</span>
+              {hasSale && <span className="detail-sale-badge">GIẢM {saleDiscountLabel}</span>}
+            </div>
+            <div className="detail-price-values">
+              {hasSale && <del>{originalPrice.toLocaleString()}đ</del>}
+              <strong>{currentPrice.toLocaleString()}đ</strong>
+              {hasSale && <small>Tiết kiệm {savingAmount.toLocaleString()}đ</small>}
             </div>
           </div>
 
-          {/* Action Row */}
+          {highlights.length > 0 && (
+            <div className="detail-highlights" aria-label="Điểm nổi bật tài khoản">
+              {highlights.map((highlight) => <span key={highlight}>{highlight}</span>)}
+            </div>
+          )}
+
+          {(specs.length > 0 || highlights.length === 0) && (
+            <section className="detail-specs" aria-labelledby="account-specs-title">
+              <h2 id="account-specs-title">Thông tin chính</h2>
+              <dl className="detail-spec-list">
+                <div>
+                  <dt>Loại nick</dt>
+                  <dd>{account.accountType?.name || `Loại #${account.loai_id}`}</dd>
+                </div>
+                {specs.length > 0 ? specs.map((item, i) => (
+                  <div key={i}>
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                  </div>
+                )) : (
+                  <div>
+                    <dt>Mô tả</dt>
+                    <dd>Tài khoản game đăng bán tự động</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+          )}
+
           {!isSold ? (
             <>
-              {/* Discount/Coupon Section */}
-              <div className="coupon-section form-group-premium" style={{ marginBottom: "0" }}>
-                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+              <div className="coupon-section form-group-premium">
+                <label htmlFor="discount-code">Mã giảm giá</label>
+                <div className="coupon-input-row">
                   <input
+                    id="discount-code"
+                    name="discountCode"
+                    autoComplete="off"
                     placeholder="Nhập mã giảm giá (nếu có)"
                     value={discountCode}
                     onChange={(e) => {
@@ -437,7 +492,6 @@ export default function AccountDetail() {
                       setDiscountPreview(null);
                       setDiscountError("");
                     }}
-                    style={{ flexGrow: "1" }}
                   />
                   <button type="button" onClick={applyDiscount} disabled={!discountCode.trim() || discountLoading} className="btn-outline">
                     {discountLoading ? "Đang kiểm tra" : "Áp dụng"}
@@ -447,17 +501,35 @@ export default function AccountDetail() {
                 {discountError && <small className="form-hint error">{discountError}</small>}
               </div>
 
-              <button onClick={openPurchase} className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: "1.1rem" }}>
+              <button onClick={openPurchase} className="btn-primary detail-purchase-main">
                 <ShoppingCart size={20} /> MUA NGAY
               </button>
             </>
           ) : (
-            <button disabled className="btn-outline" style={{ width: "100%", padding: "14px", color: "var(--text-muted)", cursor: "not-allowed" }}>
-              TÀI KHOẢN NÀY ĐÃ ĐƯỢC BÁN
+            <button disabled className="btn-outline detail-sold-button">
+              TÀI KHOẢN NÀY ĐÃ BÁN
             </button>
           )}
-        </div>
+        </section>
       </div>
+
+      {!isSold && (
+        <div className="mobile-purchase-bar" aria-label="Mua tài khoản">
+          <div className="mobile-purchase-price">
+            <span className="mobile-purchase-label">
+              {hasSale ? "Giá sale" : "Giá"}
+              {hasSale && <b>GIẢM {saleDiscountLabel}</b>}
+            </span>
+            <span className="mobile-purchase-values">
+              {hasSale && <del>{originalPrice.toLocaleString()}đ</del>}
+              <strong>{currentPrice.toLocaleString()}đ</strong>
+            </span>
+          </div>
+          <button type="button" className="btn-primary" onClick={openPurchase}>
+            MUA NGAY
+          </button>
+        </div>
+      )}
 
       {/* MODAL 1: CONFIRM PURCHASE */}
       <Modal
@@ -466,45 +538,74 @@ export default function AccountDetail() {
         title="Xác nhận mua tài khoản"
         footer={
           <>
-            <button onClick={() => setIsConfirmOpen(false)} className="btn-outline" style={{ padding: "8px 16px" }}>
-              Hủy bỏ
+            <button onClick={() => setIsConfirmOpen(false)} className="btn-outline">
+              Quay lại
             </button>
-            <button disabled={isBuying} onClick={buyAccount} className="btn-primary" style={{ padding: "8px 16px" }}>
-              {isBuying ? "Đang xử lý..." : "Xác nhận thanh toán"}
-            </button>
+            {hasInsufficientBalance ? (
+              <Link to="/nap-tien" className="btn-primary">Nạp thêm tiền</Link>
+            ) : (
+              <button disabled={isBuying} aria-busy={isBuying} onClick={buyAccount} className="btn-primary">
+                {isBuying ? "Đang xử lý..." : "Xác nhận mua"}
+              </button>
+            )}
           </>
         }
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", textAlign: "left" }}>
-          <p style={{ color: "var(--text-secondary)" }}>
-            Bạn đang thực hiện mua tài khoản Liên Quân mã số: <strong>#{account.id}</strong>.
+        <div className="purchase-confirmation">
+          <p>
+            Kiểm tra lại thông tin trước khi mua. Hệ thống chỉ trừ tiền khi giao dịch thành công.
           </p>
-          <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", padding: "16px", borderRadius: "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span>Giá gốc:</span>
-              <span>{Number(account.gia).toLocaleString()}đ</span>
+          <dl className="purchase-confirm-summary">
+            <div>
+              <dt>Tài khoản</dt>
+              <dd>{account.accountType?.name || "Tài khoản game"} #{account.id}</dd>
             </div>
-            {discountCode && (
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", color: "var(--cyan-color)" }}>
-                <span>Mã giảm giá:</span>
-                <span>{discountCode}</span>
+            {hasSale && (
+              <div>
+                <dt>Giá gốc</dt>
+                <dd><del>{originalPrice.toLocaleString()}đ</del></dd>
               </div>
             )}
-            <hr style={{ border: "0", borderTop: "1px solid var(--border-color)", margin: "8px 0" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", color: "var(--gold-color)", fontSize: "1.1rem" }}>
-              <span>{discountPreview ? "Tổng thanh toán:" : "Tạm tính:"}</span>
-              <span>{Number(discountPreview?.final_price ?? currentPrice).toLocaleString()}đ</span>
+            {hasSale && (
+              <div className="sale-row">
+                <dt>Giảm giá sale ({saleDiscountLabel})</dt>
+                <dd>-{savingAmount.toLocaleString()}đ</dd>
+              </div>
+            )}
+            <div>
+              <dt>{hasSale ? "Giá sau sale" : "Giá sản phẩm"}</dt>
+              <dd>{currentPrice.toLocaleString()}đ</dd>
             </div>
-          </div>
+            {discountPreview && (
+              <div className="discount-row">
+                <dt>Voucher {discountCode && `(${discountCode})`}</dt>
+                <dd>-{Number(discountPreview.discount_amount || 0).toLocaleString()}đ</dd>
+              </div>
+            )}
+            <div>
+              <dt>Số dư hiện tại</dt>
+              <dd>{userBalance === null ? "Chưa đồng bộ" : `${userBalance.toLocaleString()}đ`}</dd>
+            </div>
+            <div className="total-row">
+              <dt>Thanh toán</dt>
+              <dd>{finalPurchasePrice.toLocaleString()}đ</dd>
+            </div>
+          </dl>
           {!discountPreview && discountCode && <p className="form-hint">Mã giảm giá sẽ được kiểm tra khi thanh toán. Chọn “Áp dụng” để xem số tiền dự kiến.</p>}
-          <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "flex-start", gap: "6px" }}>
-            <Info size={14} style={{ flexShrink: "0", marginTop: "2px" }} />
+          {hasInsufficientBalance && (
+            <div className="purchase-balance-warning" role="status">
+              <ShieldAlert size={18} aria-hidden="true" />
+              <span><strong>Số dư chưa đủ.</strong> Bạn cần nạp thêm {(finalPurchasePrice - userBalance).toLocaleString()}đ để mua tài khoản này.</span>
+            </div>
+          )}
+          <p className="purchase-confirm-note">
+            <Info size={15} aria-hidden="true" />
             Hệ thống sẽ trừ tiền trực tiếp vào tài khoản của bạn và hiển thị thông tin đăng nhập ngay sau khi hoàn thành.
           </p>
 
           {errorMsg && (
-            <div className="alert-error" style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-              <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
+            <div className="alert-error purchase-error" role="alert">
+              <ShieldAlert size={16} aria-hidden="true" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -541,10 +642,12 @@ export default function AccountDetail() {
                 <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <strong style={{ color: "var(--text-primary)" }}>{purchaseData?.login?.split("|")[0]}</strong>
                   <button 
+                    type="button"
                     onClick={() => handleCopy(purchaseData?.login?.split("|")[0], "user")} 
                     className="copy-badge"
+                    aria-label="Sao chép tên đăng nhập tài khoản game"
                   >
-                    {copiedField === "user" ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedField === "user" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                   </button>
                 </span>
               </div>
@@ -553,10 +656,12 @@ export default function AccountDetail() {
                 <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <strong style={{ color: "var(--text-primary)" }}>{purchaseData?.login?.split("|")[1]}</strong>
                   <button 
+                    type="button"
                     onClick={() => handleCopy(purchaseData?.login?.split("|")[1], "pass")} 
                     className="copy-badge"
+                    aria-label="Sao chép mật khẩu tài khoản game"
                   >
-                    {copiedField === "pass" ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedField === "pass" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                   </button>
                 </span>
               </div>
@@ -572,123 +677,52 @@ export default function AccountDetail() {
         </div>
       </Modal>
 
-      {isZoomOpen && (
-        <div 
-          onClick={() => { setIsZoomOpen(false); setZoomScale(1); }}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0, 0, 0, 0.95)",
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-            cursor: "zoom-out"
-          }}
+      <Modal
+        isOpen={isZoomOpen}
+        onClose={closeImageViewer}
+        title={`Ảnh tài khoản #${account.id}`}
+        className="image-viewer-dialog"
+        footer={
+          <>
+            <div className="zoom-controls" aria-label="Điều khiển ảnh">
+              <button type="button" className="btn-outline" onClick={() => setImageZoom(zoomScale - 0.25)} disabled={zoomScale <= 1} aria-label="Thu nhỏ ảnh">
+                Thu nhỏ
+              </button>
+              <button type="button" className="btn-outline" onClick={resetImageViewer} aria-label="Đặt lại kích thước và vị trí ảnh">
+                {Math.round(zoomScale * 100)}%
+              </button>
+              <button type="button" className="btn-outline" onClick={() => setImageZoom(zoomScale + 0.25)} disabled={zoomScale >= 4} aria-label="Phóng to ảnh">
+                Phóng to
+              </button>
+            </div>
+            {!isSold && (
+              <button type="button" className="btn-primary zoom-purchase-action" onClick={() => { closeImageViewer(); openPurchase(); }}>
+                <ShoppingCart size={18} aria-hidden="true" /> MUA NGAY · {currentPrice.toLocaleString()}đ
+              </button>
+            )}
+          </>
+        }
+      >
+        <div
+          className={`zoom-image-stage ${zoomScale > 1 ? "is-zoomed" : ""} ${isImagePanning ? "is-panning" : ""}`}
+          onPointerDown={handleImagePointerDown}
+          onPointerMove={handleImagePointerMove}
+          onPointerUp={handleImagePointerEnd}
+          onPointerCancel={handleImagePointerEnd}
+          onDoubleClick={() => setImageZoom(zoomScale > 1 ? 1 : 2)}
+          aria-label={zoomScale > 1 ? "Kéo ảnh để xem các vị trí khác" : "Nhấn đúp hoặc dùng nút phóng to để xem ảnh lớn"}
         >
-          {/* Prominent Floating Close Button in Top-Right */}
-          <button 
-            onClick={() => { setIsZoomOpen(false); setZoomScale(1); }}
-            style={{
-              position: "absolute",
-              top: "24px",
-              right: "24px",
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              backgroundColor: "var(--accent-color)",
-              border: "2px solid white",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.6)",
-              zIndex: 10005,
-              padding: 0,
-              transition: "transform 0.2s"
-            }}
-            title="Đóng (ESC)"
-            className="zoom-modal-close-trigger"
-          >
-            <X size={24} strokeWidth={2.5} />
-          </button>
-
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              display: "flex",
-              gap: "12px",
-              marginBottom: "16px",
-              zIndex: 10000,
-              width: "100%",
-              justifyContent: "center"
-            }}
-          >
-            <button 
-              className="small-btn" 
-              onClick={() => setZoomScale(prev => Math.max(prev - 0.25, 0.5))}
-              style={{ padding: "8px 16px" }}
-            >
-              Thu nhỏ (-)
-            </button>
-            <button 
-              className="small-btn" 
-              onClick={() => setZoomScale(1)}
-              style={{ padding: "8px 16px" }}
-            >
-              100% (Reset)
-            </button>
-            <button 
-              className="small-btn" 
-              onClick={() => setZoomScale(prev => Math.min(prev + 0.25, 4))}
-              style={{ padding: "8px 16px" }}
-            >
-              Phóng to (+)
-            </button>
-            <button 
-              className="danger-btn" 
-              onClick={() => { setIsZoomOpen(false); setZoomScale(1); }}
-              style={{ padding: "8px 16px" }}
-            >
-              Đóng (ESC)
-            </button>
-          </div>
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              flexGrow: 1,
-              width: "100%",
-              height: "100%",
-              overflow: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <SafeImage
-              src={activeImg} 
-              alt={`Ảnh phóng to của tài khoản ${account.id}`}
-              width={1200}
-              height={800}
-              style={{
-                transform: `scale(${zoomScale})`,
-                transition: "transform 0.15s ease-out",
-                maxHeight: "80vh",
-                maxWidth: "85vw",
-                objectFit: "contain",
-                borderRadius: "12px",
-                cursor: "grab"
-              }}
-            />
-          </div>
+          <SafeImage
+            src={activeImg}
+            alt={`Ảnh phóng to của tài khoản ${account.id}`}
+            width={1200}
+            height={800}
+            draggable={false}
+            style={{ transform: `translate3d(${imagePan.x}px, ${imagePan.y}px, 0) scale(${zoomScale})` }}
+            fallbackLabel="Không thể hiển thị ảnh lớn"
+          />
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

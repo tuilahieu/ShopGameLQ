@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { Eye } from "lucide-react";
 import SafeImage from "./SafeImage";
+import { getAccountPricing } from "../utils/accountPricing";
 
-export default function AccountCard({ acc, priority = false }) {
+export default function AccountCard({ acc, priority = false, className = "" }) {
   const isSold = Number(acc.status) === 1;
+  const pricing = getAccountPricing(acc);
 
   // Render spec tags if thong_tin has text
   const specs = (() => {
@@ -25,34 +26,22 @@ export default function AccountCard({ acc, priority = false }) {
     return Number(price || 0).toLocaleString() + "đ";
   };
 
-  // Calculate percentage discount if sale exists
-  const discountPercent = (() => {
-    if (acc.is_sale && acc.original_price && acc.final_price) {
-      const orig = Number(acc.original_price);
-      const final = Number(acc.final_price);
-      if (orig > final) {
-        return Math.round(((orig - final) / orig) * 100);
-      }
-    }
-    return 0;
-  })();
-
   return (
     <Link 
       to={`/account/${acc.id}`} 
-      className={`account-card-premium ${isSold ? "sold" : ""}`}
+      className={`account-card-premium ${isSold ? "sold" : ""} ${className}`.trim()}
       style={{ textDecoration: "none", color: "inherit", display: "block" }}
     >
       {isSold && (
         <div className="badge-sold">
-          <span>ĐÃ BÁN</span>
+          <span>HẾT TÀI KHOẢN</span>
         </div>
       )}
 
       <div className="account-thumb-wrapper">
         <span className="badge-id">MS #{acc.id}</span>
-        {discountPercent > 0 && !isSold && (
-          <span className="badge-sale">-{discountPercent}%</span>
+        {pricing.hasSale && !isSold && (
+          <span className="badge-sale">GIẢM {pricing.discountLabel}</span>
         )}
         <SafeImage
           src={acc.img}
@@ -79,18 +68,18 @@ export default function AccountCard({ acc, priority = false }) {
 
         <div className="account-footer-price">
           <div className="price-box">
-            {acc.is_sale ? (
+            {pricing.hasSale ? (
               <>
-                <del>{formatPrice(acc.original_price)}</del>
-                <strong>{formatPrice(acc.final_price)}</strong>
+                <del>{formatPrice(pricing.originalPrice)}</del>
+                <strong>{formatPrice(pricing.currentPrice)}</strong>
               </>
             ) : (
-              <strong>{formatPrice(acc.gia)}</strong>
+              <strong>{formatPrice(pricing.currentPrice)}</strong>
             )}
           </div>
 
-          <span className="btn-outline" style={{ padding: "6px 12px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-            <Eye size={14} /> Chi tiết
+          <span className={`account-availability ${isSold ? "unavailable" : "available"}`}>
+            {isSold ? "Đã bán" : "Mua được ngay"}
           </span>
         </div>
       </div>

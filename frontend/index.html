@@ -3,18 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Shopgameliqi - Shop Bán Acc Liên Quân Uy Tín, Giá Rẻ</title>
     <meta name="description" content="Hệ thống bán tài khoản game Liên Quân Mobile tự động uy tín, giá rẻ, chất lượng cao. Giao dịch an toàn, tự động nhận tài khoản sau 2 giây." />
     <meta name="keywords" content="shop acc, mua acc game, shop lien quan, acc lien quan tu chon, shop acc gia re" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Shopgameliqi - Shop Bán Acc Liên Quân Uy Tín, Giá Rẻ" />
     <meta property="og:description" content="Hệ thống bán tài khoản game Liên Quân Mobile tự động uy tín, giá rẻ, chất lượng cao. Giao dịch an toàn, tự động nhận tài khoản sau 2 giây." />
+    <style>
+      :root{--boot-bg:#f7f8fa;--boot-border:#d8dee8;--boot-accent:#c51646;color-scheme:light}
+      :root[data-theme="dark"]{--boot-bg:#0b1220;--boot-border:#334155;--boot-accent:#e11d48;color-scheme:dark}
+      @keyframes boot-spin{to{transform:rotate(360deg)}}
+    </style>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("theme");
+        const resolvedTheme = savedTheme === "dark" || (savedTheme === "system" && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+        document.documentElement.dataset.theme = resolvedTheme;
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
   </head>
   <body>
-    <div id="app-boot-loader" role="status" aria-label="Đang tải" style="position:fixed;inset:0;display:grid;place-content:center;background:#090d16;z-index:9999"><span style="width:28px;height:28px;margin:auto;border:3px solid #26334d;border-top-color:#ef4444;border-radius:50%;animation:boot-spin .75s linear infinite"></span></div>
+    <div id="app-boot-loader" role="status" aria-label="Đang tải" style="position:fixed;inset:0;display:grid;place-content:center;background:var(--boot-bg);z-index:9999"><span style="width:28px;height:28px;margin:auto;border:3px solid var(--boot-border);border-top-color:var(--boot-accent);border-radius:50%;animation:boot-spin .75s linear infinite"></span></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <style>@keyframes boot-spin{to{transform:rotate(360deg)}}</style>
   </body>
 </html>

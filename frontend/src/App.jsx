@@ -18,6 +18,7 @@ const Recharge = lazy(() => import("./pages/client/Recharge"));
 const Profile = lazy(() => import("./pages/client/Profile"));
 const Terms = lazy(() => import("./pages/client/Terms"));
 const Contact = lazy(() => import("./pages/client/Contact"));
+const NotFound = lazy(() => import("./pages/client/NotFound"));
 
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
 
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -115,7 +117,6 @@ export default function App() {
           <Route path="orders" element={<CtvOrders />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
         </Suspense>
       </BrowserRouter>

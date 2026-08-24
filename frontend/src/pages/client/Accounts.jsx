@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
-import { SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Layers } from "lucide-react";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
 
 export default function Accounts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,7 +128,7 @@ export default function Accounts() {
   }, [loaiId, selectedType]);
 
   return (
-    <div className="page-container">
+    <div className="page-container catalogue-page">
       {loading ? (
         <div className="catalogue-skeleton" aria-busy="true" aria-label="Đang tải kho tài khoản">
           <div className="skeleton-heading" />
@@ -142,43 +143,40 @@ export default function Accounts() {
         </div>
       ) : !loaiId ? (
         /* Render Category Types Selection List when no specific type selected */
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-          <div className="section-header" style={{ marginBottom: "12px", justifyContent: "center", textAlign: "center" }}>
-            <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "1.8rem" }}>
-              <Layers size={28} style={{ color: "var(--accent-color)" }} />
-              CHỌN DANH MỤC ACC GAME
-            </h1>
+        <div className="catalogue-category-view">
+          <div className="catalogue-heading">
+            <span className="storefront-section-kicker"><Layers size={17} aria-hidden="true" /> Kho tài khoản</span>
+            <h1 className="page-title">Chọn loại tài khoản</h1>
+            <p>Chọn đúng gói bạn quan tâm để xem acc và giá đang có.</p>
           </div>
           
-          <div className="category-grid">
+          <div className="catalogue-category-grid">
             {types.map((type) => {
               const count = counts[type.id] ?? 0;
               return (
-                <div
-                  className="category-card"
+                <Link
+                  to={`/accounts?loai_id=${type.id}`}
+                  className="catalogue-category-card"
                   key={type.id}
-                  onClick={() => updateFilter("loai_id", type.id.toString())}
-                  style={{ cursor: "pointer", transition: "transform 0.2s" }}
                 >
-                  <div className="category-thumb-wrapper" style={{ height: "180px" }}>
+                  <div className="catalogue-category-media">
                     <SafeImage
-                      src={type.img}
+                      src={resolveAccountTypeImage(type)}
                       alt={`Ảnh loại tài khoản ${type.name}`}
-                      width={500}
-                      height={260}
+                      width={960}
+                      height={600}
                       loading="lazy"
                       decoding="async"
                       fallbackLabel="Chưa có ảnh loại tài khoản"
                     />
                   </div>
-                  <div className="category-info">
+                  <div className="catalogue-category-info">
                     <h3>{type.name}</h3>
-                    <div className="category-explore">
-                      <span className="explore-count">Còn <strong>{count}</strong> acc</span>
-                      <span className="explore-cta">Xem ngay &rarr;</span>
-                    </div>
+                    <span className={count > 0 ? "catalogue-stock available" : "catalogue-stock unavailable"}>
+                      {count > 0 ? `${count} tài khoản` : "Tạm hết hàng"}
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -186,35 +184,12 @@ export default function Accounts() {
       ) : (
         /* Render Filtered Accounts Grid when type is selected */
         <>
-          <div className="section-header" style={{ marginBottom: "32px" }}>
-            <h1 className="page-title" style={{ textTransform: "uppercase" }}>{selectedType ? selectedType.name : "KHO TÀI KHOẢN GAME"}</h1>
-            <button onClick={resetFilters} className="btn-outline" style={{ padding: "8px 12px", fontSize: "0.85rem" }}>
-              <RefreshCw size={14} style={{ marginRight: "4px" }} /> Chọn loại khác
-            </button>
-          </div>
-
-          {/* Filter and Sorting Bar */}
-          <div className="filter-wrapper">
-            <div className="filter-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <div className="filter-item">
-                <label><SlidersHorizontal size={12} style={{ display: "inline", marginRight: "4px" }} /> Sắp xếp theo giá</label>
-                <select
-                  className="filter-input"
-                  value={sort}
-                  onChange={(e) => updateFilter("sort", e.target.value)}
-                >
-                  <option value="">Acc mới cập nhật</option>
-                  <option value="price_asc">Giá từ thấp đến cao</option>
-                  <option value="price_desc">Giá từ cao đến thấp</option>
-                </select>
-              </div>
-
-              <div className="filter-item" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
-                <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "12px" }}>
-                  Tìm thấy: <strong>{pagination.total}</strong> nick
-                </span>
-              </div>
+          <div className="catalogue-results-heading">
+            <div>
+              <Link to="/accounts" className="catalogue-back-link"><ArrowLeft size={17} aria-hidden="true" /> Đổi loại tài khoản</Link>
+              <h1 className="page-title">{selectedType ? selectedType.name : "Kho tài khoản game"}</h1>
             </div>
+            <span className="catalogue-result-count"><strong>{pagination.total}</strong> acc đang có</span>
           </div>
 
           {/* Type Info Banner - shown when a specific type is selected */}
@@ -222,10 +197,10 @@ export default function Accounts() {
             <div className="type-info-banner" style={{ marginBottom: "32px" }}>
               <div className="type-info-banner-img">
                 <SafeImage
-                  src={selectedType.img}
+                  src={resolveAccountTypeImage(selectedType)}
                   alt={`Ảnh loại tài khoản ${selectedType.name}`}
-                  width={320}
-                  height={180}
+                  width={960}
+                  height={600}
                   loading="lazy"
                   decoding="async"
                   fallbackLabel="Chưa có ảnh loại tài khoản"
@@ -246,12 +221,26 @@ export default function Accounts() {
             </div>
           )}
 
+          <div className="catalogue-sort-bar">
+            <label htmlFor="account-sort"><SlidersHorizontal size={17} aria-hidden="true" /> Sắp xếp</label>
+            <select
+              id="account-sort"
+              name="sort"
+              className="filter-input"
+              value={sort}
+              onChange={(e) => updateFilter("sort", e.target.value)}
+            >
+              <option value="">Mới cập nhật</option>
+              <option value="price_asc">Giá thấp đến cao</option>
+              <option value="price_desc">Giá cao đến thấp</option>
+            </select>
+          </div>
+
           {accounts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "80px 24px", background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Hiện tại gói tài khoản này đang hết hàng. Vui lòng quay lại sau!</p>
-              <button onClick={resetFilters} className="btn-primary" style={{ marginTop: "16px" }}>
-                Quay lại chọn loại khác
-              </button>
+            <div className="empty-state catalogue-empty-state">
+              <h2>Tạm hết hàng</h2>
+              <p>Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác.</p>
+              <button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>
             </div>
           ) : (
             <>
@@ -263,17 +252,16 @@ export default function Accounts() {
 
               {/* Premium Pagination Controls */}
               {pagination.totalPage > 1 && (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "48px" }}>
+                <nav className="catalogue-pagination" aria-label="Phân trang kho tài khoản">
                   <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page === 1}
                     className="btn-outline"
-                    style={{ padding: "8px 16px", opacity: pagination.page === 1 ? 0.5 : 1, cursor: pagination.page === 1 ? "not-allowed" : "pointer" }}
                   >
                     <ChevronLeft size={16} /> Trước
                   </button>
 
-                  <span style={{ fontSize: "0.95rem", color: "var(--text-secondary)" }}>
+                  <span>
                     Trang <strong>{pagination.page}</strong> / {pagination.totalPage}
                   </span>
 
@@ -281,11 +269,10 @@ export default function Accounts() {
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page === pagination.totalPage}
                     className="btn-outline"
-                    style={{ padding: "8px 16px", opacity: pagination.page === pagination.totalPage ? 0.5 : 1, cursor: pagination.page === pagination.totalPage ? "not-allowed" : "pointer" }}
                   >
                     Sau <ChevronRight size={16} />
                   </button>
-                </div>
+                </nav>
               )}
             </>
           )}

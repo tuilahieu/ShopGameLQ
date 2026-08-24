@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Phone, MessageCircle } from "lucide-react";
+import { Headphones, MessageCircle, Phone } from "lucide-react";
 import api from "../../api/api";
 import { updateSEO } from "../../utils/seo";
 
@@ -35,66 +35,53 @@ export default function Contact() {
   const fbLink = setting.fb_admin || "https://m.me/shopgameliqi";
 
   return (
-    <div className="page-container">
-      <h1 className="page-title" style={{ marginBottom: "32px" }}>LIÊN HỆ HỖ TRỢ KHÁCH HÀNG</h1>
+    <div className="page-container support-page">
+      <header className="customer-page-heading">
+        <span className="customer-page-eyebrow"><Headphones size={15} aria-hidden="true" /> Hỗ trợ khách hàng</span>
+        <h1>Liên hệ với shop</h1>
+        <p>Cần hỗ trợ đơn hàng, nạp tiền hoặc bảo hành? Chọn kênh thuận tiện nhất bên dưới.</p>
+      </header>
 
-      <div className="contact-card-container">
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "16px" }}>💬</div>
-          <h2 style={{ color: "var(--text-primary)", marginBottom: "10px" }}>HỖ TRỢ TRỰC TUYẾN 24/7</h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", lineHeight: "1.6" }}>
-            Nếu bạn có bất kỳ câu hỏi nào về việc giao dịch tài khoản, nạp tiền ví, hoặc cần bảo hành, vui lòng liên hệ với đội ngũ CSKH qua các kênh hỗ trợ trực tuyến bên dưới.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "12px" }}>
-          <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", padding: "16px 20px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div className="avatar-placeholder" style={{ width: "40px", height: "40px", fontSize: "1rem", background: "rgba(0,104,255,0.15)", borderColor: "#0068ff", color: "#0068ff" }}>
-                Zalo
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Chat Zalo hỗ trợ</div>
-                <strong style={{ color: "var(--text-primary)" }}>{phoneDisplay}</strong>
-              </div>
+      <section className="support-card" aria-labelledby="support-channels-title">
+        <h2 id="support-channels-title">Kênh hỗ trợ trực tuyến</h2>
+        <div className="support-channel-list">
+          <article className="support-channel">
+            <div className="support-channel-mark support-channel-mark--zalo" aria-hidden="true">Zalo</div>
+            <div className="support-channel-copy">
+              <span>Chat Zalo hỗ trợ</span>
+              <strong>{phoneDisplay}</strong>
             </div>
-            <a href={zaloLink} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>
+            <a href={zaloLink} target="_blank" rel="noreferrer" className="btn-primary support-channel-action">
               Chat Zalo
             </a>
-          </div>
+          </article>
 
           {setting.fb_admin && (
-            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", padding: "16px 20px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div className="avatar-placeholder" style={{ width: "40px", height: "40px", fontSize: "1rem", background: "rgba(24,119,242,0.15)", borderColor: "#1877f2", color: "#1877f2" }}>
-                  <MessageCircle size={18} />
-                </div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Facebook Messenger</div>
-                  <strong style={{ color: "var(--text-primary)" }}>Messenger CSKH</strong>
-                </div>
+            <article className="support-channel">
+              <div className="support-channel-mark support-channel-mark--facebook" aria-hidden="true">
+                <MessageCircle size={19} />
               </div>
-              <a href={fbLink} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>
-                Gửi Tin Nhắn
+              <div className="support-channel-copy">
+                <span>Facebook Messenger</span>
+                <strong>Messenger CSKH</strong>
+              </div>
+              <a href={fbLink} target="_blank" rel="noreferrer" className="btn-outline support-channel-action">
+                Gửi tin nhắn
               </a>
-            </div>
+            </article>
           )}
 
-          <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", padding: "16px 20px", borderRadius: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
-            <div className="avatar-placeholder" style={{ width: "40px", height: "40px", fontSize: "1rem" }}>
-              <Phone size={18} />
+          <article className="support-channel">
+            <div className="support-channel-mark" aria-hidden="true"><Phone size={19} /></div>
+            <div className="support-channel-copy">
+              <span>Hotline hỗ trợ gấp</span>
+              <strong className="support-phone">{phoneDisplay}</strong>
             </div>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Hotline hỗ trợ gấp</div>
-              <strong style={{ color: "var(--gold-color)", fontSize: "1.1rem" }}>{phoneDisplay}</strong>
-            </div>
-          </div>
+          </article>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: "10px" }}>
-          <Link to="/" className="btn-outline" style={{ padding: "10px 24px" }}>Quay về trang chủ</Link>
-        </div>
-      </div>
+        <Link to="/" className="btn-outline support-home-link">Quay về trang chủ</Link>
+      </section>
     </div>
   );
 }

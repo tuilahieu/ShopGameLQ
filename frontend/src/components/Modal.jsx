@@ -1,37 +1,122 @@
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 
-export default function Modal({ isOpen, onClose, title, children, footer }) {
-  // Prevent body scroll when modal is open
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+  "[contenteditable='true']",
+].join(",");
+
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  className = "",
+  closeOnBackdrop = true,
+  closeOnEscape = true,
+}) {
+  const dialogRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const dialog = dialogRef.current;
+    const previousBodyOverflow = document.body.style.overflow;
+    previouslyFocusedRef.current = document.activeElement;
+    document.body.style.overflow = "hidden";
+
+    const getFocusableElements = () => Array.from(
+      dialog?.querySelectorAll(FOCUSABLE_SELECTOR) || [],
+    ).filter((element) => element.getClientRects().length > 0);
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      const autoFocusTarget = dialog?.querySelector("[autofocus]");
+      const initialTarget = autoFocusTarget || getFocusableElements()[0] || dialog;
+      initialTarget?.focus({ preventScroll: true });
+    });
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && closeOnEscape) {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey && (activeElement === firstElement || !dialog?.contains(activeElement))) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && (activeElement === lastElement || !dialog?.contains(activeElement))) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     };
-  }, [isOpen]);
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+
+      const previousElement = previouslyFocusedRef.current;
+      if (previousElement instanceof HTMLElement && previousElement.isConnected) {
+        previousElement.focus({ preventScroll: true });
+      }
+    };
+  }, [closeOnEscape, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleBackdropClick = (event) => {
+    if (closeOnBackdrop && event.target === event.currentTarget) {
       onClose();
     }
   };
 
   return (
     <div className="modal-backdrop" onClick={handleBackdropClick}>
-      <div className="modal-content-wrapper">
+      <div
+        ref={dialogRef}
+        className={`modal-content-wrapper ${className}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="modal-header">
-          <h3>{title}</h3>
-          <button onClick={onClose} className="modal-close-btn">
-            <X size={20} />
+          <h3 id={titleId}>{title}</h3>
+          <button type="button" onClick={onClose} className="modal-close-btn" aria-label="Đóng hộp thoại">
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
-        
+
         <div className="modal-body">
           {children}
         </div>

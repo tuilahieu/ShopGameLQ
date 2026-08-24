@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { createRateLimit } from "../config/http.js";
 
 import {
   buyAccount,
@@ -9,6 +10,9 @@ import {
 } from "../controllers/order.controller.js";
 
 const router = Router();
+// A purchase is already atomic/idempotent, but throttling avoids needless row
+// lock contention and prevents rapid-fire inventory probing from one IP.
+const purchaseRateLimit = createRateLimit({ windowMs: 3_000, max: 1 });
 
 /**
  * @swagger
@@ -45,6 +49,8 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Mua tài khoản thành công
+ *       429:
+ *         description: Một IP chỉ được gửi một yêu cầu mua trong mỗi 3 giây
  *       400:
  *         description: Số dư không đủ, tài khoản đã bán hoặc mã giảm giá không hợp lệ
  *       401:
@@ -54,7 +60,7 @@ const router = Router();
  *       404:
  *         description: Không tìm thấy tài khoản hoặc mã giảm giá
  */
-router.post("/buy", authMiddleware, buyAccount);
+router.post("/buy", authMiddleware, purchaseRateLimit, buyAccount);
 
 /**
  * @swagger

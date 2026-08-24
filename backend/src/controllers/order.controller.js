@@ -22,8 +22,9 @@ import {
   parsePercentage,
   parsePositiveId,
   parseSafeBalance,
-  validateSalePrice,
+  resolveAccountPricing,
 } from "../services/pricing.service.js";
+import { buildActiveSaleWhere } from "../services/sale.service.js";
 
 async function attachPurchasedCredential(payload, userId, transaction) {
   // Never persist a decrypted credential inside idempotency_keys. It is resolved
@@ -78,9 +79,12 @@ export async function buyAccount(req, res) {
       return errorResponse(res, "Tài khoản này đã được bán", 400);
     }
 
-    if (Number(account.seller_id) === Number(userId)) {
+    // A CTV must not self-purchase a listing because that bypasses the intended
+    // seller/commission separation. Administrators may do this for operational
+    // testing and account recovery workflows.
+    if (Number(account.seller_id) === Number(userId) && Number(req.user.level) === 1) {
       await dbTransaction.rollback();
-      return errorResponse(res, "Không thể tự mua tài khoản do chính bạn đăng bán", 403);
+      return errorResponse(res, "CTV không thể tự mua tài khoản do chính mình đăng bán", 403);
     }
 
     const user = await User.findByPk(userId, {
@@ -105,26 +109,17 @@ export async function buyAccount(req, res) {
 
     const now = new Date();
 
-    const originalPrice = validateSalePrice(account.gia, account.gia, { status: 409 });
-    let saleId = null;
-    let salePrice = null;
-    let priceAfterSale = originalPrice;
-
     const sale = await Sale.findOne({
-      where: {
-        acc_id: account.id,
-        status: 1,
-      },
+      where: buildActiveSaleWhere({ now, accountId: account.id }),
       transaction: dbTransaction,
       lock: true,
       order: [["id", "DESC"]],
     });
-
-    if (sale && now >= new Date(sale.batdau) && now <= new Date(sale.ketthuc)) {
-      saleId = sale.id;
-      salePrice = validateSalePrice(originalPrice, sale.sale_price, { status: 409 });
-      priceAfterSale = salePrice;
-    }
+    const pricing = resolveAccountPricing(account, sale, { status: 409 });
+    const originalPrice = pricing.originalPrice;
+    const saleId = pricing.saleId;
+    const salePrice = pricing.salePrice;
+    const priceAfterSale = pricing.finalPrice;
 
     let discountId = null;
     let discountAmount = 0;

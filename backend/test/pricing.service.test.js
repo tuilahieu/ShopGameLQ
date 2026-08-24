@@ -4,6 +4,8 @@ import {
   calculateDiscountAmount,
   parsePercentage,
   parsePositiveId,
+  resolveAccountPricing,
+  validateListingSalePrice,
   validateSalePrice,
 } from "../src/services/pricing.service.js";
 
@@ -11,6 +13,33 @@ test("checkout prices must stay positive safe integers", () => {
   assert.equal(validateSalePrice(100_000, 80_000), 80_000);
   assert.throws(() => validateSalePrice(100_000, 0));
   assert.throws(() => validateSalePrice(100_000, 100_001));
+});
+
+test("listing sale is stored separately and the customer gets the lowest valid price", () => {
+  assert.equal(validateListingSalePrice(150_000, 100_000), 100_000);
+  assert.equal(validateListingSalePrice(150_000, null), null);
+  assert.throws(() => validateListingSalePrice(150_000, 150_000));
+
+  const account = { gia: 150_000, sale_price: 100_000 };
+  assert.deepEqual(resolveAccountPricing(account), {
+    originalPrice: 150_000,
+    salePrice: 100_000,
+    finalPrice: 100_000,
+    isSale: true,
+    saleSource: "listing",
+    saleId: null,
+    hasFlashSale: false,
+  });
+
+  assert.deepEqual(resolveAccountPricing(account, { id: 5, sale_price: 90_000 }), {
+    originalPrice: 150_000,
+    salePrice: 90_000,
+    finalPrice: 90_000,
+    isSale: true,
+    saleSource: "flash",
+    saleId: 5,
+    hasFlashSale: true,
+  });
 });
 
 test("discount rules cannot produce a free or negative order", () => {

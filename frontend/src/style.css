@@ -38,12 +38,12 @@
   --danger-color: #f87171;
   --danger-soft: rgba(239, 68, 68, 0.12);
 
-  /* Modern Soft Border Radii */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
+  /* Compact corners: keep hierarchy through spacing and borders, not bubbles. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 5px;
+  --radius-xl: 6px;
   --radius-pill: 9999px;
 
   /* Typography & Layout */
@@ -261,19 +261,11 @@ button[type="submit"] {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid var(--accent-hover);
   box-shadow: 0 4px 14px var(--accent-glow);
   transition: var(--transition-fast);
   white-space: nowrap;
   user-select: none;
-}
-
-.btn-primary:hover,
-button[type="submit"]:hover {
-  background: linear-gradient(135deg, var(--accent-hover) 0%, #991b1b 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px var(--accent-glow);
-  color: #ffffff !important;
 }
 
 .btn-primary:active,
@@ -295,7 +287,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-hover);
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   padding: 8px 16px;
@@ -310,13 +302,6 @@ button:disabled {
   transition: var(--transition-fast);
   white-space: nowrap;
   user-select: none;
-}
-
-.btn-outline:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-hover);
-  color: var(--text-primary);
-  transform: translateY(-1px);
 }
 
 .btn-outline:active {
@@ -338,18 +323,11 @@ button:disabled {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid var(--gold-hover);
   box-shadow: 0 4px 14px var(--gold-glow);
   transition: var(--transition-fast);
   white-space: nowrap;
   user-select: none;
-}
-
-.btn-gold:hover {
-  background: linear-gradient(135deg, var(--gold-hover) 0%, #92400e 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px var(--gold-glow);
-  color: #ffffff !important;
 }
 
 .btn-gold:active {
@@ -369,13 +347,9 @@ button:disabled {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+  border: 1px solid var(--accent-hover);
   box-shadow: 0 2px 8px var(--accent-glow);
   transition: var(--transition-fast);
-}
-
-.small-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 .danger-btn {
@@ -391,13 +365,9 @@ button:disabled {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+  border: 1px solid #b91c1c;
   box-shadow: 0 2px 8px var(--accent-glow);
   transition: var(--transition-fast);
-}
-
-.danger-btn:hover {
-  background-color: #b91c1c;
-  transform: translateY(-1px);
 }
 
 /* ==========================================================================
@@ -2627,7 +2597,7 @@ tbody tr:hover td {
     padding: 4px 6px !important;
     background: rgba(17, 23, 38, 0.94) !important;
     border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 20px !important;
+    border-radius: var(--radius-md) !important;
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
@@ -2649,7 +2619,7 @@ tbody tr:hover td {
     gap: 2px;
     color: var(--text-secondary);
     text-decoration: none;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     transition: var(--transition-fast);
     padding: 2px 4px;
     cursor: pointer;
@@ -3159,7 +3129,7 @@ tbody tr:hover td {
     transform: translateX(-105%);
     transition: transform 0.22s ease;
     border-right: 1px solid var(--border-color) !important;
-    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
     box-shadow: var(--shadow-lg);
   }
 
@@ -3350,4 +3320,81 @@ tbody tr:hover td {
   .skeleton-card { min-height: 245px; }
   .catalogue-skeleton { gap: 12px; min-height: 360px; }
   .catalogue-skeleton .skeleton-filter { height: 58px; }
+}
+
+/* =====================================================================
+   STATIC, CRISP CONTROLS
+   Borders carry the visual hierarchy; hover effects are intentionally removed
+   so cards and controls do not shift, brighten or zoom under the pointer.
+   ===================================================================== */
+.filter-input,
+.form-group-premium input,
+.form-group-premium select,
+.form-group-premium textarea,
+.admin-content input,
+.admin-content select,
+.admin-content textarea {
+  border-color: var(--border-hover);
+}
+
+.gallery-main {
+  border-color: var(--border-subtle);
+}
+
+.gallery-thumb-item {
+  border-width: 1px;
+  border-color: var(--border-subtle);
+}
+
+@media (hover: hover) {
+  .btn-primary:hover,
+  button[type="submit"]:hover {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+    border-color: var(--accent-hover);
+    box-shadow: 0 4px 14px var(--accent-glow);
+    transform: none;
+  }
+
+  .btn-outline:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: none;
+  }
+
+  .btn-gold:hover {
+    background: linear-gradient(135deg, var(--gold-color) 0%, var(--gold-hover) 100%);
+    border-color: var(--gold-hover);
+    box-shadow: 0 4px 14px var(--gold-glow);
+    transform: none;
+  }
+
+  .small-btn:hover { background: var(--accent-color); transform: none; }
+  .danger-btn:hover { background: var(--danger-color); transform: none; }
+  .client-nav-link:hover { color: var(--text-secondary); background: transparent; }
+  .theme-toggle-btn:hover { color: var(--text-secondary); background: var(--bg-secondary); border-color: var(--border-color); }
+  .logout-link:hover { color: var(--text-secondary); background: var(--bg-secondary); border-color: var(--border-color); }
+  .category-tab-btn:hover { color: var(--text-secondary); background: var(--bg-secondary); border-color: var(--border-color); }
+  .gallery-thumb-item:hover { border-color: var(--border-subtle); }
+  .modal-close-btn:hover { color: var(--text-secondary); background: none; }
+  .copy-badge:hover { color: var(--cyan-color); background: var(--bg-tertiary); border-color: var(--border-color); }
+  .tab-btn:hover:not(.active) { color: var(--text-secondary); }
+  .table-premium tr:hover td,
+  tbody tr:hover td { background: transparent; }
+  .admin-nav-links a:hover { color: var(--text-secondary); background: transparent; }
+  .footer-links a:hover { color: var(--text-secondary); padding-left: 0; }
+  .mobile-drawer-link:hover:not(.active) { color: var(--text-secondary); background: transparent; }
+
+  .category-card:hover,
+  .account-card-premium:hover,
+  .order-card-item:hover,
+  .admin-content .dashboard-card:hover {
+    transform: none !important;
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-premium);
+  }
+
+  .category-card:hover img,
+  .account-card-premium:hover .account-thumb-wrapper img { transform: none; }
+  .category-card:hover .explore-cta { gap: 3px; }
 }

@@ -52,6 +52,10 @@ async function validateSaleInput(values, { transaction, excludeId = null, locked
   const status = parseBinaryStatus(values.status);
   const salePrice = validateSalePrice(account.gia, values.sale_price);
 
+  if (salePrice >= Number(account.gia)) {
+    throw Object.assign(new Error("Giá sale phải thấp hơn giá bán gốc để áp dụng khuyến mãi"), { status: 400 });
+  }
+
   if (status === 1) {
     const overlaps = await Sale.findOne({
       where: {

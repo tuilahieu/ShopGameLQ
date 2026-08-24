@@ -1,6 +1,8 @@
 import { Category, AccountType, GameAccount, Setting, Order, User, Transaction, Sale } from "../models/index.js";
 import { successResponse, errorResponse } from "../utils/response.util.js";
-import { Sequelize, Op } from "sequelize";
+import { Sequelize } from "sequelize";
+import { buildActiveSaleWhere } from "../services/sale.service.js";
+import { resolveAccountPricing } from "../services/pricing.service.js";
 
 export async function getHome(req, res) {
   try {
@@ -41,11 +43,7 @@ export async function getHome(req, res) {
 
         // Query active flash sales
         Sale.findAll({
-          where: {
-            status: 1,
-            batdau: { [Op.lte]: now },
-            ketthuc: { [Op.gte]: now },
-          },
+          where: buildActiveSaleWhere({ now }),
           include: [
             {
               model: GameAccount,
@@ -66,6 +64,34 @@ export async function getHome(req, res) {
         }),
       ]);
 
+    const latestAccountIds = latestAccounts.map((account) => Number(account.id));
+    const latestSales = latestAccountIds.length > 0
+      ? await Sale.findAll({
+        where: buildActiveSaleWhere({ now, accountIds: latestAccountIds }),
+        order: [["id", "DESC"]],
+      })
+      : [];
+    const latestSaleMap = new Map();
+    for (const sale of latestSales) {
+      if (!latestSaleMap.has(Number(sale.acc_id))) {
+        latestSaleMap.set(Number(sale.acc_id), sale);
+      }
+    }
+    const latestAccountsWithPricing = latestAccounts.map((account) => {
+      const accountJson = account.toJSON();
+      const sale = latestSaleMap.get(Number(account.id));
+      const pricing = resolveAccountPricing(accountJson, sale);
+      return {
+        ...accountJson,
+        original_price: pricing.originalPrice,
+        sale_price: pricing.salePrice,
+        final_price: pricing.finalPrice,
+        is_sale: pricing.isSale,
+        sale_source: pricing.saleSource,
+        is_flash_sale: pricing.hasFlashSale,
+      };
+    });
+
     // Build { loai_id: count } map for easy frontend lookup
     const accountCountByType = {};
     for (const row of countRows) {
@@ -77,12 +103,15 @@ export async function getHome(req, res) {
       .filter((sale) => sale.account)
       .map((sale) => {
         const accountJson = sale.account.toJSON();
+        const pricing = resolveAccountPricing(accountJson, sale);
         return {
           ...accountJson,
-          original_price: Number(accountJson.gia),
-          sale_price: Number(sale.sale_price),
-          final_price: Number(sale.sale_price),
-          is_sale: true,
+          original_price: pricing.originalPrice,
+          sale_price: pricing.salePrice,
+          final_price: pricing.finalPrice,
+          is_sale: pricing.isSale,
+          sale_source: pricing.saleSource,
+          is_flash_sale: true,
           sale_detail: {
             id: sale.id,
             batdau: sale.batdau,
@@ -108,7 +137,7 @@ export async function getHome(req, res) {
       totalAccounts,
       categories,
       accountTypes,
-      latestAccounts,
+      latestAccounts: latestAccountsWithPricing,
       accountCountByType,
       setting: publicSetting,
       flashSaleAccounts,

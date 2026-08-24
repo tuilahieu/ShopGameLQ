@@ -5,8 +5,9 @@ import {
   ensureDiscountIsAvailable,
   normalizeDiscountCode,
   parsePositiveId,
-  validateSalePrice,
+  resolveAccountPricing,
 } from "../services/pricing.service.js";
+import { buildActiveSaleWhere } from "../services/sale.service.js";
 
 // This is a preview only. Checkout repeats every check while rows are locked,
 // so this endpoint can never reserve a voucher or authorize a price.
@@ -18,15 +19,13 @@ export async function checkDiscount(req, res) {
     if (!account) return errorResponse(res, "Tài khoản không tồn tại hoặc không còn được bán", 404);
 
     const now = new Date();
-    const originalPrice = validateSalePrice(account.gia, account.gia, { status: 409 });
     const sale = await Sale.findOne({
-      where: { acc_id: account.id, status: 1 },
+      where: buildActiveSaleWhere({ now, accountId: account.id }),
       order: [["id", "DESC"]],
     });
-    const saleIsActive = sale && now >= new Date(sale.batdau) && now <= new Date(sale.ketthuc);
-    const priceAfterSale = saleIsActive
-      ? validateSalePrice(originalPrice, sale.sale_price, { status: 409 })
-      : originalPrice;
+    const pricing = resolveAccountPricing(account, sale, { status: 409 });
+    const originalPrice = pricing.originalPrice;
+    const priceAfterSale = pricing.finalPrice;
 
     const discount = await Discount.findOne({ where: { magiamgia: code, status: 1 } });
     if (!discount) return errorResponse(res, "Mã giảm giá không tồn tại", 404);
@@ -35,7 +34,7 @@ export async function checkDiscount(req, res) {
 
     return successResponse(res, "Áp dụng mã giảm giá thành công", {
       original_price: originalPrice,
-      sale_price: saleIsActive ? priceAfterSale : null,
+      sale_price: pricing.salePrice,
       discount_amount: discountAmount,
       final_price: priceAfterSale - discountAmount,
       discount: {

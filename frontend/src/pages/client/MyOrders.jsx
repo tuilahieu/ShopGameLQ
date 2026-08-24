@@ -13,6 +13,7 @@ export default function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [copiedField, setCopiedField] = useState("");
 
   async function load() {
@@ -31,14 +32,14 @@ export default function MyOrders() {
 
   async function viewOrderDetails(orderId) {
     setModalLoading(true);
+    setDetailError("");
     setIsModalOpen(true);
     try {
       const res = await api.get(`/orders/${orderId}`);
       setSelectedOrder(res.data.data);
     } catch (err) {
       console.error(err);
-      alert("Không thể tải chi tiết đơn hàng");
-      setIsModalOpen(false);
+      setDetailError(err.response?.data?.message || "Không thể tải chi tiết đơn hàng.");
     } finally {
       setModalLoading(false);
     }
@@ -59,44 +60,47 @@ export default function MyOrders() {
   }
 
   return (
-    <div className="page-container">
-      <h1 className="page-title" style={{ marginBottom: "32px" }}>TÀI KHOẢN ĐÃ MUA</h1>
+    <div className="page-container orders-page">
+      <header className="customer-page-heading">
+        <span className="storefront-section-kicker"><Key size={17} aria-hidden="true" /> Tài khoản của bạn</span>
+        <h1>Tài khoản đã mua</h1>
+        <p>Xem lại thông tin đăng nhập và bảo mật tài khoản sau khi nhận.</p>
+      </header>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 0" }}>
-          <div style={{ display: "inline-block", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid var(--accent-color)", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", marginBottom: "16px" }}></div>
-          <div style={{ color: "var(--text-secondary)" }}>Đang tải lịch sử mua nick...</div>
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
+        <div className="customer-loading-state" aria-live="polite">Đang tải tài khoản đã mua…</div>
       ) : loadError ? (
         <div className="empty-state"><p>{loadError}</p><button className="btn-primary" onClick={load}>Tải lại</button></div>
       ) : orders.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 24px", background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
-          <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>Bạn chưa mua tài khoản nào trên hệ thống.</p>
+        <div className="empty-state customer-empty-state">
+          <h2>Chưa có tài khoản đã mua</h2>
+          <p>Chọn một tài khoản phù hợp để bắt đầu.</p>
+          <Link to="/accounts" className="btn-primary">Chọn tài khoản</Link>
         </div>
       ) : (
         <div className="order-cards-container">
           {orders.map((o) => (
-            <div className="order-card-item" key={o.id}>
+            <article className="order-card-item" key={o.id}>
               <div className="order-info-left">
-                <h4>Đơn hàng #{o.id} - Acc #{o.acc_id}</h4>
-                <p style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Calendar size={14} /> Mua ngày: {new Date(o.created_at || o.createdAt).toLocaleString()}
+                <span className="order-number">Đơn hàng #{o.id}</span>
+                <h2>Acc #{o.acc_id}</h2>
+                <p>
+                  <Calendar size={15} aria-hidden="true" /> <time dateTime={o.created_at || o.createdAt}>{new Date(o.created_at || o.createdAt).toLocaleString()}</time>
                 </p>
                 {o.account?.accountType?.name && (
-                  <p style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--cyan-color)" }}>
-                    <ShieldCheck size={14} /> Danh mục: {o.account.accountType.name}
+                  <p>
+                    <ShieldCheck size={15} aria-hidden="true" /> {o.account.accountType.name}
                   </p>
                 )}
               </div>
 
               <div className="order-info-right">
                 <span className="order-price">{Number(o.final_price).toLocaleString()}đ</span>
-                <button onClick={() => viewOrderDetails(o.id)} className="btn-gold" style={{ padding: "8px 16px" }}>
-                  <Key size={14} /> Xem tài khoản
+                <button onClick={() => viewOrderDetails(o.id)} className="btn-primary">
+                  <Key size={16} aria-hidden="true" /> Xem thông tin acc
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -116,37 +120,26 @@ export default function MyOrders() {
               setSelectedOrder(null);
             }} 
             className="btn-primary" 
-            style={{ padding: "8px 16px" }}
           >
-            Đóng lại
+            Đóng
           </button>
         }
       >
         {modalLoading ? (
-          <div style={{ textAlign: "center", padding: "30px 0" }}>
-            <div style={{ display: "inline-block", border: "3px solid rgba(255,255,255,0.1)", borderTop: "3px solid var(--accent-color)", borderRadius: "50%", width: "30px", height: "30px", animation: "spin 1s linear infinite" }}></div>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          </div>
+          <div className="customer-loading-state">Đang tải thông tin acc…</div>
+        ) : detailError ? (
+          <div className="alert-error" role="alert">{detailError}</div>
         ) : selectedOrder ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px", textAlign: "left" }}>
+          <div className="order-detail-content">
             
-            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", padding: "14px", borderRadius: "8px", fontSize: "0.9rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Mã đơn hàng:</span>
-                <span style={{ color: "var(--text-primary)", fontWeight: "600" }}>#{selectedOrder.id}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Mã số tài khoản:</span>
-                <span style={{ color: "var(--text-primary)", fontWeight: "600" }}>#{selectedOrder.acc_id}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Thanh toán:</span>
-                <span style={{ color: "var(--gold-color)", fontWeight: "700" }}>{Number(selectedOrder.final_price).toLocaleString()}đ</span>
-              </div>
-            </div>
+            <dl className="order-detail-summary">
+              <div><dt>Mã đơn hàng</dt><dd>#{selectedOrder.id}</dd></div>
+              <div><dt>Mã tài khoản</dt><dd>#{selectedOrder.acc_id}</dd></div>
+              <div><dt>Đã thanh toán</dt><dd>{Number(selectedOrder.final_price).toLocaleString()}đ</dd></div>
+            </dl>
 
-            <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "16px", borderRadius: "10px" }}>
-              <h4 style={{ color: "var(--text-primary)", marginBottom: "8px", fontWeight: "700" }}>Thông tin tài khoản & mật khẩu:</h4>
+            <div className="order-credentials">
+              <h4>Thông tin đăng nhập</h4>
               
               <div className="login-credentials-box" style={{ marginTop: 0 }}>
                 <div className="credential-item">
@@ -154,10 +147,12 @@ export default function MyOrders() {
                   <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <strong style={{ color: "var(--text-primary)" }}>{selectedOrder.account?.login?.split("|")[0]}</strong>
                     <button 
+                      type="button"
                       onClick={() => handleCopy(selectedOrder.account?.login?.split("|")[0], "user")} 
                       className="copy-badge"
+                      aria-label="Sao chép tên đăng nhập tài khoản game"
                     >
-                      {copiedField === "user" ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedField === "user" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                     </button>
                   </span>
                 </div>
@@ -166,18 +161,20 @@ export default function MyOrders() {
                   <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <strong style={{ color: "var(--text-primary)" }}>{selectedOrder.account?.login?.split("|")[1]}</strong>
                     <button 
+                      type="button"
                       onClick={() => handleCopy(selectedOrder.account?.login?.split("|")[1], "pass")} 
                       className="copy-badge"
+                      aria-label="Sao chép mật khẩu tài khoản game"
                     >
-                      {copiedField === "pass" ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedField === "pass" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                     </button>
                   </span>
                 </div>
               </div>
             </div>
 
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "flex-start", gap: "6px" }}>
-              <Info size={14} style={{ flexShrink: "0", marginTop: "2px", color: "var(--gold-color)" }} />
+            <p className="order-security-note">
+              <Info size={15} aria-hidden="true" />
               <span>
                 <strong>Khuyến nghị bảo mật:</strong> Nếu đăng nhập thành công, vui lòng truy cập trang chủ Garena để liên kết số điện thoại, email bảo mật cá nhân và đổi mật khẩu mới.
               </span>

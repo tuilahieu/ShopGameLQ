@@ -72,7 +72,7 @@ export default function AdminSales() {
     setForm(prev => ({
       ...prev,
       acc_id: acc.id,
-      sale_price: prev.sale_price || acc.gia // Autofill with original price as default starting point
+      sale_price: prev.sale_price,
     }));
     setSelectedAccDetails(acc);
     setIsSelectModalOpen(false);
@@ -83,6 +83,9 @@ export default function AdminSales() {
     if (!form.acc_id) return alert("Vui lòng chọn tài khoản");
     if (!form.sale_price) return alert("Vui lòng nhập giá flash sale");
     if (!form.batdau || !form.ketthuc) return alert("Vui lòng nhập thời gian bắt đầu và kết thúc");
+    if (selectedAccDetails && Number(form.sale_price) >= Number(selectedAccDetails.gia)) {
+      return alert("Giá sale phải thấp hơn giá bán gốc để khách nhìn thấy mức giảm giá.");
+    }
 
     try {
       if (editingId) {
@@ -197,6 +200,9 @@ export default function AdminSales() {
               onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
               required
             />
+            {selectedAccDetails && (
+              <small className="form-hint">Giá gốc: {Number(selectedAccDetails.gia).toLocaleString()}đ · Giá sale phải thấp hơn giá gốc.</small>
+            )}
           </div>
 
           <div className="form-group-premium">

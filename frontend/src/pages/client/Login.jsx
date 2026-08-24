@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../../api/api";
-import { User, Lock, LogIn, AlertCircle } from "lucide-react";
+import { User, Lock, LogIn, AlertCircle, Gamepad2 } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import TurnstileCaptcha from "../../components/TurnstileCaptcha";
 
@@ -67,25 +67,30 @@ export default function Login() {
     <div className="auth-page-wrapper">
       <div className="auth-card">
         <div className="auth-header-logo">
-          <div style={{ fontSize: "2.5rem" }}>🎮</div>
-          <h2>ĐĂNG NHẬP</h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Nhập thông tin tài khoản của bạn để tiếp tục</p>
+          <div className="auth-game-mark"><Gamepad2 size={27} aria-hidden="true" /></div>
+          <h1>Đăng nhập</h1>
+          <p>Vào tài khoản để mua acc và xem đơn hàng.</p>
         </div>
 
         {errorMsg && (
-          <div className="alert-error" style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+          <div className="alert-error auth-alert" role="alert">
             <AlertCircle size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form onSubmit={submit} className="auth-form">
           <div className="form-group-premium">
-            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <User size={14} /> Tên đăng nhập
+            <label htmlFor="login-username" className="auth-field-label">
+              <User size={15} aria-hidden="true" /> Tên đăng nhập
             </label>
             <input
-              placeholder="Nhập username của bạn"
+              id="login-username"
+              name="username"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck="false"
+              placeholder="Nhập tên đăng nhập"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
@@ -93,11 +98,14 @@ export default function Login() {
           </div>
 
           <div className="form-group-premium">
-            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <Lock size={14} /> Mật khẩu
+            <label htmlFor="login-password" className="auth-field-label">
+              <Lock size={15} aria-hidden="true" /> Mật khẩu
             </label>
             <input
+              id="login-password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               maxLength={128}
               placeholder="Nhập mật khẩu"
               value={form.password}
@@ -108,8 +116,8 @@ export default function Login() {
 
           <TurnstileCaptcha onToken={onCaptchaToken} resetRef={captchaResetRef} />
 
-          <button disabled={loading || (captchaEnabled && !captchaToken)} className="btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }}>
-            <LogIn size={16} /> {loading ? "Đang xử lý..." : "Đăng nhập ngay"}
+          <button disabled={loading || (captchaEnabled && !captchaToken)} aria-busy={loading} className="btn-primary auth-submit">
+            <LogIn size={18} aria-hidden="true" /> {loading ? "Đang xử lý…" : "Đăng nhập"}
           </button>
         </form>
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { Flame } from "lucide-react";
+import { ArrowRight, Bell, CreditCard, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
+import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/storefrontAssets";
 
 function SaleCountdown({ endTimes, onExpired }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -56,7 +57,6 @@ export default function Home() {
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [activeCat, setActiveCat] = useState("all");
 
   async function loadHome() {
     setLoadError("");
@@ -84,9 +84,11 @@ export default function Home() {
       .map((account) => new Date(account.sale_detail?.ketthuc).getTime())
       .filter((endTime) => Number.isFinite(endTime));
 
-  const displayedCategories = activeCat === "all"
-    ? data.categories?.filter((cat) => Number(cat.status) === 1) || []
-    : data.categories?.filter((cat) => Number(cat.status) === 1 && cat.id.toString() === activeCat) || [];
+  const categoryNames = new Map((data.categories || []).map((category) => [Number(category.id), category.name]));
+  const featuredTypes = (data.accountTypes || [])
+    .filter((type) => Number(type.status) === 1)
+    .slice(0, 8);
+  const heroImage = resolveStorefrontHero(data.setting?.banner);
 
   if (loading) {
     return (
@@ -109,176 +111,156 @@ export default function Home() {
   }
 
   return (
-    <div className="page-container home" style={{ gap: "24px" }}>
-      {/* Top Banner and Announcement Row */}
-      <div className="home-top-section">
-        {/* Banner Card (Left side) */}
-        <div className="home-banner-card">
-          {data.setting?.banner ? (
-            <SafeImage
-              src={data.setting.banner}
-              alt="Banner cửa hàng"
-              width={1180}
-              height={460}
-              decoding="async"
-              fallbackLabel="Banner chưa sẵn sàng"
-            />
-          ) : (
-            <div className="home-banner-placeholder">
-              <p>{data.setting?.ten_web || "Shop Game"}</p>
-              <small>Kho tài khoản game được cập nhật thường xuyên.</small>
+    <div className="page-container home storefront-home">
+      <div className="storefront-hero-stack">
+        <section className="storefront-hero" aria-labelledby="home-hero-title">
+          <div className="storefront-hero-copy">
+            <span className="storefront-eyebrow">
+              <Gamepad2 size={17} aria-hidden="true" />
+              {Number(data.totalAccounts || 0).toLocaleString()} tài khoản đang bán
+            </span>
+            <h1 id="home-hero-title">
+              <span className="storefront-title-mobile">
+                Còn {Number(data.totalAccounts || 0).toLocaleString()} tài khoản đang bán
+              </span>
+              <span className="storefront-title-desktop">Chọn acc hợp gu, nhận thông tin ngay</span>
+            </h1>
+            <p>Xem rõ hình ảnh, thông tin và giá trước khi mua. Thao tác gọn trên điện thoại.</p>
+            <div className="storefront-hero-actions">
+              <Link to="/accounts" className="btn-primary storefront-primary-cta">
+                Chọn tài khoản <ArrowRight size={19} aria-hidden="true" />
+              </Link>
+              <Link to="/nap-tien" className="btn-outline storefront-secondary-cta">
+                <CreditCard size={18} aria-hidden="true" /> Nạp tiền
+              </Link>
             </div>
-          )}
-        </div>
-
-        {/* Announcement Box (Right side) */}
-        <div className="home-announcement-box">
-          {/* Header */}
-          <div className="announcement-header">
-            Thông báo Tin tức
           </div>
 
-          {/* Content body */}
-          <div className="announcement-body">
-            {data.setting?.thongbao ? (
-              data.setting.thongbao.split("\n").map((line, index) => {
-                const trimmed = line.trim();
-                if (!trimmed) return <div key={index} style={{ height: "4px" }} />;
-                return (
-                  <div 
-                    key={index} 
-                    style={{ 
-                      color: trimmed.startsWith("🔥") || trimmed.startsWith("🍀") || trimmed.startsWith("⚠️") || trimmed.startsWith("❌")
-                        ? "var(--gold-color)" 
-                        : "var(--text-primary)",
-                      fontWeight: trimmed.startsWith("🔥") || trimmed.startsWith("★") ? "bold" : "normal"
-                    }}
-                  >
-                    {trimmed}
-                  </div>
-                );
-              })
+          <div className="storefront-hero-media">
+            {heroImage ? (
+              <SafeImage
+                src={heroImage}
+                alt={`Banner ${data.setting?.ten_web || "cửa hàng tài khoản game"}`}
+                width={1600}
+                height={900}
+                fetchPriority="high"
+                decoding="async"
+                fallbackLabel="Ảnh giới thiệu cửa hàng"
+              />
             ) : (
-              <div style={{ color: "var(--text-muted)", textAlign: "center", marginTop: "20px" }}>
-                Chưa có thông báo.
+              <div className="home-banner-placeholder">
+                <Gamepad2 size={42} aria-hidden="true" />
+                <p>{data.setting?.ten_web || "Shop Game"}</p>
+                <small>Kho tài khoản được cập nhật thường xuyên.</small>
               </div>
             )}
           </div>
-        </div>
+        </section>
+
+        {data.setting?.thongbao && (
+          <details className="storefront-notice" open>
+            <summary>
+              <span><Bell size={18} aria-hidden="true" /> Thông báo cửa hàng</span>
+              <span className="storefront-notice-hint" aria-hidden="true">
+                <span className="storefront-notice-closed-label">Xem</span>
+                <span className="storefront-notice-open-label">Thu gọn</span>
+              </span>
+            </summary>
+            <div className="storefront-notice-content">
+              {data.setting.thongbao.split("\n").filter((line) => line.trim()).map((line, index) => (
+                <p key={index}>{line.trim()}</p>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
 
-      {/* FLASH SALE BLOCK */}
       {data.flashSaleAccounts && data.flashSaleAccounts.length > 0 && (
-        <div className="flash-sale-section">
+        <section className="flash-sale-section storefront-section" aria-labelledby="flash-sale-title">
           <div className="flash-sale-header">
-            <h2 className="flash-sale-title">
+            <h2 className="flash-sale-title" id="flash-sale-title">
               <Flame size={28} style={{ color: "var(--accent-color)", fill: "var(--accent-color)" }} />
-              FLASH SALE
+              Flash sale đang diễn ra
             </h2>
             <SaleCountdown endTimes={saleEndTimes} onExpired={loadHome} />
           </div>
-          <div className="account-grid">
+          <div className={`account-grid flash-sale-account-grid ${data.flashSaleAccounts.length === 1 ? "is-single" : "is-multiple"}`}>
             {data.flashSaleAccounts.map((acc, index) => (
+              <AccountCard key={acc.id} acc={acc} priority={index < 2} className="flash-sale-account-card" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {featuredTypes.length > 0 && (
+        <section className="storefront-section" aria-labelledby="featured-category-title">
+          <div className="storefront-section-heading">
+            <div>
+              <span className="storefront-section-kicker">Bắt đầu nhanh</span>
+              <h2 id="featured-category-title">Danh mục nổi bật</h2>
+            </div>
+            <Link to="/accounts" className="storefront-text-link">Xem tất cả <ArrowRight size={17} aria-hidden="true" /></Link>
+          </div>
+
+          <div className="storefront-category-grid">
+            {featuredTypes.map((type) => {
+              const count = data.accountCountByType?.[type.id] ?? 0;
+              return (
+                <Link to={`/accounts?loai_id=${type.id}`} className="storefront-category-card" key={type.id}>
+                  <div className="storefront-category-media">
+                    <SafeImage
+                      src={resolveAccountTypeImage(type)}
+                      alt={`Danh mục ${type.name}`}
+                      width={960}
+                      height={600}
+                      loading="lazy"
+                      decoding="async"
+                      fallbackLabel="Ảnh danh mục"
+                    />
+                  </div>
+                  <div className="storefront-category-copy">
+                    <span>{categoryNames.get(Number(type.danhmuc_id)) || "Tài khoản game"}</span>
+                    <h3>{type.name}</h3>
+                    <p>{count > 0 ? `${count} tài khoản đang có` : "Tạm hết hàng"}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {(data.latestAccounts || []).length > 0 && (
+        <section className="storefront-section" aria-labelledby="latest-accounts-title">
+          <div className="storefront-section-heading">
+            <div>
+              <span className="storefront-section-kicker">Vừa lên kho</span>
+              <h2 id="latest-accounts-title">Acc mới cập nhật</h2>
+            </div>
+            <Link to="/accounts" className="storefront-text-link">Xem toàn bộ <ArrowRight size={17} aria-hidden="true" /></Link>
+          </div>
+          <div className="account-grid storefront-latest-grid">
+            {data.latestAccounts.map((acc, index) => (
               <AccountCard key={acc.id} acc={acc} priority={index < 2} />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-
-
-      {/* Category Tabs Filter */}
-      {!loading && data.categories?.length > 0 && (
-        <div className="category-tabs-container">
-          <button 
-            className={`category-tab-btn ${activeCat === "all" ? "active" : ""}`}
-            onClick={() => setActiveCat("all")}
-          >
-            Tất cả danh mục
-          </button>
-          {data.categories
-            .filter((cat) => Number(cat.status) === 1)
-            .map((cat) => (
-              <button 
-                key={cat.id}
-                className={`category-tab-btn ${activeCat === cat.id.toString() ? "active" : ""}`}
-                onClick={() => setActiveCat(cat.id.toString())}
-              >
-                {cat.name}
-              </button>
-            ))}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "100px 0", color: "var(--text-secondary)" }}>
-          <div style={{ display: "inline-block", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid var(--accent-color)", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", marginBottom: "16px" }}></div>
-          <div>Đang tải danh mục cửa hàng...</div>
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
-      ) : displayedCategories.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 24px", background: "var(--bg-secondary)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
-          <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>Không tìm thấy danh mục nào khớp.</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
-          {displayedCategories.map((cat) => {
-              // Get accountTypes belonging to this category
-              const relatedTypes = data.accountTypes?.filter(
-                (type) => Number(type.danhmuc_id) === Number(cat.id) && Number(type.status) === 1
-              ) || [];
-
-              return (
-                <section key={cat.id} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                  <div className="section-header" style={{ marginBottom: "4px" }}>
-                    <h2 style={{ textTransform: "uppercase", fontSize: "1.4rem", letterSpacing: "0.5px" }}>
-                      {cat.name}
-                    </h2>
-                    {cat.noidung && (
-                      <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                        {cat.noidung}
-                      </span>
-                    )}
-                  </div>
-
-                  {relatedTypes.length > 0 ? (
-                    <div className="category-grid">
-                      {relatedTypes.map((type) => {
-                        const count = data.accountCountByType?.[type.id] ?? 0;
-                        return (
-                          <Link to={`/accounts?loai_id=${type.id}`} className="category-card" key={type.id}>
-                            <div className="category-thumb-wrapper" style={{ height: "180px" }}>
-                              <SafeImage
-                                src={type.img}
-                                alt={`Ảnh danh mục ${type.name}`}
-                                width={500}
-                                height={260}
-                                loading="lazy"
-                                decoding="async"
-                                fallbackLabel="Chưa có ảnh danh mục"
-                              />
-                            </div>
-                            <div className="category-info">
-                              <h3>{type.name}</h3>
-                              <div className="category-explore">
-                                <span className="explore-count">Còn <strong>{count}</strong> acc</span>
-                                <span className="explore-cta">Xem ngay &rarr;</span>
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ padding: "32px", background: "var(--bg-secondary)", borderRadius: "12px", border: "1px dashed rgba(255,255,255,0.08)", textAlign: "center", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-                      Đang cập nhật các gói tài khoản trong danh mục này...
-                    </div>
-                  )}
-                </section>
-              );
-            })}
-        </div>
-      )}
+      <section className="storefront-trust" aria-label="Cam kết mua hàng">
+        <Link to="/terms" className="storefront-trust-item">
+          <ShieldCheck size={22} aria-hidden="true" />
+          <span><strong>Thông tin rõ ràng</strong><small>Xem kỹ ảnh và mô tả trước khi mua</small></span>
+        </Link>
+        <Link to="/my-orders" className="storefront-trust-item">
+          <Zap size={22} aria-hidden="true" />
+          <span><strong>Giao tự động</strong><small>Nhận acc sau khi thanh toán thành công</small></span>
+        </Link>
+        <Link to="/contact" className="storefront-trust-item">
+          <Headphones size={22} aria-hidden="true" />
+          <span><strong>Cần hỗ trợ?</strong><small>Liên hệ shop khi gặp vấn đề</small></span>
+        </Link>
+      </section>
     </div>
   );
 }

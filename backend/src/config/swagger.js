@@ -83,6 +83,7 @@ export const swaggerSpec = swaggerJsdoc({
             list_img: { type: "string", example: "[\"img1.jpg\", \"img2.jpg\"]" },
             login: { type: "string", description: "Thông tin tài khoản/mật khẩu đăng nhập (chỉ trả về khi xem đơn hàng)", example: "user_game|pass_game" },
             gia: { type: "integer", example: 250000 },
+            sale_price: { type: "integer", nullable: true, example: 200000, description: "Giá sale cấu hình trực tiếp cho account; khác Flash Sale có thời gian" },
             ck: { type: "integer", example: 0, description: "Phần trăm chiết khấu cho CTV" },
             status: { type: "integer", example: 0, description: "0: Đang bán, 1: Đã bán, 2: Đã ẩn" },
             ngaymua: { type: "string", format: "date-time", nullable: true },

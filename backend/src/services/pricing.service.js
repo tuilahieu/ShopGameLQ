@@ -43,6 +43,56 @@ export function validateSalePrice(listPrice, candidatePrice, { status = 400 } = 
 }
 
 /**
+ * A listing sale is configured directly on one account when it is created or
+ * edited. Unlike a Flash Sale it has no campaign window, therefore a value
+ * equal to the normal price is meaningless and rejected at write time.
+ */
+export function validateListingSalePrice(listPrice, candidatePrice, { status = 400 } = {}) {
+  if (candidatePrice === undefined || candidatePrice === null || candidatePrice === "") return null;
+  const list = requirePositiveMoney(listPrice);
+  const sale = validateSalePrice(list, candidatePrice, { status });
+  if (sale >= list) {
+    throw validationError("Giá sale phải thấp hơn giá bán gốc", status);
+  }
+  return sale;
+}
+
+function readDiscountedPrice(listPrice, value) {
+  if (value === undefined || value === null || value === "") return null;
+  const candidate = Number(value);
+  return Number.isSafeInteger(candidate) && candidate > 0 && candidate < listPrice
+    ? candidate
+    : null;
+}
+
+/**
+ * One account can have a permanent listing sale and temporarily join a Flash
+ * Sale campaign. The customer always receives the lower valid price; a Flash
+ * Sale never makes an existing listing discount worse.
+ */
+export function resolveAccountPricing(account, flashSale = null, { status = 409 } = {}) {
+  const originalPrice = validateSalePrice(account?.gia, account?.gia, { status });
+  const candidates = [];
+  const listingSalePrice = readDiscountedPrice(originalPrice, account?.sale_price);
+  const flashSalePrice = readDiscountedPrice(originalPrice, flashSale?.sale_price);
+
+  if (listingSalePrice !== null) candidates.push({ price: listingSalePrice, source: "listing", saleId: null });
+  if (flashSalePrice !== null) candidates.push({ price: flashSalePrice, source: "flash", saleId: flashSale?.id ?? null });
+  candidates.sort((a, b) => a.price - b.price);
+
+  const effectiveSale = candidates[0] || null;
+  return {
+    originalPrice,
+    salePrice: effectiveSale?.price ?? null,
+    finalPrice: effectiveSale?.price ?? originalPrice,
+    isSale: Boolean(effectiveSale),
+    saleSource: effectiveSale?.source ?? null,
+    saleId: effectiveSale?.saleId ?? null,
+    hasFlashSale: flashSalePrice !== null,
+  };
+}
+
+/**
  * The checkout path is deliberately stricter than the database schema. A shop
  * listing can never turn into a zero/negative-value order through a malformed
  * promotion. If free products are needed later, they should have a separate,

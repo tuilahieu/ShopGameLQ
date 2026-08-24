@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, Briefcase, FileText, Phone } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
 import SafeImage from "../components/SafeImage";
@@ -16,12 +16,92 @@ export default function ClientLayout() {
   const [setting, setSetting] = useState(() => {
     return JSON.parse(localStorage.getItem("setting") || "{}");
   });
+  const [flashSaleCount, setFlashSaleCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const drawerTriggerRef = useRef(null);
+  const profileMenuRef = useRef(null);
+  const profileTriggerRef = useRef(null);
 
   // Close drawer upon navigation
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement;
+    const drawer = drawerRef.current;
+    const drawerTrigger = drawerTriggerRef.current;
+    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+    document.body.style.overflow = "hidden";
+    drawer?.querySelector(focusableSelector)?.focus();
+
+    function handleDrawerKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !drawer) return;
+      const focusable = [...drawer.querySelectorAll(focusableSelector)];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleDrawerKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleDrawerKeyDown);
+      if (
+        previouslyFocused instanceof HTMLElement
+        && previouslyFocused !== document.body
+        && document.contains(previouslyFocused)
+      ) {
+        previouslyFocused.focus();
+      } else {
+        drawerTrigger?.focus();
+      }
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return undefined;
+
+    function closeProfileMenu(event) {
+      if (event.key === "Escape") {
+        setIsProfileMenuOpen(false);
+        profileTriggerRef.current?.focus();
+      }
+    }
+
+    function closeOnOutsideClick(event) {
+      if (!profileMenuRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", closeProfileMenu);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("keydown", closeProfileMenu);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
+  }, [isProfileMenuOpen]);
 
   // Periodically refresh profile data to sync wallet balance and details
   async function fetchProfile() {
@@ -50,6 +130,7 @@ export default function ClientLayout() {
           document.title = updatedSetting.ten_web;
         }
       }
+      setFlashSaleCount(Array.isArray(res.data?.data?.flashSaleAccounts) ? res.data.data.flashSaleAccounts.length : 0);
     } catch (err) {
       console.error("Failed to sync settings:", err);
     }
@@ -80,6 +161,7 @@ export default function ClientLayout() {
 
   return (
     <div className="client-page">
+      <a className="skip-link" href="#noi-dung-chinh">Bỏ qua điều hướng</a>
       <header className="client-header">
         <Link to="/" className="client-logo">
           {setting.logo ? (
@@ -113,54 +195,69 @@ export default function ClientLayout() {
           </NavLink>
 
           {token && (
-            <>
-              <NavLink to="/my-orders" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-                <History size={15} />
-                <span>Đã mua</span>
-              </NavLink>
-              <NavLink to="/profile" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-                <User size={15} />
-                <span>Cá nhân</span>
-              </NavLink>
-              {Number(user.level) === 99 && (
-                <NavLink to="/admin" className={({ isActive }) => isActive ? "client-nav-link admin-nav-badge active" : "client-nav-link admin-nav-badge"}>
-                  <span>Admin</span>
-                </NavLink>
-              )}
-              {Number(user.level) === 1 && (
-                <NavLink to="/ctv" className={({ isActive }) => isActive ? "client-nav-link ctv-nav-badge active" : "client-nav-link ctv-nav-badge"}>
-                  <span>CTV</span>
-                </NavLink>
-              )}
-            </>
+            <NavLink to="/my-orders" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+              <History size={15} />
+              <span>Đã mua</span>
+            </NavLink>
           )}
         </nav>
 
         <div className={`client-actions ${token ? "logged-in" : "logged-out"}`}>
-          <ThemeToggle />
           {token ? (
             <>
-              <Link to="/profile" className="wallet-display" title="Số dư tài khoản">
+              <Link
+                to="/profile"
+                className="wallet-display"
+                title="Mở hồ sơ cá nhân"
+                aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+              >
                 <Wallet size={14} style={{ color: "var(--gold-color)", flexShrink: 0 }} />
-                <span>Số dư:</span>
+                <span>Hồ sơ · Số dư:</span>
                 <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
               </Link>
 
-              <Link to="/profile" className="user-badge" title="Tài khoản của bạn">
-                <User size={15} style={{ flexShrink: 0 }} />
-                <span>{user.username}</span>
-              </Link>
-
-              <button onClick={logout} className="logout-link" title="Đăng xuất">
-                <LogOut size={15} />
-              </button>
+              <div className="client-profile-menu" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  ref={profileTriggerRef}
+                  className="user-badge client-profile-trigger"
+                  aria-expanded={isProfileMenuOpen}
+                  aria-controls="desktop-profile-menu"
+                  onClick={() => setIsProfileMenuOpen((open) => !open)}
+                >
+                  <User size={15} aria-hidden="true" />
+                  <span>{user.username || "Tài khoản"}</span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+                {isProfileMenuOpen && (
+                  <div id="desktop-profile-menu" className="client-profile-popover">
+                    <nav aria-label="Tài khoản và quản trị">
+                      <Link to="/profile"><User size={17} aria-hidden="true" /> Hồ sơ cá nhân</Link>
+                      {Number(user.level) === 99 && (
+                        <Link to="/admin" className="role-link"><Shield size={17} aria-hidden="true" /> Quản trị hệ thống</Link>
+                      )}
+                      {Number(user.level) === 1 && (
+                        <Link to="/ctv" className="role-link"><Briefcase size={17} aria-hidden="true" /> Khu vực CTV</Link>
+                      )}
+                    </nav>
+                    <div className="client-profile-theme">
+                      <span>Giao diện</span>
+                      <ThemeToggle />
+                    </div>
+                    <button type="button" className="client-profile-logout" onClick={logout}>
+                      <LogOut size={17} aria-hidden="true" /> Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-outline" style={{ padding: "7px 14px", minHeight: "36px", fontSize: "0.85rem" }}>
+              <ThemeToggle compact={true} />
+              <Link to="/login" className="btn-outline desktop-auth-action">
                 Đăng nhập
               </Link>
-              <Link to="/register" className="btn-primary" style={{ padding: "7px 14px", minHeight: "36px", fontSize: "0.85rem" }}>
+              <Link to="/register" className="btn-primary desktop-auth-action">
                 Đăng ký
               </Link>
             </>
@@ -171,14 +268,6 @@ export default function ClientLayout() {
       {/* Mobile Top Bar (sticky on mobile) */}
       <div className="mobile-topbar">
         <div className="mobile-topbar-left">
-          <button
-            type="button"
-            className="mobile-menu-trigger-btn"
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Mở menu điều hướng"
-          >
-            <Menu size={22} />
-          </button>
           <Link to="/" className="mobile-topbar-logo">
             {setting.logo ? (
               <SafeImage
@@ -196,42 +285,58 @@ export default function ClientLayout() {
         </div>
 
         <div className="mobile-topbar-right">
-          {token ? (
-            <>
-              <Link to="/profile" className="mobile-topbar-wallet">
-                <Wallet size={13} />
-                <span>{Number(user.money || 0).toLocaleString()}đ</span>
-              </Link>
-              <ThemeToggle compact={true} />
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="mobile-topbar-btn primary">Đăng nhập</Link>
-              <ThemeToggle compact={true} />
-            </>
+          {token && (
+            <Link
+              to="/profile"
+              className="mobile-topbar-account"
+              aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+            >
+              <User size={18} aria-hidden="true" />
+              <span className="mobile-topbar-account-copy">
+                <small>Hồ sơ của tôi</small>
+                <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
+              </span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </Link>
           )}
         </div>
       </div>
 
+      {flashSaleCount > 0 && (
+        <Link
+          to={{ pathname: "/", hash: "#flash-sale-title" }}
+          className="flash-sale-ticker"
+          aria-label={`Flash Sale đang diễn ra với ${flashSaleCount} tài khoản giảm giá. Xem ngay.`}
+        >
+          <span className="flash-sale-ticker-viewport">
+            <span className="flash-sale-ticker-track">
+              <span className="flash-sale-ticker-message">
+                <Flame size={16} aria-hidden="true" />
+                FLASH SALE: CÓ {flashSaleCount} TÀI KHOẢN ĐANG GIẢM GIÁ · XEM NGAY
+              </span>
+              <span className="flash-sale-ticker-message" aria-hidden="true">
+                <Flame size={16} />
+                FLASH SALE: CÓ {flashSaleCount} TÀI KHOẢN ĐANG GIẢM GIÁ · XEM NGAY
+              </span>
+            </span>
+          </span>
+        </Link>
+      )}
+
       {/* Mobile Slide-Out Drawer Menu */}
       {isMobileMenuOpen && (
         <div className="mobile-drawer-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
-          <div className="mobile-drawer-content" onClick={(e) => e.stopPropagation()}>
+          <aside
+            id="mobile-account-drawer"
+            ref={drawerRef}
+            className="mobile-drawer-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mobile-drawer-header">
-              <div className="mobile-drawer-brand">
-                {setting.logo ? (
-                  <SafeImage
-                    src={setting.logo}
-                    alt={`Logo ${setting.ten_web || "cửa hàng"}`}
-                    width={120}
-                    height={32}
-                    style={{ maxHeight: "32px" }}
-                    fallbackLabel={setting.ten_web || "ShopGameLiQi"}
-                  />
-                ) : (
-                  <strong>{setting.ten_web || "ShopGameLiQi"}</strong>
-                )}
-              </div>
+              <strong id="mobile-drawer-title">Tài khoản & hỗ trợ</strong>
               <button
                 type="button"
                 className="mobile-drawer-close-btn"
@@ -243,7 +348,7 @@ export default function ClientLayout() {
             </div>
 
             {token ? (
-              <div className="mobile-drawer-usercard">
+              <Link to="/profile" className="mobile-drawer-usercard">
                 <div className="mobile-drawer-avatar">
                   <User size={22} />
                 </div>
@@ -256,41 +361,21 @@ export default function ClientLayout() {
                 </div>
                 {Number(user.level) === 99 && <span className="badge-role admin">Admin</span>}
                 {Number(user.level) === 1 && <span className="badge-role ctv">CTV</span>}
-              </div>
+              </Link>
             ) : (
               <div className="mobile-drawer-guest-actions">
-                <Link to="/login" className="btn-outline" style={{ flex: 1, minHeight: "38px" }}>
+                <Link to="/login" className="btn-outline">
                   Đăng nhập
                 </Link>
-                <Link to="/register" className="btn-primary" style={{ flex: 1, minHeight: "38px" }}>
+                <Link to="/register" className="btn-primary">
                   Đăng ký
                 </Link>
               </div>
             )}
 
             <div className="mobile-drawer-nav">
-              <NavLink to="/" end className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
-                <Home size={18} />
-                <span>Trang chủ</span>
-              </NavLink>
-              
-              <NavLink to="/accounts" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
-                <ListFilter size={18} />
-                <span>Kho tài khoản</span>
-              </NavLink>
-              
-              <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
-                <CreditCard size={18} />
-                <span>Nạp tiền tự động</span>
-              </NavLink>
-
               {token && (
                 <>
-                  <NavLink to="/my-orders" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
-                    <History size={18} />
-                    <span>Lịch sử đã mua</span>
-                  </NavLink>
-                  
                   <NavLink to="/profile" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
                     <User size={18} />
                     <span>Thông tin cá nhân</span>
@@ -337,16 +422,51 @@ export default function ClientLayout() {
                 </button>
               )}
             </div>
-          </div>
+          </aside>
         </div>
       )}
 
-      <main style={{ flexGrow: 1 }}>
+      <main id="noi-dung-chinh" tabIndex={-1} style={{ flexGrow: 1 }}>
         <Outlet />
       </main>
 
       <footer className="client-footer">
-        <div className="footer-grid">
+        <div className="footer-mobile">
+          <div className="footer-mobile-intro">
+            <h2>Cần hỗ trợ mua acc?</h2>
+            <p>Nhắn shop khi cần tư vấn hoặc hỗ trợ đơn hàng.</p>
+          </div>
+
+          <div className="footer-mobile-actions">
+            <a className="footer-mobile-action is-primary" href={zaloLink} target="_blank" rel="noreferrer">
+              <MessageCircle size={19} aria-hidden="true" />
+              <span>
+                <strong>Chat Zalo</strong>
+                <small>{phoneDisplay}</small>
+              </span>
+            </a>
+            <Link className="footer-mobile-action" to="/contact">
+              <Phone size={19} aria-hidden="true" />
+              <span>
+                <strong>Liên hệ shop</strong>
+                <small>Hỗ trợ đơn hàng</small>
+              </span>
+            </Link>
+          </div>
+
+          <div className="footer-mobile-assurance">
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span><strong>MUA ACC MINH BẠCH</strong> · Nhận thông tin sau khi thanh toán thành công.</span>
+          </div>
+
+          <Link className="footer-mobile-policy" to="/terms">
+            <FileText size={18} aria-hidden="true" />
+            <span>Điều khoản &amp; bảo hành</span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </Link>
+        </div>
+
+        <div className="footer-grid footer-desktop">
           <div className="footer-brand">
             <h3>{setting.ten_web || "Shopgameliqi"}</h3>
             <p>Kho tài khoản game với thông tin rõ ràng và hỗ trợ khi cần thiết.</p>
@@ -381,15 +501,20 @@ export default function ClientLayout() {
               </li>
             </ul>
           </div>
+          <div className="footer-links footer-assurance">
+            <h4>MUA ACC MINH BẠCH</h4>
+            <p>Thông tin tài khoản chỉ hiển thị sau khi thanh toán thành công.</p>
+            <Link to="/terms">Xem điều khoản &amp; bảo hành</Link>
+          </div>
         </div>
         <div className="footer-bottom">
-          <div>© {new Date().getFullYear()} {setting.ten_web || "Shopgameliqi"} - Hệ thống bán tài khoản game tự động uy tín.</div>
-          <div>All rights reserved.</div>
+          <div>© {new Date().getFullYear()} {setting.ten_web || "Shopgameliqi"}</div>
+          <div className="footer-bottom-rights">Hệ thống bán tài khoản game tự động · All rights reserved.</div>
         </div>
       </footer>
 
       {/* Floating Mobile Bottom Navigation Dock (Luôn luôn nổi lên trên cùng) */}
-      <nav className="mobile-bottom-nav">
+      <nav className="mobile-bottom-nav" aria-label="Điều hướng chính trên di động">
         <NavLink to="/" end className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
           <Home size={20} />
           <span>Trang chủ</span>
@@ -419,12 +544,15 @@ export default function ClientLayout() {
 
         <button
           type="button"
+          ref={drawerTriggerRef}
           className={`mobile-nav-item ${isMobileMenuOpen ? "active" : ""}`}
           onClick={() => setIsMobileMenuOpen(true)}
-          aria-label="Mở Menu"
+          aria-label={token ? "Mở tài khoản và hỗ trợ" : "Mở menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-account-drawer"
         >
-          <Menu size={20} />
-          <span>Menu</span>
+          {token ? <User size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+          <span>{token ? "Tôi" : "Menu"}</span>
         </button>
       </nav>
     </div>

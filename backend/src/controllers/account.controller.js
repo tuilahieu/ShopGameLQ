@@ -1,4 +1,3 @@
-import { Op } from "sequelize";
 import { sequelize } from "../config/database.js";
 
 import { GameAccount, AccountType, Sale } from "../models/index.js";
@@ -7,7 +6,8 @@ import { successResponse, errorResponse } from "../utils/response.util.js";
 import { encryptCredential } from "../utils/credential.util.js";
 import { requirePositiveMoney } from "../utils/money.util.js";
 import { parsePagination } from "../utils/pagination.util.js";
-import { parsePercentage, parsePositiveId } from "../services/pricing.service.js";
+import { parsePercentage, parsePositiveId, resolveAccountPricing, validateListingSalePrice } from "../services/pricing.service.js";
+import { buildActiveSaleWhere } from "../services/sale.service.js";
 
 function isAdmin(user) {
   return Number(user.level) === 99;
@@ -33,33 +33,29 @@ async function appendSaleInfo(accounts) {
   const accountIds = list.map((item) => item.id);
 
   const sales = await Sale.findAll({
-    where: {
-      acc_id: {
-        [Op.in]: accountIds,
-      },
-      status: 1,
-    },
+    where: buildActiveSaleWhere({ now, accountIds }),
     order: [["id", "DESC"]],
   });
 
   const saleMap = new Map();
 
   for (const sale of sales) {
-    if (now >= new Date(sale.batdau) && now <= new Date(sale.ketthuc)) {
-      if (!saleMap.has(Number(sale.acc_id))) saleMap.set(Number(sale.acc_id), sale);
-    }
+    if (!saleMap.has(Number(sale.acc_id))) saleMap.set(Number(sale.acc_id), sale);
   }
 
   return list.map((account) => {
     const json = account.toJSON();
     const sale = saleMap.get(Number(account.id));
+    const pricing = resolveAccountPricing(json, sale);
 
     return {
       ...json,
-      original_price: Number(account.gia),
-      sale_price: sale ? Number(sale.sale_price) : null,
-      final_price: sale ? Number(sale.sale_price) : Number(account.gia),
-      is_sale: !!sale,
+      original_price: pricing.originalPrice,
+      sale_price: pricing.salePrice,
+      final_price: pricing.finalPrice,
+      is_sale: pricing.isSale,
+      sale_source: pricing.saleSource,
+      is_flash_sale: pricing.hasFlashSale,
     };
   });
 }
@@ -164,6 +160,7 @@ export async function createAccount(req, res) {
       list_img,
       login,
       gia,
+      sale_price,
       ck = 0,
     } = req.body;
 
@@ -175,6 +172,7 @@ export async function createAccount(req, res) {
     if (!price) {
       return errorResponse(res, "Vui lòng nhập giá tài khoản hợp lệ", 400);
     }
+    const listingSalePrice = validateListingSalePrice(price, sale_price);
 
     if (!login) {
       return errorResponse(
@@ -200,6 +198,7 @@ export async function createAccount(req, res) {
       list_img,
       login: encryptCredential(login),
       gia: price,
+      sale_price: listingSalePrice,
       ck: parsePercentage(ck, "Chiết khấu", { min: 0, max: 100 }),
 
       status: 0,
@@ -248,6 +247,7 @@ export async function updateAccount(req, res) {
       list_img,
       login,
       gia,
+      sale_price,
       ck,
     } = req.body;
 
@@ -272,6 +272,11 @@ export async function updateAccount(req, res) {
       await dbTransaction.rollback();
       return errorResponse(res, "Giá tài khoản không hợp lệ", 400);
     }
+    const nextListPrice = updatePrice ?? Number(account.gia);
+    const nextListingSalePrice = validateListingSalePrice(
+      nextListPrice,
+      sale_price === undefined ? account.sale_price : sale_price,
+    );
     const updateData = {
       ...(loai_id !== undefined && { loai_id }),
       ...(thong_tin !== undefined && { thong_tin }),
@@ -280,6 +285,7 @@ export async function updateAccount(req, res) {
       ...(list_img !== undefined && { list_img }),
       ...(login !== undefined && { login: encryptCredential(login) }),
       ...(gia !== undefined && { gia: updatePrice }),
+      ...(sale_price !== undefined || gia !== undefined ? { sale_price: nextListingSalePrice } : {}),
       ...(ck !== undefined && { ck: parsePercentage(ck, "Chiết khấu", { min: 0, max: 100 }) }),
     };
     await account.update(updateData, { transaction: dbTransaction });

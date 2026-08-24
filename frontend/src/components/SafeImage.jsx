@@ -1,5 +1,6 @@
 import { ImageOff } from "lucide-react";
 import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "../utils/mediaUrl";
 
 /**
  * Keeps media slots stable and gives customers/admins a useful state when an
@@ -21,19 +22,18 @@ export default function SafeImage({
   fetchPriority,
   ...props
 }) {
-  const [failed, setFailed] = useState(!src);
+  const resolvedSrc = resolveMediaUrl(src);
+  const [failed, setFailed] = useState(!resolvedSrc);
 
   useEffect(() => {
-    setFailed(!src);
-  }, [src]);
+    setFailed(!resolvedSrc);
+  }, [resolvedSrc]);
 
   if (failed) {
     const fallbackStyle = {
-      width: typeof width === "number" ? `${width}px` : width,
-      height: typeof height === "number" ? `${height}px` : height,
+      ...(width && height ? { aspectRatio: `${width} / ${height}` } : {}),
       ...style,
     };
-    if (fallbackStyle.height === "auto" && height) fallbackStyle.height = `${height}px`;
 
     return (
       <div
@@ -52,7 +52,7 @@ export default function SafeImage({
   return (
     <img
       {...props}
-      src={src}
+      src={resolvedSrc}
       alt={alt || "Hình ảnh"}
       width={width}
       height={height}
