@@ -205,9 +205,9 @@ export default function Profile() {
                       name="newPassword"
                       type="password"
                       autoComplete="new-password"
-                      minLength={10}
-                      maxLength={128}
-                      placeholder="Tối thiểu 10 ký tự"
+                      minLength={4}
+                      maxLength={16}
+                      placeholder="4 - 16 ký tự"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                       required
@@ -221,8 +221,8 @@ export default function Profile() {
                       name="confirmNewPassword"
                       type="password"
                       autoComplete="new-password"
-                      minLength={10}
-                      maxLength={128}
+                      minLength={4}
+                      maxLength={16}
                       placeholder="Xác nhận lại mật khẩu mới"
                       value={passwordForm.confirmNewPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}

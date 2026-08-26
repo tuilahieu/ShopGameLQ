@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Upload, Pencil, Trash2, Plus, X, ShoppingBag } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
+import CurrencyInput from "../../components/CurrencyInput";
 
 const STATUS_MAP = {
   0: { label: "Đang bán", color: "var(--green-color)" },
@@ -251,9 +252,8 @@ export default function AdminAccounts() {
             {/* Giá */}
             <div className="form-group-premium">
               <label>Giá bán (đ) *</label>
-              <input
-                type="number"
-                placeholder="VD: 50000"
+              <CurrencyInput
+                placeholder="VD: 50.000"
                 value={form.gia}
                 onChange={(e) => set("gia", e.target.value)}
               />
@@ -282,13 +282,10 @@ export default function AdminAccounts() {
               </label>
               {form.is_sale && (
                 <>
-                  <input
+                  <CurrencyInput
                     id="listing-sale-price"
                     name="sale_price"
-                    type="number"
-                    inputMode="numeric"
-                    min="1"
-                    placeholder="Ví dụ: 100000"
+                    placeholder="Ví dụ: 100.000"
                     value={form.sale_price}
                     onChange={(e) => set("sale_price", e.target.value)}
                     aria-describedby="listing-sale-price-help"

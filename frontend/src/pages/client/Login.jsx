@@ -90,6 +90,7 @@ export default function Login() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck="false"
+              maxLength={16}
               placeholder="Nhập tên đăng nhập"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -106,7 +107,7 @@ export default function Login() {
               name="password"
               type="password"
               autoComplete="current-password"
-              maxLength={128}
+              maxLength={16}
               placeholder="Nhập mật khẩu"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}

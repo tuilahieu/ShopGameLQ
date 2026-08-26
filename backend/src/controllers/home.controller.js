@@ -1,4 +1,4 @@
-import { Category, AccountType, GameAccount, Setting, Order, User, Transaction, Sale } from "../models/index.js";
+import { Category, AccountType, GameAccount, Setting, Transaction, Sale } from "../models/index.js";
 import { successResponse, errorResponse } from "../utils/response.util.js";
 import { Sequelize } from "sequelize";
 import { buildActiveSaleWhere } from "../services/sale.service.js";
@@ -62,6 +62,7 @@ export async function getHome(req, res) {
           order: [["id", "DESC"]],
           limit: 10,
         }),
+
       ]);
 
     const latestAccountIds = latestAccounts.map((account) => Number(account.id));

@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
+import { LogIn, LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
 import SafeImage from "../components/SafeImage";
+import { resolveMediaUrl } from "../utils/mediaUrl";
 
 export default function ClientLayout() {
   const navigate = useNavigate();
@@ -23,6 +24,19 @@ export default function ClientLayout() {
   const drawerTriggerRef = useRef(null);
   const profileMenuRef = useRef(null);
   const profileTriggerRef = useRef(null);
+
+  // Sync favicon if set
+  useEffect(() => {
+    if (setting.favicon) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = resolveMediaUrl(setting.favicon);
+    }
+  }, [setting.favicon]);
 
   // Close drawer upon navigation
   useEffect(() => {
@@ -285,7 +299,7 @@ export default function ClientLayout() {
         </div>
 
         <div className="mobile-topbar-right">
-          {token && (
+          {token ? (
             <Link
               to="/profile"
               className="mobile-topbar-account"
@@ -298,6 +312,14 @@ export default function ClientLayout() {
               </span>
               <ChevronRight size={16} aria-hidden="true" />
             </Link>
+          ) : (
+            <div className="mobile-topbar-guest">
+              <ThemeToggle compact={true} />
+              <Link to="/login" className="mobile-topbar-login-btn">
+                <LogIn size={14} />
+                <span>Đăng nhập</span>
+              </Link>
+            </div>
           )}
         </div>
       </div>
@@ -336,7 +358,7 @@ export default function ClientLayout() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mobile-drawer-header">
-              <strong id="mobile-drawer-title">Tài khoản & hỗ trợ</strong>
+              <strong id="mobile-drawer-title">Menu & Tài khoản</strong>
               <button
                 type="button"
                 className="mobile-drawer-close-btn"
@@ -348,12 +370,12 @@ export default function ClientLayout() {
             </div>
 
             {token ? (
-              <Link to="/profile" className="mobile-drawer-usercard">
+              <div className="mobile-drawer-usercard">
                 <div className="mobile-drawer-avatar">
                   <User size={22} />
                 </div>
                 <div className="mobile-drawer-userinfo">
-                  <h4>{user.username}</h4>
+                  <h4>{user.username || "Tài khoản"}</h4>
                   <div className="mobile-drawer-balance">
                     <Wallet size={13} style={{ color: "var(--gold-color)" }} />
                     <span>Số dư: <strong>{Number(user.money || 0).toLocaleString()}đ</strong></span>
@@ -361,7 +383,7 @@ export default function ClientLayout() {
                 </div>
                 {Number(user.level) === 99 && <span className="badge-role admin">Admin</span>}
                 {Number(user.level) === 1 && <span className="badge-role ctv">CTV</span>}
-              </Link>
+              </div>
             ) : (
               <div className="mobile-drawer-guest-actions">
                 <Link to="/login" className="btn-outline">
@@ -374,11 +396,31 @@ export default function ClientLayout() {
             )}
 
             <div className="mobile-drawer-nav">
+              <NavLink to="/" end className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                <Home size={18} />
+                <span>Trang chủ</span>
+              </NavLink>
+
+              <NavLink to="/accounts" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                <ListFilter size={18} />
+                <span>Kho tài khoản</span>
+              </NavLink>
+
+              <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                <CreditCard size={18} />
+                <span>Nạp tiền ví</span>
+              </NavLink>
+
               {token && (
                 <>
+                  <NavLink to="/my-orders" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
+                    <History size={18} />
+                    <span>Đơn hàng đã mua</span>
+                  </NavLink>
+
                   <NavLink to="/profile" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
                     <User size={18} />
-                    <span>Thông tin cá nhân</span>
+                    <span>Hồ sơ cá nhân</span>
                   </NavLink>
 
                   {Number(user.level) === 99 && (
@@ -408,6 +450,13 @@ export default function ClientLayout() {
                 <Phone size={18} />
                 <span>Liên hệ hỗ trợ</span>
               </NavLink>
+
+              {token && (
+                <button type="button" className="mobile-drawer-link logout" onClick={logout}>
+                  <LogOut size={18} />
+                  <span>Đăng xuất</span>
+                </button>
+              )}
             </div>
 
             <div className="mobile-drawer-footer">
@@ -417,8 +466,8 @@ export default function ClientLayout() {
               </div>
               {token && (
                 <button type="button" className="mobile-drawer-logout-btn" onClick={logout}>
-                  <LogOut size={16} />
-                  <span>Đăng xuất</span>
+                  <LogOut size={18} />
+                  <span>Đăng xuất tài khoản</span>
                 </button>
               )}
             </div>

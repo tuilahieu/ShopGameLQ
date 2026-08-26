@@ -71,8 +71,8 @@ export async function changePassword(req, res) {
       return errorResponse(res, "Vui lòng nhập đầy đủ thông tin", 400);
     }
 
-    if (typeof newPassword !== "string" || newPassword.length < 10 || newPassword.length > 128) {
-      return errorResponse(res, "Mật khẩu mới phải có từ 10 đến 128 ký tự", 400);
+    if (typeof newPassword !== "string" || newPassword.length < 4 || newPassword.length > 16) {
+      return errorResponse(res, "Mật khẩu mới phải có từ 4 đến 16 ký tự", 400);
     }
 
     const user = await User.findByPk(req.user.id);

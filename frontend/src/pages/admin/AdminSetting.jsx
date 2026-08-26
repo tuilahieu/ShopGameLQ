@@ -99,7 +99,11 @@ export default function AdminSetting() {
 
   async function save() {
     try {
-      await api.put("/admin/setting", form);
+      const res = await api.put("/admin/setting", form);
+      if (res.data?.data) {
+        setForm(res.data.data);
+        localStorage.setItem("setting", JSON.stringify(res.data.data));
+      }
       alert("Đã lưu cấu hình thành công!");
     } catch {
       alert("Lưu thất bại, vui lòng thử lại.");

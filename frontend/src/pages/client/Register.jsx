@@ -85,7 +85,9 @@ export default function Register() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck="false"
-              placeholder="Chọn tên đăng nhập"
+              minLength={4}
+              maxLength={16}
+              placeholder="Tên đăng nhập (4 - 16 ký tự)"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
@@ -101,9 +103,9 @@ export default function Register() {
               name="password"
               type="password"
               autoComplete="new-password"
-              minLength={10}
-              maxLength={128}
-              placeholder="Nhập mật khẩu (tối thiểu 10 ký tự)"
+              minLength={4}
+              maxLength={16}
+              placeholder="Mật khẩu (4 - 16 ký tự)"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
@@ -119,8 +121,8 @@ export default function Register() {
               name="confirmPassword"
               type="password"
               autoComplete="new-password"
-              minLength={10}
-              maxLength={128}
+              minLength={4}
+              maxLength={16}
               placeholder="Nhập lại mật khẩu"
               value={form.confirmPassword}
               onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}

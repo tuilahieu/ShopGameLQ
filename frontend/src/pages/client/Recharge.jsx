@@ -5,6 +5,7 @@ import api from "../../api/api";
 import { updateSEO } from "../../utils/seo";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
+import CurrencyInput from "../../components/CurrencyInput";
 
 export default function Recharge() {
   const token = localStorage.getItem("accessToken");
@@ -193,20 +194,16 @@ export default function Recharge() {
                 </button>
               ))}
             </div>
-            <input
+            <CurrencyInput
               id="recharge-amount"
               name="amount"
-              type="number"
-              inputMode="numeric"
               value={depositAmount}
-              onChange={(e) => setDepositAmount(Number(e.target.value))}
-              min="10000"
-              step="10000"
+              onChange={(e) => setDepositAmount(e.target.value ? Number(e.target.value) : "")}
               placeholder="Tối thiểu 10.000đ"
               aria-describedby="recharge-amount-hint"
             />
-            <small id="recharge-amount-hint" className={depositAmount < 10000 ? "form-hint error" : "form-hint"}>
-              {depositAmount < 10000 ? "Số tiền nạp tối thiểu là 10.000đ" : `Bạn sẽ tạo lệnh nạp ${Number(depositAmount || 0).toLocaleString()}đ`}
+            <small id="recharge-amount-hint" className={Number(depositAmount || 0) < 10000 ? "form-hint error" : "form-hint"}>
+              {Number(depositAmount || 0) < 10000 ? "Số tiền nạp tối thiểu là 10.000đ" : `Bạn sẽ tạo lệnh nạp ${Number(depositAmount || 0).toLocaleString()}đ`}
             </small>
           </div>
         </div>

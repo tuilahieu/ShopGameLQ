@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
+import CurrencyInput from "../../components/CurrencyInput";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -260,7 +261,15 @@ export default function AdminUsers() {
         <div className="admin-adjustment-form">
           <p>Người dùng: <strong>{adjustment?.username}</strong></p>
           <p>Số dư hiện tại: <strong>{Number(adjustment?.balance || 0).toLocaleString()}đ</strong></p>
-          <div className="form-group-premium"><label>Số tiền</label><input type="number" min="1" step="1" autoFocus value={adjustmentForm.amount} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })} placeholder="Ví dụ: 100000" /></div>
+          <div className="form-group-premium">
+            <label>Số tiền (đ)</label>
+            <CurrencyInput
+              autoFocus
+              value={adjustmentForm.amount}
+              onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
+              placeholder="Ví dụ: 100.000"
+            />
+          </div>
           <div className="form-group-premium"><label>Lý do điều chỉnh</label><textarea value={adjustmentForm.description} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, description: e.target.value })} placeholder="Bắt buộc ghi rõ với điều chỉnh thủ công" /></div>
           {adjustmentError && <p className="form-hint error">{adjustmentError}</p>}
           {adjustment?.type === "sub" && <p className="form-hint">Không thể trừ vượt quá số dư hiện tại. Thao tác sẽ được lưu vào lịch sử giao dịch.</p>}

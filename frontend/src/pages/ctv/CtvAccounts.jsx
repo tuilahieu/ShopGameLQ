@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Edit2, EyeOff, Upload, RefreshCw } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
+import CurrencyInput from "../../components/CurrencyInput";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
@@ -162,10 +163,9 @@ export default function CtvAccounts() {
           </div>
 
           <div className="form-group-premium">
-            <label>Giá bán (VND)</label>
-            <input
-              type="number"
-              placeholder="Nhập giá tài khoản"
+            <label>Giá bán (VND) *</label>
+            <CurrencyInput
+              placeholder="VD: 50.000"
               value={form.gia}
               onChange={(e) => setForm({ ...form, gia: e.target.value })}
               required
@@ -185,13 +185,10 @@ export default function CtvAccounts() {
             </label>
             {form.is_sale && (
               <>
-                <input
+                <CurrencyInput
                   id="ctv-listing-sale-price"
                   name="sale_price"
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  placeholder="Nhập giá sale"
+                  placeholder="Ví dụ: 100.000"
                   value={form.sale_price}
                   onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
                   aria-describedby="ctv-listing-sale-price-help"

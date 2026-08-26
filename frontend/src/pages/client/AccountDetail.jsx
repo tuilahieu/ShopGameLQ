@@ -369,6 +369,8 @@ export default function AccountDetail() {
     savingAmount,
     discountLabel: saleDiscountLabel,
   } = getAccountPricing(account);
+  const hasVoucher = Boolean(discountPreview);
+  const voucherAmount = Number(discountPreview?.discount_amount || 0);
   const finalPurchasePrice = Number(discountPreview?.final_price ?? currentPrice);
   const hasInsufficientBalance = userBalance !== null && userBalance < finalPurchasePrice;
 
@@ -435,15 +437,16 @@ export default function AccountDetail() {
           </div>
           <h1 id="account-detail-title">{account.accountType?.name || "Tài khoản game"} #{account.id}</h1>
 
-          <div className={`detail-price-section ${hasSale ? "is-sale" : ""}`}>
+          <div className="detail-price-section">
             <div className="detail-price-heading">
               <span>{hasSale ? "Giá sale" : "Giá bán"}</span>
               {hasSale && <span className="detail-sale-badge">GIẢM {saleDiscountLabel}</span>}
             </div>
             <div className="detail-price-values">
-              {hasSale && <del>{originalPrice.toLocaleString()}đ</del>}
-              <strong>{currentPrice.toLocaleString()}đ</strong>
-              {hasSale && <small>Tiết kiệm {savingAmount.toLocaleString()}đ</small>}
+              {(hasVoucher || hasSale) && (
+                <del>{(hasVoucher ? currentPrice : originalPrice).toLocaleString()}đ</del>
+              )}
+              <strong>{finalPurchasePrice.toLocaleString()}đ</strong>
             </div>
           </div>
 
@@ -493,12 +496,35 @@ export default function AccountDetail() {
                       setDiscountError("");
                     }}
                   />
-                  <button type="button" onClick={applyDiscount} disabled={!discountCode.trim() || discountLoading} className="btn-outline">
-                    {discountLoading ? "Đang kiểm tra" : "Áp dụng"}
-                  </button>
+                  {hasVoucher ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountCode("");
+                        setDiscountPreview(null);
+                        setDiscountError("");
+                      }}
+                      className="btn-outline coupon-remove-btn"
+                    >
+                      Hủy mã
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={applyDiscount}
+                      disabled={!discountCode.trim() || discountLoading}
+                      className="btn-outline"
+                    >
+                      {discountLoading ? "Đang kiểm tra" : "Áp dụng"}
+                    </button>
+                  )}
                 </div>
-                {discountPreview && <small className="form-hint success">Đã áp dụng: giảm {Number(discountPreview.discount_amount).toLocaleString()}đ</small>}
-                {discountError && <small className="form-hint error">{discountError}</small>}
+                {hasVoucher && (
+                  <p className="form-hint success">
+                    ✓ Đã áp dụng: giảm {voucherAmount.toLocaleString()}đ
+                  </p>
+                )}
+                {discountError && <p className="form-hint error">{discountError}</p>}
               </div>
 
               <button onClick={openPurchase} className="btn-primary detail-purchase-main">
@@ -517,12 +543,27 @@ export default function AccountDetail() {
         <div className="mobile-purchase-bar" aria-label="Mua tài khoản">
           <div className="mobile-purchase-price">
             <span className="mobile-purchase-label">
-              {hasSale ? "Giá sale" : "Giá"}
-              {hasSale && <b>GIẢM {saleDiscountLabel}</b>}
+              {hasVoucher ? "Giá sau voucher" : (hasSale ? "Giá sale" : "Giá")}
+              {hasVoucher ? (
+                <b className="mobile-voucher-tag">-{voucherAmount.toLocaleString()}đ</b>
+              ) : hasSale ? (
+                <b>GIẢM {saleDiscountLabel}</b>
+              ) : null}
             </span>
             <span className="mobile-purchase-values">
-              {hasSale && <del>{originalPrice.toLocaleString()}đ</del>}
-              <strong>{currentPrice.toLocaleString()}đ</strong>
+              {hasVoucher ? (
+                <>
+                  <del>{currentPrice.toLocaleString()}đ</del>
+                  <strong>{finalPurchasePrice.toLocaleString()}đ</strong>
+                </>
+              ) : hasSale ? (
+                <>
+                  <del>{originalPrice.toLocaleString()}đ</del>
+                  <strong>{currentPrice.toLocaleString()}đ</strong>
+                </>
+              ) : (
+                <strong>{currentPrice.toLocaleString()}đ</strong>
+              )}
             </span>
           </div>
           <button type="button" className="btn-primary" onClick={openPurchase}>

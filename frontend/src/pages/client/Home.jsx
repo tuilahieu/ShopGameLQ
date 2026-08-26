@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, Bell, CreditCard, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Bell, Clock, CreditCard, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
+import Modal from "../../components/Modal";
+import RecentPurchases from "../../components/RecentPurchases";
 import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/storefrontAssets";
 
 function SaleCountdown({ endTimes, onExpired }) {
@@ -52,23 +54,38 @@ export default function Home() {
     accountTypes: [],
     latestAccounts: [],
     totalAccounts: 0,
-    recentOrders: [],
     flashSaleAccounts: [],
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
 
   async function loadHome() {
     setLoadError("");
     try {
       const res = await api.get("/home");
       setData(res.data.data);
+      if (res.data.data?.setting?.thongbao) {
+        const hideUntil = Number(localStorage.getItem("hide_notice_until") || 0);
+        if (Date.now() >= hideUntil) {
+          setShowNoticeModal(true);
+        }
+      }
     } catch (error) {
       console.error(error);
       setLoadError(error.response?.data?.message || "Không thể tải dữ liệu cửa hàng.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleCloseNotice() {
+    setShowNoticeModal(false);
+  }
+
+  function handleHideNotice1Hour() {
+    localStorage.setItem("hide_notice_until", String(Date.now() + 60 * 60 * 1000));
+    setShowNoticeModal(false);
   }
 
   useEffect(() => {
@@ -158,22 +175,64 @@ export default function Home() {
         </section>
 
         {data.setting?.thongbao && (
-          <details className="storefront-notice" open>
-            <summary>
-              <span><Bell size={18} aria-hidden="true" /> Thông báo cửa hàng</span>
-              <span className="storefront-notice-hint" aria-hidden="true">
-                <span className="storefront-notice-closed-label">Xem</span>
-                <span className="storefront-notice-open-label">Thu gọn</span>
-              </span>
-            </summary>
-            <div className="storefront-notice-content">
+          <button
+            type="button"
+            className="storefront-notice-trigger"
+            onClick={() => setShowNoticeModal(true)}
+          >
+            <div className="storefront-notice-trigger-left">
+              <Bell size={16} aria-hidden="true" />
+              <span>Thông báo cửa hàng</span>
+            </div>
+            <span className="storefront-notice-trigger-right">
+              Xem chi tiết &gt;
+            </span>
+          </button>
+        )}
+
+        {/* Simulated recent-purchase feed; it deliberately does not query order records. */}
+        <RecentPurchases />
+      </div>
+
+      {/* Store Notice Popup Modal */}
+      {data.setting?.thongbao && (
+        <Modal
+          isOpen={showNoticeModal}
+          onClose={handleCloseNotice}
+          title="Thông báo cửa hàng"
+          className="notice-popup-modal"
+          footer={
+            <div className="notice-popup-footer">
+              <button
+                type="button"
+                className="btn-outline notice-snooze-btn"
+                onClick={handleHideNotice1Hour}
+              >
+                <Clock size={15} />
+                <span>Tắt trong 1h</span>
+              </button>
+              <button
+                type="button"
+                className="btn-primary notice-dismiss-btn"
+                onClick={handleCloseNotice}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          }
+        >
+          <div className="notice-popup-body">
+            <div className="notice-popup-badge">
+              <Bell size={26} />
+            </div>
+            <div className="notice-popup-lines">
               {data.setting.thongbao.split("\n").filter((line) => line.trim()).map((line, index) => (
                 <p key={index}>{line.trim()}</p>
               ))}
             </div>
-          </details>
-        )}
-      </div>
+          </div>
+        </Modal>
+      )}
 
       {data.flashSaleAccounts && data.flashSaleAccounts.length > 0 && (
         <section className="flash-sale-section storefront-section" aria-labelledby="flash-sale-title">

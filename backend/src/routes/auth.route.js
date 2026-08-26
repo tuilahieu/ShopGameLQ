@@ -8,6 +8,7 @@ import {
 } from "../controllers/auth.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { captchaMiddleware } from "../middlewares/captcha.middleware.js";
+import { blockAdminUsername } from "../middlewares/username.middleware.js";
 import { createRateLimit } from "../config/http.js";
 
 const router = Router();
@@ -42,7 +43,7 @@ const authRateLimit = createRateLimit({ windowMs: 15 * 60_000, max: 10 });
  *       200:
  *         description: Đăng ký thành công
  */
-router.post("/register", authRateLimit, captchaMiddleware, register);
+router.post("/register", authRateLimit, blockAdminUsername, captchaMiddleware, register);
 /**
  * @swagger
  * /api/auth/login:

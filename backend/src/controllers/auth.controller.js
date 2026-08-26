@@ -26,17 +26,17 @@ export async function register(req, res) {
       });
     }
 
-    if (!/^[A-Za-z0-9_.-]{4,50}$/.test(username)) {
+    if (!/^[A-Za-z0-9_.-]{4,16}$/.test(username)) {
       return res.status(400).json({
         success: false,
-        message: "Tên đăng nhập dài 4-50 ký tự và chỉ gồm chữ, số, '.', '_' hoặc '-'",
+        message: "Tên đăng nhập từ 4 đến 16 ký tự và chỉ gồm chữ, số, '.', '_' hoặc '-'",
       });
     }
 
-    if (typeof password !== "string" || password.length < 10 || password.length > 128) {
+    if (typeof password !== "string" || password.length < 4 || password.length > 16) {
       return res.status(400).json({
         success: false,
-        message: "Mật khẩu phải có từ 10 đến 128 ký tự",
+        message: "Mật khẩu phải có từ 4 đến 16 ký tự",
       });
     }
 
