@@ -108,15 +108,27 @@ export default function AdminAccountTypes() {
     });
   }
 
-  async function remove(id) {
-    if (!window.confirm("Ẩn loại tài khoản này khỏi phía khách hàng? Các dữ liệu đã có vẫn được lưu giữ.")) return;
+  async function hide(id) {
+    if (!window.confirm("Ẩn loại tài khoản này khỏi phía khách hàng? Dữ liệu vẫn được giữ lại.")) return;
     try {
-      const res = await api.delete(`/account-types/${id}`);
-      alert(res.data?.message || "Xóa loại tài khoản thành công");
+      const res = await api.patch(`/account-types/${id}/hide`);
+      alert(res.data?.message || "Đã ẩn loại tài khoản");
       load();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Lỗi xóa loại tài khoản");
+      alert(err.response?.data?.message || "Lỗi ẩn loại tài khoản");
+    }
+  }
+
+  async function remove(id) {
+    if (!window.confirm("XÓA HẲN loại tài khoản này? Chỉ xóa được khi không còn tài khoản game.")) return;
+    try {
+      const res = await api.delete(`/account-types/${id}`);
+      alert(res.data?.message || "Đã xóa hẳn loại tài khoản");
+      load();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Lỗi xóa hẳn loại tài khoản");
     }
   }
 
@@ -294,8 +306,13 @@ export default function AdminAccountTypes() {
                         <button onClick={() => startEdit(t)} className="small-btn">
                           Sửa
                         </button>
+                        {Number(t.status) === 1 && (
+                          <button onClick={() => hide(t.id)} className="small-btn">
+                            Ẩn
+                          </button>
+                        )}
                         <button onClick={() => remove(t.id)} className="small-btn danger-btn">
-                          Xóa
+                          Xóa hẳn
                         </button>
                       </div>
                     </td>

@@ -6,6 +6,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  hideCategory,
 } from "../controllers/category.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -157,5 +158,6 @@ router.put("/:id", authMiddleware, adminMiddleware, updateCategory);
  *         description: Danh mục không tồn tại
  */
 router.delete("/:id", authMiddleware, adminMiddleware, deleteCategory);
+router.patch("/:id/hide", authMiddleware, adminMiddleware, hideCategory);
 
 export default router;

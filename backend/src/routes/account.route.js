@@ -6,6 +6,7 @@ import {
   createAccount,
   updateAccount,
   deleteAccount,
+  hideAccount,
 } from "../controllers/account.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -133,5 +134,6 @@ router.put("/:id", authMiddleware, updateAccount);
  *           type: integer
  */
 router.delete("/:id", authMiddleware, deleteAccount);
+router.patch("/:id/hide", authMiddleware, hideAccount);
 
 export default router;

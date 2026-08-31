@@ -71,6 +71,6 @@ Also required for a serious production shop:
 - Monitoring/alerting (structured logs to a collector, error tracking, DB/queue metrics), daily encrypted backups, restore drills, and a tested incident runbook.
 - Privacy/terms/age policy, retention/deletion policy, fraud controls, and a PCI-safe payment-provider integration.
 
-## Safety behaviour changed deliberately
+## Deletion behaviour
 
-Deleting a category, account type, or unsold account now hides it instead of cascading deletion. A sold account cannot be deleted. This preserves order and financial audit history. Public listing endpoints continue to expose only active entries.
+Admin `DELETE` actions permanently remove categories, account types, and accounts only when no dependent data would be orphaned. Accounts with an order are rejected. The separate `PATCH /:id/hide` actions set status to hidden and preserve the record. CTV users can hide their own unsold listings but cannot permanently delete them. Public listing endpoints continue to expose only active entries.

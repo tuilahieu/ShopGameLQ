@@ -59,15 +59,27 @@ export default function AdminCategories() {
     });
   }
 
-  async function remove(id) {
-    if (!window.confirm("Ẩn danh mục này khỏi phía khách hàng? Các dữ liệu đã có vẫn được lưu giữ.")) return;
+  async function hide(id) {
+    if (!window.confirm("Ẩn danh mục này khỏi phía khách hàng? Dữ liệu vẫn được giữ lại.")) return;
     try {
-      const res = await api.delete(`/categories/${id}`);
-      alert(res.data?.message || "Xóa danh mục thành công");
+      const res = await api.patch(`/categories/${id}/hide`);
+      alert(res.data?.message || "Đã ẩn danh mục");
       load();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Lỗi xóa danh mục");
+      alert(err.response?.data?.message || "Lỗi ẩn danh mục");
+    }
+  }
+
+  async function remove(id) {
+    if (!window.confirm("XÓA HẲN danh mục này? Chỉ xóa được khi không còn loại tài khoản.")) return;
+    try {
+      const res = await api.delete(`/categories/${id}`);
+      alert(res.data?.message || "Đã xóa hẳn danh mục");
+      load();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Lỗi xóa hẳn danh mục");
     }
   }
 
@@ -169,8 +181,13 @@ export default function AdminCategories() {
                       <button onClick={() => startEdit(cat)} className="small-btn">
                         Sửa
                       </button>
+                      {Number(cat.status) === 1 && (
+                        <button onClick={() => hide(cat.id)} className="small-btn">
+                          Ẩn
+                        </button>
+                      )}
                       <button onClick={() => remove(cat.id)} className="small-btn danger-btn">
-                        Xóa
+                        Xóa hẳn
                       </button>
                     </div>
                   </td>

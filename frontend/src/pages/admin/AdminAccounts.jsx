@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
-import { Upload, Pencil, Trash2, Plus, X, ShoppingBag } from "lucide-react";
+import { Upload, Pencil, Trash2, Plus, X, ShoppingBag, EyeOff } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
 
@@ -152,25 +152,35 @@ export default function AdminAccounts() {
     }
   }
 
+  async function hideAccount(id) {
+    if (!window.confirm("Ẩn tài khoản #" + id + " khỏi danh sách bán? Dữ liệu vẫn được giữ lại.")) return;
+    try {
+      await api.patch(`/accounts/${id}/hide`);
+      loadData();
+    } catch (error) {
+      alert(error.response?.data?.message || "Lỗi ẩn tài khoản");
+    }
+  }
+
   async function deleteAccount(id) {
-    if (!window.confirm("Ẩn tài khoản #" + id + " khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.")) return;
+    if (!window.confirm("XÓA HẲN tài khoản #" + id + "? Không thể hoàn tác và account đã có order sẽ bị từ chối.")) return;
     try {
       await api.delete(`/accounts/${id}`);
       loadData();
     } catch (error) {
-      alert(error.response?.data?.message || "Lỗi xóa tài khoản");
+      alert(error.response?.data?.message || "Lỗi xóa hẳn tài khoản");
     }
   }
 
   async function deleteSelected() {
     if (selected.size === 0) return;
-    if (!window.confirm(`Ẩn ${selected.size} tài khoản đã chọn khỏi danh sách bán? Dữ liệu đơn hàng vẫn được lưu giữ.`)) return;
+    if (!window.confirm(`XÓA HẲN ${selected.size} tài khoản đã chọn? Tài khoản đã có order sẽ không bị xóa.`)) return;
     let ok = 0, fail = 0;
     for (const id of selected) {
       try { await api.delete(`/accounts/${id}`); ok++; }
       catch { fail++; }
     }
-    alert(fail > 0 ? `Đã ẩn ${ok}/${selected.size}, ${fail} lỗi.` : `Đã ẩn ${ok} tài khoản.`);
+    alert(fail > 0 ? `Đã xóa hẳn ${ok}/${selected.size}, ${fail} lỗi.` : `Đã xóa hẳn ${ok} tài khoản.`);
     loadData();
   }
 
@@ -475,7 +485,7 @@ export default function AdminAccounts() {
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 16px", fontSize: "0.85rem" }}
               onClick={deleteSelected}
             >
-              <Trash2 size={14} /> Xóa {selected.size} mục
+              <Trash2 size={14} /> Xóa hẳn {selected.size} mục
             </button>
           </div>
         </div>
@@ -592,6 +602,11 @@ export default function AdminAccounts() {
                       <button className="danger-btn" onClick={() => deleteAccount(acc.id)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px" }}>
                         <Trash2 size={12} /> Xóa
                       </button>
+                      {Number(acc.status) !== 1 && (
+                        <button className="small-btn" onClick={() => hideAccount(acc.id)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px" }}>
+                          <EyeOff size={12} /> Ẩn
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

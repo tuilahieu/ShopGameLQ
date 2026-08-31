@@ -7,6 +7,7 @@ import {
   createAccountType,
   updateAccountType,
   deleteAccountType,
+  hideAccountType,
 } from "../controllers/accountType.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -220,5 +221,6 @@ router.put("/:id", authMiddleware, adminMiddleware, updateAccountType);
  *         description: Không tìm thấy loại tài khoản
  */
 router.delete("/:id", authMiddleware, adminMiddleware, deleteAccountType);
+router.patch("/:id/hide", authMiddleware, adminMiddleware, hideAccountType);
 
 export default router;

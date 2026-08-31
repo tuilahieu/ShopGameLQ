@@ -206,13 +206,29 @@ export async function deleteAccountType(req, res) {
       return errorResponse(res, "Không tìm thấy loại tài khoản", 404);
     }
 
-    // Preserve all existing listings and their order history; hide only the catalog entry.
-    await accountType.update({ status: 0 });
+    const accountCount = await GameAccount.count({ where: { loai_id: id } });
+    if (accountCount > 0) {
+      return errorResponse(res, "Không thể xóa loại còn tài khoản game. Hãy xóa các tài khoản trước.", 409);
+    }
 
-    return successResponse(res, "Đã ẩn loại tài khoản khỏi phía khách hàng");
+    await accountType.destroy();
+
+    return successResponse(res, "Đã xóa hẳn loại tài khoản");
   } catch (error) {
     console.error("DELETE ACCOUNT TYPE ERROR:", error);
 
+    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+  }
+}
+
+export async function hideAccountType(req, res) {
+  try {
+    const accountType = await AccountType.findByPk(req.params.id);
+    if (!accountType) return errorResponse(res, "Không tìm thấy loại tài khoản", 404);
+    await accountType.update({ status: 0 });
+    return successResponse(res, "Đã ẩn loại tài khoản khỏi phía khách hàng");
+  } catch (error) {
+    console.error("HIDE ACCOUNT TYPE ERROR:", error);
     return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
   }
 }

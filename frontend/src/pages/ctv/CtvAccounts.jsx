@@ -109,7 +109,7 @@ export default function CtvAccounts() {
   async function handleDelete(id) {
     if (!window.confirm("Bạn có chắc chắn muốn ẩn tài khoản này khỏi shop?")) return;
     try {
-      await api.delete(`/accounts/${id}`);
+      await api.patch(`/accounts/${id}/hide`);
       alert("Ẩn tài khoản thành công!");
       loadData(pagination.page);
     } catch (err) {

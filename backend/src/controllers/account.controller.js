@@ -1,6 +1,6 @@
 import { sequelize } from "../config/database.js";
 
-import { GameAccount, AccountType, Sale } from "../models/index.js";
+import { GameAccount, AccountType, Sale, Order } from "../models/index.js";
 
 import { successResponse, errorResponse } from "../utils/response.util.js";
 import { encryptCredential } from "../utils/credential.util.js";
@@ -314,32 +314,58 @@ export async function deleteAccount(req, res) {
       return errorResponse(res, "Không tìm thấy tài khoản", 404);
     }
 
-    const admin = isAdmin(req.user);
-    const owner = isAccountOwner(req.user, account);
-
-    if (!admin && !owner) {
+    if (!isAdmin(req.user)) {
       await dbTransaction.rollback();
-      return errorResponse(res, "Bạn không có quyền xóa tài khoản này", 403);
+      return errorResponse(res, "Chỉ admin mới được xóa hẳn tài khoản", 403);
     }
 
-    if (!admin && Number(account.status) !== 0) {
+    const order = await Order.findOne({ where: { acc_id: id }, transaction: dbTransaction, lock: true });
+    if (order) {
       await dbTransaction.rollback();
-      return errorResponse(res, "Bạn chỉ được xóa tài khoản đang bán", 403);
+      return errorResponse(res, "Không thể xóa tài khoản đã có đơn hàng", 409);
     }
-
-    // Financial and fulfilment records are immutable. Hide an unsold listing instead of deleting history.
-    if (Number(account.status) === 1) {
-      await dbTransaction.rollback();
-      return errorResponse(res, "Không thể xóa tài khoản đã bán; dữ liệu đơn hàng phải được lưu giữ", 409);
-    }
-    await account.update({ status: 2 }, { transaction: dbTransaction });
+    await Sale.destroy({ where: { acc_id: id }, transaction: dbTransaction });
+    await account.destroy({ transaction: dbTransaction });
     await dbTransaction.commit();
     finished = true;
 
-    return successResponse(res, "Đã ẩn tài khoản khỏi danh sách bán");
+    return successResponse(res, "Đã xóa hẳn tài khoản");
   } catch (error) {
     if (!finished) await dbTransaction.rollback();
     console.error("DELETE ACCOUNT ERROR:", error);
+    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+  }
+}
+
+export async function hideAccount(req, res) {
+  const dbTransaction = await sequelize.transaction();
+  let finished = false;
+  try {
+    const id = parsePositiveId(req.params.id, "account_id");
+    const account = await GameAccount.findByPk(id, { transaction: dbTransaction, lock: true });
+    if (!account) {
+      await dbTransaction.rollback();
+      return errorResponse(res, "Không tìm thấy tài khoản", 404);
+    }
+
+    const admin = isAdmin(req.user);
+    const owner = isAccountOwner(req.user, account);
+    if (!admin && !owner) {
+      await dbTransaction.rollback();
+      return errorResponse(res, "Bạn không có quyền ẩn tài khoản này", 403);
+    }
+    if (!admin && Number(account.status) === 1) {
+      await dbTransaction.rollback();
+      return errorResponse(res, "Bạn không thể ẩn tài khoản đã bán", 403);
+    }
+
+    await account.update({ status: 2 }, { transaction: dbTransaction });
+    await dbTransaction.commit();
+    finished = true;
+    return successResponse(res, "Đã ẩn tài khoản khỏi danh sách bán");
+  } catch (error) {
+    if (!finished) await dbTransaction.rollback();
+    console.error("HIDE ACCOUNT ERROR:", error);
     return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
   }
 }

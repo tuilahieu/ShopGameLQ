@@ -109,13 +109,29 @@ export async function deleteCategory(req, res) {
       return errorResponse(res, "Không tìm thấy danh mục", 404);
     }
 
-    // Do not cascade-delete accounts/orders: these are business and audit records.
-    await category.update({ status: 0 });
+    const childCount = await AccountType.count({ where: { danhmuc_id: id } });
+    if (childCount > 0) {
+      return errorResponse(res, "Không thể xóa danh mục còn loại tài khoản. Hãy xóa các loại tài khoản trước.", 409);
+    }
 
-    return successResponse(res, "Đã ẩn danh mục khỏi phía khách hàng");
+    await category.destroy();
+
+    return successResponse(res, "Đã xóa hẳn danh mục");
   } catch (error) {
     console.error("DELETE CATEGORY ERROR:", error);
 
+    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+  }
+}
+
+export async function hideCategory(req, res) {
+  try {
+    const category = await Category.findByPk(req.params.id);
+    if (!category) return errorResponse(res, "Không tìm thấy danh mục", 404);
+    await category.update({ status: 0 });
+    return successResponse(res, "Đã ẩn danh mục khỏi phía khách hàng");
+  } catch (error) {
+    console.error("HIDE CATEGORY ERROR:", error);
     return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
   }
 }
