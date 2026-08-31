@@ -1,7 +1,9 @@
+const path = require("node:path");
+
 module.exports = {
   apps: [{
     name: "shoplienquan-api",
-    cwd: "/var/www/SHOPLIENQUAN/backend",
+    cwd: path.resolve(__dirname, "../../backend"),
     script: "src/server.js",
     instances: 1,
     exec_mode: "fork",
