@@ -1,0 +1,38 @@
+# Copy to /etc/nginx/sites-available/shoplienquan and replace the domains.
+# The frontend build is served by Nginx; Node only serves the API.
+
+server {
+    listen 80;
+    server_name shop.example.com;
+
+    root /var/www/SHOPLIENQUAN/frontend/dist;
+    index index.html;
+
+    client_max_body_size 8m;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Request-Id $request_id;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Required for BrowserRouter deep links.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Put the SePay webhook on the API hostname, or route this path to the same
+# upstream if using a separate api.example.com server block:
+# https://api.example.com/api/payments/sepay/webhook

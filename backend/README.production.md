@@ -60,7 +60,7 @@ Start `npm run migrate` as a release step, then `npm start`. `/healthz` is a liv
 
 ## Launch blockers / features still required
 
-The repository has no verified payment-provider webhook implementation despite the UI describing automated deposits. Before accepting money, implement a provider-specific webhook with signature verification, a unique provider event ID, idempotent crediting through `wallet.service.js`, reconciliation, and manual review tooling. Never accept an amount/username from the browser as proof of payment.
+The repository now contains a SePay webhook with raw-body HMAC verification, a unique provider event ID, and idempotent wallet crediting. It still needs a staging/live end-to-end verification with SePay, reconciliation alerts, and a manual review procedure before accepting money. Never accept an amount/username from the browser as proof of payment.
 
 Also required for a serious production shop:
 

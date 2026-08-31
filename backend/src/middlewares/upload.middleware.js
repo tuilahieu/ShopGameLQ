@@ -1,4 +1,5 @@
 import multer from "multer";
+import crypto from "node:crypto";
 import path from "path";
 import fs from "fs";
 import { env } from "../config/env.js";
@@ -26,7 +27,7 @@ const storage = multer.diskStorage({
     // Never preserve the untrusted original extension. A client may claim an
     // image MIME type for an .html file; serving it as .html would allow stored
     // XSS on the shop's own origin.
-    cb(null, `${Date.now()}-${Math.random().toString(36).substring(2)}${extensionByMime[file.mimetype]}`);
+    cb(null, `${Date.now()}-${crypto.randomBytes(12).toString("hex")}${extensionByMime[file.mimetype]}`);
   },
 });
 
