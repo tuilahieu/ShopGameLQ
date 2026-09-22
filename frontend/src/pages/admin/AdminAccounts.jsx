@@ -18,6 +18,15 @@ function buildDefaultLogin(zalo) {
   return `liên hệ zalo ${zalo || "admin"} | để được hỗ trợ`;
 }
 
+function validImageUrl(value) {
+  if (!value || /^\/?uploads\//i.test(value)) return true;
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminAccounts() {
   const [accounts, setAccounts] = useState([]);
   const [types, setTypes] = useState([]);
@@ -103,10 +112,12 @@ export default function AdminAccounts() {
   async function saveAccount() {
     if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản!");
     if (!form.gia) return alert("Vui lòng nhập giá bán!");
+    const imageUrl = form.img.trim();
+    if (!validImageUrl(imageUrl)) return alert("URL ảnh phải bắt đầu bằng http:// hoặc https://.");
     if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
       return alert("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
     }
-    const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
+    const payload = { ...form, img: imageUrl, sale_price: form.is_sale ? form.sale_price : null };
     delete payload.is_sale;
     delete payload.status;
 
@@ -342,6 +353,15 @@ export default function AdminAccounts() {
                   </button>
                 )}
               </div>
+              <input
+                type="text"
+                inputMode="url"
+                aria-label="URL ảnh đại diện"
+                placeholder="Hoặc dán URL ảnh, ví dụ https://example.com/anh.jpg"
+                value={form.img}
+                onChange={(e) => set("img", e.target.value)}
+                style={{ marginTop: "12px" }}
+              />
               {form.img && (
                 <div style={{ marginTop: "12px" }}>
                   <SafeImage
