@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { sequelize } from "./config/database.js";
 import { env } from "./config/env.js";
+import { runMigrations } from "./database/run-migrations.js";
 import "./models/index.js";
 
 const app = createApp();
@@ -15,8 +16,7 @@ async function shutdown(signal) {
 
 async function start() {
   try {
-    await sequelize.authenticate();
-    // Schema is changed only by `npm run migrate`; never sync models at application boot.
+    await runMigrations();
     server = app.listen(env.port, () => {
       console.info(JSON.stringify({ level: "info", event: "server_started", port: env.port, environment: env.nodeEnv }));
     });

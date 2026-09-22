@@ -10,7 +10,7 @@ Game-account login data is AES-256-GCM encrypted. The application decrypts it on
 
 ## Database and migration policy
 
-Do not run `sequelize.sync()` in any environment with real data. Apply schema changes once, before deployment:
+Do not run `sequelize.sync()` in any environment with real data. The backend applies pending migrations before it starts listening for requests. For production, run them as a release step first so schema changes finish before the application restart:
 
 ```sh
 npm ci
@@ -56,7 +56,7 @@ proxy_pass http://127.0.0.1:3000;
 
 Never set `TRUST_PROXY=true` if users can connect directly to Node, and do not trust a broad public range. With Cloudflare or another CDN, configure Nginx's real-IP module using that provider's published proxy CIDRs before forwarding the request.
 
-Start `npm run migrate` as a release step, then `npm start`. `/healthz` is a liveness endpoint and `/readyz` checks MySQL for traffic gating. The supplied Dockerfile runs as the non-root `node` user; mount object storage instead of its local `uploads` directory for replicas.
+Run `npm run migrate` as a release step, then `npm start`. Startup also applies any pending migrations before listening. `/healthz` is a liveness endpoint and `/readyz` checks MySQL for traffic gating. The supplied Dockerfile runs as the non-root `node` user; mount object storage instead of its local `uploads` directory for replicas.
 
 ## Launch blockers / features still required
 
