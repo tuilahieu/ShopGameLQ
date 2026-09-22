@@ -4,6 +4,7 @@ import App from "./App";
 import "./style.css";
 import "./foundation.css";
 import "./storefront.css";
+import "./ui-audit.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

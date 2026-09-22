@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Gamepad2, ShoppingBag, Eye, EyeOff, CheckSquare } from "lucide-react";
+import { PageHeading, StatCard, StatusMessage } from "../../components/Ui";
 
 export default function CtvDashboard() {
   const [data, setData] = useState(null);
@@ -21,53 +22,24 @@ export default function CtvDashboard() {
   }, []);
 
   if (loading) {
-    return <div className="empty-state">Đang tải số liệu...</div>;
+    return <StatusMessage title="Đang tải số liệu…" />;
   }
 
   if (!data) {
-    return <div className="empty-state">Không thể tải dữ liệu thống kê. Vui lòng tải lại trang.</div>;
+    return <StatusMessage title="Không thể tải dữ liệu thống kê" description="Vui lòng tải lại trang để thử lại." />;
   }
 
   return (
     <div>
-      <h1 className="page-title">Tổng quan cộng tác viên</h1>
+      <PageHeading description="Theo dõi tài khoản đang bán và các đơn hàng của bạn.">Tổng quan cộng tác viên</PageHeading>
 
       <div className="card-grid">
-        <div className="dashboard-card">
-          <h3>Tổng accounts đăng</h3>
-          <strong>{data.totalAccounts}</strong>
-          <Gamepad2 className="card-icon" size={36} style={{ color: "var(--cyan-color)" }} />
-        </div>
-
-        <div className="dashboard-card">
-          <h3>Accounts đang bán</h3>
-          <strong style={{ color: "var(--green-color)" }}>{data.sellingAccounts}</strong>
-          <Eye className="card-icon" size={36} style={{ color: "var(--green-color)" }} />
-        </div>
-
-        <div className="dashboard-card">
-          <h3>Accounts đã bán</h3>
-          <strong style={{ color: "var(--gold-color)" }}>{data.soldAccounts}</strong>
-          <CheckSquare className="card-icon" size={36} style={{ color: "var(--gold-color)" }} />
-        </div>
-
-        <div className="dashboard-card">
-          <h3>Accounts đã ẩn</h3>
-          <strong>{data.hiddenAccounts}</strong>
-          <EyeOff className="card-icon" size={36} style={{ color: "var(--text-secondary)" }} />
-        </div>
-
-        <div className="dashboard-card">
-          <h3>Tổng tiền đã bán</h3>
-          <strong style={{ color: "var(--gold-color)" }}>{Number(data.totalEarned || 0).toLocaleString()}đ</strong>
-          <ShoppingBag className="card-icon" size={36} style={{ color: "var(--accent-color)" }} />
-        </div>
-
-        <div className="dashboard-card">
-          <h3>Đơn hàng đã bán</h3>
-          <strong>{data.totalOrders} đơn hàng</strong>
-          <ShoppingBag className="card-icon" size={36} />
-        </div>
+        <StatCard label="Tổng tài khoản đăng" value={data.totalAccounts} icon={Gamepad2} />
+        <StatCard label="Tài khoản đang bán" value={data.sellingAccounts} icon={Eye} tone="success" />
+        <StatCard label="Tài khoản đã bán" value={data.soldAccounts} icon={CheckSquare} tone="price" />
+        <StatCard label="Tài khoản đã ẩn" value={data.hiddenAccounts} icon={EyeOff} />
+        <StatCard label="Tổng tiền đã bán" value={`${Number(data.totalEarned || 0).toLocaleString()}đ`} icon={ShoppingBag} tone="price" />
+        <StatCard label="Đơn hàng đã bán" value={`${data.totalOrders} đơn hàng`} icon={ShoppingBag} />
       </div>
     </div>
   );

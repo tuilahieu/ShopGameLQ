@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
-import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers } from "lucide-react";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers, ShieldCheck } from "lucide-react";
+import { StatusMessage } from "../../components/Ui";
 import { updateSEO } from "../../utils/seo";
 import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
 
@@ -136,11 +137,7 @@ export default function Accounts() {
           <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
         </div>
       ) : loadError ? (
-        <div className="empty-state">
-          <h2>Không thể tải kho tài khoản</h2>
-          <p>{loadError}</p>
-          <button className="btn-primary" onClick={loadData}>Tải lại</button>
-        </div>
+        <StatusMessage title="Không thể tải kho tài khoản" description={loadError} action={<button className="btn-primary" onClick={loadData}>Tải lại</button>} />
       ) : !loaiId ? (
         /* Render Category Types Selection List when no specific type selected */
         <div className="catalogue-category-view">
@@ -213,7 +210,7 @@ export default function Accounts() {
                 )}
                 {selectedType.camket && (
                   <div className="type-info-banner-warranty">
-                    <span className="warranty-icon">🛡️</span>
+                    <span className="warranty-icon"><ShieldCheck size={18} aria-hidden="true" /></span>
                     <span>{selectedType.camket}</span>
                   </div>
                 )}
@@ -237,11 +234,7 @@ export default function Accounts() {
           </div>
 
           {accounts.length === 0 ? (
-            <div className="empty-state catalogue-empty-state">
-              <h2>Tạm hết hàng</h2>
-              <p>Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác.</p>
-              <button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>
-            </div>
+            <StatusMessage className="catalogue-empty-state" title="Tạm hết hàng" description="Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác." action={<button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>} />
           ) : (
             <>
               <div className="account-grid">

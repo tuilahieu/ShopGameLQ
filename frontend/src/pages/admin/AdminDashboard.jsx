@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Users, Gamepad2, Eye, EyeOff, ShoppingBag, History, Landmark } from "lucide-react";
+import { PageHeading, StatCard, StatusMessage } from "../../components/Ui";
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -19,54 +20,22 @@ export default function AdminDashboard() {
 
   useEffect(() => { loadDashboard(); }, []);
 
-  if (!data && !error) return <div className="empty-state">Đang tải số liệu tổng quan...</div>;
-  if (error) return <div className="empty-state"><p>{error}</p><button className="btn-primary" onClick={loadDashboard}>Thử lại</button></div>;
+  if (!data && !error) return <StatusMessage title="Đang tải số liệu tổng quan…" />;
+  if (error) return <StatusMessage title="Không thể tải tổng quan" description={error} action={<button className="btn-primary" onClick={loadDashboard}>Thử lại</button>} />;
 
   return (
     <div>
-      <h1 className="page-title">Tổng quan hệ thống</h1>
+      <PageHeading description="Theo dõi hoạt động cửa hàng và xử lý công việc hằng ngày.">Tổng quan hệ thống</PageHeading>
 
       <div className="card-grid">
-        <div className="dashboard-card">
-          <h3>Thành viên</h3>
-          <strong>{data.totalUsers}</strong>
-          <Users className="card-icon" size={36} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Tổng tài khoản</h3>
-          <strong>{data.totalAccounts}</strong>
-          <Gamepad2 className="card-icon" size={36} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Đang bán</h3>
-          <strong style={{ color: "var(--green-color)" }}>{data.sellingAccounts}</strong>
-          <Eye className="card-icon" size={36} style={{ color: "var(--green-color)" }} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Đã bán</h3>
-          <strong style={{ color: "var(--gold-color)" }}>{data.soldAccounts}</strong>
-          <EyeOff className="card-icon" size={36} style={{ color: "var(--gold-color)" }} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Đã ẩn</h3>
-          <strong>{data.hiddenAccounts}</strong>
-          <EyeOff className="card-icon" size={36} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Đơn hàng</h3>
-          <strong>{data.totalOrders}</strong>
-          <ShoppingBag className="card-icon" size={36} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Giao dịch</h3>
-          <strong>{data.totalTransactions}</strong>
-          <History className="card-icon" size={36} />
-        </div>
-        <div className="dashboard-card">
-          <h3>Doanh thu</h3>
-          <strong style={{ color: "var(--green-color)" }}>{Number(data.revenue).toLocaleString()}đ</strong>
-          <Landmark className="card-icon" size={36} style={{ color: "var(--green-color)" }} />
-        </div>
+        <StatCard label="Thành viên" value={data.totalUsers} icon={Users} />
+        <StatCard label="Tổng tài khoản" value={data.totalAccounts} icon={Gamepad2} />
+        <StatCard label="Đang bán" value={data.sellingAccounts} icon={Eye} tone="success" />
+        <StatCard label="Đã bán" value={data.soldAccounts} icon={EyeOff} tone="price" />
+        <StatCard label="Đã ẩn" value={data.hiddenAccounts} icon={EyeOff} />
+        <StatCard label="Đơn hàng" value={data.totalOrders} icon={ShoppingBag} />
+        <StatCard label="Giao dịch" value={data.totalTransactions} icon={History} />
+        <StatCard label="Doanh thu" value={`${Number(data.revenue).toLocaleString()}đ`} icon={Landmark} tone="success" />
       </div>
     </div>
   );
