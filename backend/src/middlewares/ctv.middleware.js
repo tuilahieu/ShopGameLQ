@@ -1,4 +1,5 @@
 import { errorResponse } from "../utils/response.util.js";
+import { adminSessionIfAdmin } from "./admin.middleware.js";
 
 export function ctvMiddleware(req, res, next) {
   const level = Number(req.user.level);
@@ -7,5 +8,5 @@ export function ctvMiddleware(req, res, next) {
     return errorResponse(res, "Bạn không có quyền cộng tác viên", 403);
   }
 
-  next();
+  return adminSessionIfAdmin(req, res, next);
 }

@@ -41,6 +41,7 @@ export default function Login() {
       const res = await api.post("/auth/login", { ...form, captcha_token: captchaToken || undefined });
       const data = res.data.data;
 
+      sessionStorage.removeItem("adminSession");
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.user));

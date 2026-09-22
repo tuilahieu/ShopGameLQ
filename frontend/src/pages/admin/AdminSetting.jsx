@@ -91,6 +91,9 @@ function ImageUploadField({ label, fieldKey, value, onChange }) {
 export default function AdminSetting() {
   const [form, setForm] = useState({});
   const [showSecret, setShowSecret] = useState(false);
+  const [securityForm, setSecurityForm] = useState({ currentPassword: "", oldSecondPassword: "", newSecondPassword: "", confirmPassword: "" });
+  const [securityError, setSecurityError] = useState("");
+  const [securityBusy, setSecurityBusy] = useState(false);
 
   async function load() {
     const res = await api.get("/admin/setting");
@@ -102,7 +105,6 @@ export default function AdminSetting() {
       const res = await api.put("/admin/setting", form);
       if (res.data?.data) {
         setForm(res.data.data);
-        localStorage.setItem("setting", JSON.stringify(res.data.data));
       }
       alert("Đã lưu cấu hình thành công!");
     } catch {
@@ -114,11 +116,70 @@ export default function AdminSetting() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
+  async function changeSecondPassword(event) {
+    event.preventDefault();
+    setSecurityError("");
+    if (securityForm.newSecondPassword !== securityForm.confirmPassword) {
+      setSecurityError("Hai lần nhập mật khẩu cấp 2 mới chưa khớp.");
+      return;
+    }
+    if (Array.from(securityForm.newSecondPassword).length < 12 || new TextEncoder().encode(securityForm.newSecondPassword).length > 72) {
+      setSecurityError("Mật khẩu cấp 2 mới cần ít nhất 12 ký tự và tối đa 72 byte.");
+      return;
+    }
+    setSecurityBusy(true);
+    try {
+      await api.post("/auth/admin-security/change", {
+        currentPassword: securityForm.currentPassword,
+        oldSecondPassword: securityForm.oldSecondPassword,
+        newSecondPassword: securityForm.newSecondPassword,
+      });
+      setSecurityForm({ currentPassword: "", oldSecondPassword: "", newSecondPassword: "", confirmPassword: "" });
+      sessionStorage.removeItem("adminSession");
+      window.dispatchEvent(new Event("admin-session-expired"));
+    } catch (error) {
+      setSecurityError(error.response?.data?.message || "Không thể đổi mật khẩu cấp 2.");
+    } finally {
+      setSecurityBusy(false);
+    }
+  }
+
   useEffect(() => { load(); }, []);
 
   return (
     <>
       <h1 className="page-title">Cấu hình Hệ thống</h1>
+
+      <div className="card">
+        <h3>Bảo mật quản trị viên</h3>
+        <p>Đổi mật khẩu cấp 2 của tài khoản admin này. Sau khi đổi, bạn cần xác minh lại để tiếp tục quản trị.</p>
+        {securityError && <div className="alert-error auth-alert" role="alert">{securityError}</div>}
+        <form className="auth-form" onSubmit={changeSecondPassword} style={{ maxWidth: "480px" }}>
+          <div className="form-group-premium">
+            <label htmlFor="security-primary-password">Mật khẩu đăng nhập hiện tại</label>
+            <input id="security-primary-password" type="password" autoComplete="current-password" required
+              value={securityForm.currentPassword} onChange={(e) => setSecurityForm({ ...securityForm, currentPassword: e.target.value })} />
+          </div>
+          <div className="form-group-premium">
+            <label htmlFor="security-old-second">Mật khẩu cấp 2 hiện tại</label>
+            <input id="security-old-second" type="password" autoComplete="off" required
+              value={securityForm.oldSecondPassword} onChange={(e) => setSecurityForm({ ...securityForm, oldSecondPassword: e.target.value })} />
+          </div>
+          <div className="form-group-premium">
+            <label htmlFor="security-new-second">Mật khẩu cấp 2 mới</label>
+            <input id="security-new-second" type="password" autoComplete="new-password" required minLength={12} maxLength={72}
+              value={securityForm.newSecondPassword} onChange={(e) => setSecurityForm({ ...securityForm, newSecondPassword: e.target.value })} />
+          </div>
+          <div className="form-group-premium">
+            <label htmlFor="security-confirm-second">Nhập lại mật khẩu cấp 2 mới</label>
+            <input id="security-confirm-second" type="password" autoComplete="new-password" required minLength={12} maxLength={72}
+              value={securityForm.confirmPassword} onChange={(e) => setSecurityForm({ ...securityForm, confirmPassword: e.target.value })} />
+          </div>
+          <button className="btn-primary" type="submit" disabled={securityBusy}>
+            {securityBusy ? "Đang đổi…" : "Đổi mật khẩu cấp 2"}
+          </button>
+        </form>
+      </div>
 
       {/* ── Thông tin website ── */}
       <div className="card">

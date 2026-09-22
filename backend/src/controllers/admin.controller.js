@@ -126,7 +126,11 @@ export async function getAdminUsers(req, res) {
     const { count, rows } = await User.findAndCountAll({
       where,
       attributes: {
-        exclude: ["password", "refresh_token_hash"],
+        exclude: [
+          "password", "refresh_token_hash", "admin_second_password_hash",
+          "admin_session_hash", "admin_session_expires_at",
+          "admin_second_attempts", "admin_second_locked_until",
+        ],
       },
       order: [["id", "DESC"]],
       limit,
@@ -168,7 +172,10 @@ export async function updateAdminUser(req, res) {
     if (banned !== undefined && ![true, false, 0, 1, "0", "1"].includes(banned)) {
       return errorResponse(res, "Trạng thái khóa không hợp lệ", 400);
     }
-    await user.update({ ...(level !== undefined && { level: Number(level) }), ...(banned !== undefined && { banned: Number(banned) === 1 || banned === true }) });
+    await user.update({
+      ...(level !== undefined && { level: Number(level), admin_session_hash: null, admin_session_expires_at: null }),
+      ...(banned !== undefined && { banned: Number(banned) === 1 || banned === true, admin_session_hash: null, admin_session_expires_at: null }),
+    });
     await writeLog(req.user.id, `Cập nhật người dùng #${user.id}`, req.clientIp);
 
     return successResponse(res, "Cập nhật người dùng thành công", {

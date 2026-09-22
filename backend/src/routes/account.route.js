@@ -10,6 +10,7 @@ import {
 } from "../controllers/account.controller.js";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { adminSessionIfAdmin } from "../middlewares/admin.middleware.js";
 import { ctvMiddleware } from "../middlewares/ctv.middleware.js";
 
 const router = Router();
@@ -116,7 +117,7 @@ router.post("/", authMiddleware, ctvMiddleware, createAccount);
  *         schema:
  *           type: integer
  */
-router.put("/:id", authMiddleware, updateAccount);
+router.put("/:id", authMiddleware, adminSessionIfAdmin, updateAccount);
 
 /**
  * @swagger
@@ -133,7 +134,7 @@ router.put("/:id", authMiddleware, updateAccount);
  *         schema:
  *           type: integer
  */
-router.delete("/:id", authMiddleware, deleteAccount);
-router.patch("/:id/hide", authMiddleware, hideAccount);
+router.delete("/:id", authMiddleware, adminSessionIfAdmin, deleteAccount);
+router.patch("/:id/hide", authMiddleware, adminSessionIfAdmin, hideAccount);
 
 export default router;

@@ -26,6 +26,12 @@ The next database evolution should add `payment_intents`/`payment_events` (provi
 
 ## Required deployment configuration
 
+### Admin second password
+
+Migration `20260922_005_admin_second_password.js` runs automatically at startup if pending. It adds a separate bcrypt hash, failed-attempt lockout state and a short-lived admin-session hash to each user. An admin with no second password cannot access admin APIs; on the first visit to `/admin`, the UI asks for the current login password and a distinct second password of at least 12 characters and at most 72 UTF-8 bytes. The second password is never returned by an API. A verified admin session lasts 30 minutes, is kept only in the browser tab, and is invalidated by logout, primary password change, second password change, or another login/verification. Five wrong passwords during setup or verification lock that admin's second-password flow for 15 minutes.
+
+The guard is server-side on `/api/admin`, category and account-type management, admin operations on game accounts, uploads, and CTV endpoints when used by an admin. `GET /api/auth/admin-security/status`, `POST /setup`, `POST /verify`, `GET /session`, and `POST /change` support setup and verification. Treat the second password as a separate secret. If it is lost, recovery requires a trusted operator to verify the admin's identity and reset that user's second-password fields directly in the database; there is no public reset API. If a migration fails, the server exits before accepting requests.
+
 Use `.env.example` as the complete contract. In production set a random `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and a base64 32-byte `ACCOUNT_CREDENTIALS_ENCRYPTION_KEY`; set `CORS_ORIGINS` to exact HTTPS frontend origins and `DB_SSL=true` where required. Store these in a secret manager, never in `setting` or git.
 
 ### Client IPs and reverse proxies

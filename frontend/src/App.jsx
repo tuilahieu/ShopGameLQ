@@ -21,6 +21,7 @@ const Contact = lazy(() => import("./pages/client/Contact"));
 const NotFound = lazy(() => import("./pages/client/NotFound"));
 
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminGate = lazy(() => import("./pages/admin/AdminGate"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminAccounts = lazy(() => import("./pages/admin/AdminAccounts"));
@@ -86,7 +87,7 @@ export default function App() {
           path="/admin"
           element={
             <AdminProtected>
-              <AdminLayout />
+              <AdminGate><AdminLayout /></AdminGate>
             </AdminProtected>
           }
         >

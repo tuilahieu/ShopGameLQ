@@ -93,6 +93,8 @@ export async function changePassword(req, res) {
       password: hashedPassword,
       refresh_token_hash: null,
       refresh_token_expires_at: null,
+      admin_session_hash: null,
+      admin_session_expires_at: null,
     });
 
     await writeLog(user.id, "Người dùng đổi mật khẩu", req.clientIp);

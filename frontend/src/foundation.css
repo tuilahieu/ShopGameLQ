@@ -535,7 +535,8 @@ button[type="submit"] {
 }
 
 .modal-content-wrapper {
-  width: min(34rem, calc(100vw - 2rem));
+  width: min(var(--dialog-width, 42rem), calc(100vw - 2rem));
+  max-width: none;
   max-height: min(90dvh, calc(100vh - 2rem));
   display: flex;
   flex-direction: column;

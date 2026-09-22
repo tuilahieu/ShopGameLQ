@@ -101,10 +101,13 @@ export default function Home() {
       .map((account) => new Date(account.sale_detail?.ketthuc).getTime())
       .filter((endTime) => Number.isFinite(endTime));
 
-  const categoryNames = new Map((data.categories || []).map((category) => [Number(category.id), category.name]));
-  const featuredTypes = (data.accountTypes || [])
-    .filter((type) => Number(type.status) === 1)
-    .slice(0, 8);
+  const categorySections = (data.categories || [])
+    .filter((category) => Number(category.status) === 1)
+    .map((category) => ({
+      ...category,
+      types: (data.accountTypes || []).filter((type) =>
+        Number(type.status) === 1 && Number(type.danhmuc_id) === Number(category.id)),
+    }));
   const heroImage = resolveStorefrontHero(data.setting?.banner);
 
   if (loading) {
@@ -251,43 +254,49 @@ export default function Home() {
         </section>
       )}
 
-      {featuredTypes.length > 0 && (
-        <section className="storefront-section" aria-labelledby="featured-category-title">
-          <div className="storefront-section-heading">
+      {categorySections.map((category) => (
+        <section className="storefront-section storefront-game-section" id={`game-category-${category.id}`} aria-labelledby={`game-category-title-${category.id}`} key={category.id}>
+          <div className="storefront-game-heading">
             <div>
-              <span className="storefront-section-kicker">Bắt đầu nhanh</span>
-              <h2 id="featured-category-title">Danh mục nổi bật</h2>
+              <h2 id={`game-category-title-${category.id}`}><Flame size={25} aria-hidden="true" /> {category.name}</h2>
+              <p>{category.noidung?.trim() || `${category.types.length} loại tài khoản đang được giới thiệu`}</p>
             </div>
-            <Link to="/accounts" className="storefront-text-link">Xem tất cả <ArrowRight size={17} aria-hidden="true" /></Link>
+            <Link to={`/accounts?danhmuc_id=${category.id}`} className="storefront-game-explore">
+              Khám phá <ArrowRight size={18} aria-hidden="true" />
+            </Link>
           </div>
 
-          <div className="storefront-category-grid">
-            {featuredTypes.map((type) => {
-              const count = data.accountCountByType?.[type.id] ?? 0;
-              return (
-                <Link to={`/accounts?loai_id=${type.id}`} className="storefront-category-card" key={type.id}>
-                  <div className="storefront-category-media">
-                    <SafeImage
-                      src={resolveAccountTypeImage(type)}
-                      alt={`Danh mục ${type.name}`}
-                      width={960}
-                      height={600}
-                      loading="lazy"
-                      decoding="async"
-                      fallbackLabel="Ảnh danh mục"
-                    />
-                  </div>
-                  <div className="storefront-category-copy">
-                    <span>{categoryNames.get(Number(type.danhmuc_id)) || "Tài khoản game"}</span>
-                    <h3>{type.name}</h3>
-                    <p>{count > 0 ? `${count} tài khoản đang có` : "Tạm hết hàng"}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          {category.types.length > 0 ? (
+            <div className="storefront-category-grid">
+              {category.types.map((type) => {
+                const count = Number(data.accountCountByType?.[type.id] ?? 0);
+                return (
+                  <Link to={`/accounts?loai_id=${type.id}`} className="storefront-category-card" key={type.id}>
+                    <div className="storefront-category-media">
+                      <SafeImage
+                        src={resolveAccountTypeImage(type)}
+                        alt={`Ảnh ${type.name}`}
+                        width={960}
+                        height={600}
+                        loading="lazy"
+                        decoding="async"
+                        fallbackLabel="Ảnh danh mục"
+                      />
+                    </div>
+                    <div className="storefront-category-copy">
+                      <h3>{type.name}</h3>
+                      <p>Tài khoản hiện có: <strong>{count.toLocaleString("vi-VN")}</strong></p>
+                      <span className="storefront-category-action">Xem tài khoản <ArrowRight size={16} aria-hidden="true" /></span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="storefront-game-empty">Danh mục đang được cập nhật tài khoản.</p>
+          )}
         </section>
-      )}
+      ))}
 
       {(data.latestAccounts || []).length > 0 && (
         <section className="storefront-section" aria-labelledby="latest-accounts-title">

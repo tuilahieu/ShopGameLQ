@@ -68,6 +68,7 @@ export default function Profile() {
         confirmNewPassword: ""
       });
       localStorage.clear();
+      sessionStorage.removeItem("adminSession");
       window.setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
       setPwStatus({ 

@@ -25,6 +25,7 @@ export default function AdminLogin() {
       const data = res.data?.data;
 
       if (res.data.success && data?.accessToken) {
+        sessionStorage.removeItem("adminSession");
         localStorage.setItem("accessToken", data.accessToken);
         localStorage.setItem("refreshToken", data.refreshToken);
         localStorage.setItem("user", JSON.stringify(data.user));

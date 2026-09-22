@@ -14,6 +14,7 @@ This project intentionally does not include a GitHub Actions deployment workflow
    - production DB credentials and `DB_SSL=true` where required
    - `TRUST_PROXY=loopback` when Nginx is on the same host
    - SePay HMAC secret only after staging verification
+   - a strong primary password for every admin; each admin configures a distinct second password at the first `/admin` visit
 4. Configure Nginx from `ops/nginx/shoplienquan.conf.example` and enable HTTPS.
 5. Use a persistent volume for `backend/uploads`, or migrate uploads to object storage before running multiple instances.
 

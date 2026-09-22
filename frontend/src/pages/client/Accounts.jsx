@@ -13,6 +13,7 @@ export default function Accounts() {
 
   const [accounts, setAccounts] = useState([]);
   const [types, setTypes] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -27,11 +28,16 @@ export default function Accounts() {
   });
 
   const loaiId = searchParams.get("loai_id") || "";
+  const categoryId = searchParams.get("danhmuc_id") || "";
   const sort = searchParams.get("sort") || "";
   const page = Number(searchParams.get("page") || "1");
 
   // Find the selected type object for showing its info banner
   const selectedType = loaiId ? types.find((t) => t.id.toString() === loaiId) : null;
+  const selectedCategory = categoryId ? categories.find((category) => String(category.id) === categoryId) : null;
+  const visibleTypes = !loaiId && categoryId
+    ? types.filter((type) => String(type.danhmuc_id) === categoryId)
+    : types;
 
   async function loadData() {
     setLoading(true);
@@ -55,6 +61,7 @@ export default function Accounts() {
         ]);
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
+          setCategories(homeRes.data?.data?.categories || []);
           setCounts(homeRes.data?.data?.accountCountByType || {});
           setCatalogueLoaded(true);
         }
@@ -66,6 +73,7 @@ export default function Accounts() {
         const homeRes = homeRequest ? await homeRequest : null;
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
+          setCategories(homeRes.data?.data?.categories || []);
           setCounts(homeRes.data?.data?.accountCountByType || {});
           setCatalogueLoaded(true);
         }
@@ -143,12 +151,13 @@ export default function Accounts() {
         <div className="catalogue-category-view">
           <div className="catalogue-heading">
             <span className="storefront-section-kicker"><Layers size={17} aria-hidden="true" /> Kho tài khoản</span>
-            <h1 className="page-title">Chọn loại tài khoản</h1>
-            <p>Chọn đúng gói bạn quan tâm để xem acc và giá đang có.</p>
+            {selectedCategory && <Link to="/accounts" className="catalogue-back-link"><ArrowLeft size={17} aria-hidden="true" /> Tất cả danh mục</Link>}
+            <h1 className="page-title">{selectedCategory?.name || "Chọn loại tài khoản"}</h1>
+            <p>{selectedCategory?.noidung || "Chọn đúng gói bạn quan tâm để xem acc và giá đang có."}</p>
           </div>
           
           <div className="catalogue-category-grid">
-            {types.map((type) => {
+            {visibleTypes.map((type) => {
               const count = counts[type.id] ?? 0;
               return (
                 <Link
@@ -177,6 +186,7 @@ export default function Accounts() {
               );
             })}
           </div>
+          {visibleTypes.length === 0 && <p className="storefront-game-empty">Danh mục đang được cập nhật tài khoản.</p>}
         </div>
       ) : (
         /* Render Filtered Accounts Grid when type is selected */

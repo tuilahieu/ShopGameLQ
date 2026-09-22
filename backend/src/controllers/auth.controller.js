@@ -116,6 +116,8 @@ export async function login(req, res) {
     await user.update({
       refresh_token_hash: hashToken(refreshToken),
       refresh_token_expires_at: refreshTokenExpiresAt,
+      admin_session_hash: null,
+      admin_session_expires_at: null,
       ip: req.clientIp,
     });
 
@@ -199,6 +201,8 @@ export async function logout(req, res) {
     await req.user.update({
       refresh_token_hash: null,
       refresh_token_expires_at: null,
+      admin_session_hash: null,
+      admin_session_expires_at: null,
     });
 
     return successResponse(res, "Đăng xuất thành công");

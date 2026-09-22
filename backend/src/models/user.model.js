@@ -31,6 +31,12 @@ export const User = sequelize.define(
       allowNull: true,
     },
 
+    admin_second_password_hash: { type: DataTypes.STRING(255), allowNull: true },
+    admin_session_hash: { type: DataTypes.STRING(64), allowNull: true },
+    admin_session_expires_at: { type: DataTypes.DATE, allowNull: true },
+    admin_second_attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    admin_second_locked_until: { type: DataTypes.DATE, allowNull: true },
+
     level: {
       type: DataTypes.TINYINT,
       allowNull: false,
@@ -69,3 +75,14 @@ export const User = sequelize.define(
     underscored: true,
   },
 );
+
+// Keep credential and session material out of accidental JSON responses.
+User.prototype.toJSON = function toJSON() {
+  const values = { ...this.get({ plain: true }) };
+  for (const field of [
+    "password", "refresh_token_hash", "admin_second_password_hash",
+    "admin_session_hash", "admin_session_expires_at",
+    "admin_second_attempts", "admin_second_locked_until",
+  ]) delete values[field];
+  return values;
+};

@@ -55,9 +55,14 @@ export default function AccountDetail() {
   const [activeImg, setActiveImg] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
   const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
   const [isImagePanning, setIsImagePanning] = useState(false);
-  const imagePanStartRef = useRef(null);
+  const imagePointersRef = useRef(new Map());
+  const imageGestureRef = useRef(null);
+  const imageViewRef = useRef({ scale: 1, pan: { x: 0, y: 0 } });
+  const lastImageTapRef = useRef(null);
+  const imageStageRef = useRef(null);
   
   // Modal states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -187,7 +192,10 @@ export default function AccountDetail() {
   }
 
   function resetImageViewer() {
-    imagePanStartRef.current = null;
+    imagePointersRef.current.clear();
+    imageGestureRef.current = null;
+    lastImageTapRef.current = null;
+    imageViewRef.current = { scale: 1, pan: { x: 0, y: 0 } };
     setIsImagePanning(false);
     setZoomScale(1);
     setImagePan({ x: 0, y: 0 });
@@ -201,56 +209,130 @@ export default function AccountDetail() {
   function openImageViewer() {
     if (!activeImg) return;
     resetImageViewer();
+    setImageAspectRatio(16 / 9);
     setIsZoomOpen(true);
   }
 
-  function setImageZoom(nextScale) {
-    const constrainedScale = Math.min(4, Math.max(1, nextScale));
-    setZoomScale(constrainedScale);
-    if (constrainedScale === 1) {
-      setImagePan({ x: 0, y: 0 });
-    }
-  }
-
-  function clampImagePan(nextPan, stage) {
+  function clampImagePan(nextPan, stage, scale) {
     const rect = stage.getBoundingClientRect();
-    const maxX = Math.max(0, ((zoomScale - 1) * rect.width) / 2);
-    const maxY = Math.max(0, ((zoomScale - 1) * rect.height) / 2);
+    const image = stage.querySelector("img");
+    const boxWidth = image?.offsetWidth || rect.width;
+    const boxHeight = image?.offsetHeight || rect.height;
+    const ratio = image?.naturalWidth && image?.naturalHeight ? image.naturalWidth / image.naturalHeight : boxWidth / boxHeight;
+    const imageWidth = Math.min(boxWidth, boxHeight * ratio);
+    const imageHeight = Math.min(boxHeight, boxWidth / ratio);
+    const maxX = Math.max(0, (imageWidth * scale - rect.width) / 2);
+    const maxY = Math.max(0, (imageHeight * scale - rect.height) / 2);
     return {
       x: Math.max(-maxX, Math.min(maxX, nextPan.x)),
       y: Math.max(-maxY, Math.min(maxY, nextPan.y)),
     };
   }
 
+  function updateImageView(nextScale, nextPan, stage) {
+    const scale = Math.min(4, Math.max(1, nextScale));
+    const pan = scale === 1 ? { x: 0, y: 0 } : stage ? clampImagePan(nextPan, stage, scale) : nextPan;
+    imageViewRef.current = { scale, pan };
+    setZoomScale(scale);
+    setImagePan(pan);
+  }
+
+  function setImageZoom(nextScale, stage, clientPoint) {
+    const { scale, pan } = imageViewRef.current;
+    const targetScale = Math.min(4, Math.max(1, nextScale));
+    stage ||= imageStageRef.current;
+    if (!stage || !clientPoint) {
+      updateImageView(targetScale, pan, stage);
+      return;
+    }
+    const rect = stage.getBoundingClientRect();
+    const x = clientPoint.x - rect.left - rect.width / 2;
+    const y = clientPoint.y - rect.top - rect.height / 2;
+    updateImageView(targetScale, {
+      x: x - (x - pan.x) * targetScale / scale,
+      y: y - (y - pan.y) * targetScale / scale,
+    }, stage);
+  }
+
+  function imagePointerDistance(first, second) {
+    return Math.hypot(first.x - second.x, first.y - second.y);
+  }
+
   function handleImagePointerDown(event) {
-    if (zoomScale <= 1 || event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     const stage = event.currentTarget;
     stage.setPointerCapture?.(event.pointerId);
-    imagePanStartRef.current = {
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      panX: imagePan.x,
-      panY: imagePan.y,
-    };
-    setIsImagePanning(true);
+    imagePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const points = [...imagePointersRef.current.values()];
+    const { scale, pan } = imageViewRef.current;
+    if (points.length >= 2) {
+      lastImageTapRef.current = null;
+      imageGestureRef.current = {
+        distance: imagePointerDistance(points[0], points[1]),
+        center: { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 },
+        scale,
+        pan,
+      };
+      setIsImagePanning(true);
+    } else {
+      imageGestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, pan, moved: false };
+      setIsImagePanning(scale > 1);
+    }
   }
 
   function handleImagePointerMove(event) {
-    const start = imagePanStartRef.current;
-    if (!start || start.pointerId !== event.pointerId) return;
+    const pointers = imagePointersRef.current;
+    if (!pointers.has(event.pointerId)) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const gesture = imageGestureRef.current;
+    if (!gesture) return;
+    const points = [...pointers.values()];
+    if (points.length >= 2 && gesture.distance) {
+      event.preventDefault();
+      const nextScale = Math.min(4, Math.max(1, gesture.scale * imagePointerDistance(points[0], points[1]) / gesture.distance));
+      const center = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+      const rect = event.currentTarget.getBoundingClientRect();
+      const anchorX = gesture.center.x - rect.left - rect.width / 2;
+      const anchorY = gesture.center.y - rect.top - rect.height / 2;
+      updateImageView(nextScale, {
+        x: center.x - rect.left - rect.width / 2 - (anchorX - gesture.pan.x) * nextScale / gesture.scale,
+        y: center.y - rect.top - rect.height / 2 - (anchorY - gesture.pan.y) * nextScale / gesture.scale,
+      }, event.currentTarget);
+      return;
+    }
+    if (gesture.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 12) gesture.moved = true;
+    if (imageViewRef.current.scale <= 1 || gesture.pointerId !== event.pointerId) return;
     event.preventDefault();
-    setImagePan(clampImagePan({
-      x: start.panX + event.clientX - start.clientX,
-      y: start.panY + event.clientY - start.clientY,
-    }, event.currentTarget));
+    updateImageView(imageViewRef.current.scale, {
+      x: gesture.pan.x + event.clientX - gesture.x,
+      y: gesture.pan.y + event.clientY - gesture.y,
+    }, event.currentTarget);
   }
 
   function handleImagePointerEnd(event) {
-    if (imagePanStartRef.current?.pointerId !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    imagePanStartRef.current = null;
+    const pointers = imagePointersRef.current;
+    if (!pointers.has(event.pointerId)) return;
+    const wasSingleTouch = event.pointerType === "touch" && pointers.size === 1 && !imageGestureRef.current?.moved;
+    pointers.delete(event.pointerId);
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (pointers.size === 1) {
+      const [pointerId, point] = pointers.entries().next().value;
+      imageGestureRef.current = { pointerId, x: point.x, y: point.y, pan: imageViewRef.current.pan, moved: true };
+      return;
+    }
+    imageGestureRef.current = null;
     setIsImagePanning(false);
+    if (wasSingleTouch && event.type === "pointerup") {
+      const lastTap = lastImageTapRef.current;
+      const now = Date.now();
+      if (lastTap && now - lastTap.time < 300 && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 30) {
+        event.preventDefault();
+        setImageZoom(imageViewRef.current.scale > 1 ? 1 : 2.5, event.currentTarget, { x: event.clientX, y: event.clientY });
+        lastImageTapRef.current = null;
+      } else {
+        lastImageTapRef.current = { x: event.clientX, y: event.clientY, time: now };
+      }
+    }
   }
 
   useEffect(() => {
@@ -271,7 +353,9 @@ export default function AccountDetail() {
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === "Escape") {
-        imagePanStartRef.current = null;
+        imagePointersRef.current.clear();
+        imageGestureRef.current = null;
+        imageViewRef.current = { scale: 1, pan: { x: 0, y: 0 } };
         setIsZoomOpen(false);
         setIsImagePanning(false);
         setZoomScale(1);
@@ -745,20 +829,30 @@ export default function AccountDetail() {
         }
       >
         <div
+          ref={imageStageRef}
           className={`zoom-image-stage ${zoomScale > 1 ? "is-zoomed" : ""} ${isImagePanning ? "is-panning" : ""}`}
+          style={{ aspectRatio: imageAspectRatio }}
           onPointerDown={handleImagePointerDown}
           onPointerMove={handleImagePointerMove}
           onPointerUp={handleImagePointerEnd}
           onPointerCancel={handleImagePointerEnd}
-          onDoubleClick={() => setImageZoom(zoomScale > 1 ? 1 : 2)}
-          aria-label={zoomScale > 1 ? "Kéo ảnh để xem các vị trí khác" : "Nhấn đúp hoặc dùng nút phóng to để xem ảnh lớn"}
+          onDoubleClick={(event) => {
+            if (event.nativeEvent.pointerType === "touch" || event.nativeEvent.sourceCapabilities?.firesTouchEvents) return;
+            setImageZoom(zoomScale > 1 ? 1 : 2.5, event.currentTarget, { x: event.clientX, y: event.clientY });
+          }}
+          aria-label={zoomScale > 1 ? "Chụm hai ngón hoặc kéo ảnh để xem chi tiết" : "Chụm hai ngón, nhấn đúp hoặc dùng nút phóng to để xem ảnh lớn"}
         >
           <SafeImage
             src={activeImg}
             alt={`Ảnh phóng to của tài khoản ${account.id}`}
             width={1200}
             height={800}
+            loading="eager"
             draggable={false}
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              if (image.naturalWidth && image.naturalHeight) setImageAspectRatio(image.naturalWidth / image.naturalHeight);
+            }}
             style={{ transform: `translate3d(${imagePan.x}px, ${imagePan.y}px, 0) scale(${zoomScale})` }}
             fallbackLabel="Không thể hiển thị ảnh lớn"
           />

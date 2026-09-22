@@ -10,6 +10,7 @@ import { requestContext, securityHeaders, notFoundHandler, errorHandler } from "
 import { sequelize } from "./config/database.js";
 
 import authRoute from "./routes/auth.route.js";
+import adminSecurityRoute from "./routes/adminSecurity.route.js";
 import categoryRoute from "./routes/category.route.js";
 import accountTypeRoute from "./routes/accountType.route.js";
 import accountRoute from "./routes/account.route.js";
@@ -39,7 +40,7 @@ export function createApp() {
       return callback(Object.assign(new Error("Origin không được phép truy cập API"), { status: 403 }));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"],
+    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id", "X-Admin-Session"],
     maxAge: 86_400,
   }));
   // SePay's HMAC is over the exact bytes it sent. This must be mounted before
@@ -61,6 +62,7 @@ export function createApp() {
   });
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
   app.use("/api/auth", authRoute);
+  app.use("/api/auth/admin-security", adminSecurityRoute);
   app.use("/api/categories", categoryRoute);
   app.use("/api/account-types", accountTypeRoute);
   app.use("/api/accounts", accountRoute);

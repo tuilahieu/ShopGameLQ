@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LogIn, LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
+import { ArrowRight, LogIn, LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
@@ -17,6 +17,7 @@ export default function ClientLayout() {
   const [setting, setSetting] = useState(() => {
     return JSON.parse(localStorage.getItem("setting") || "{}");
   });
+  const [gameCategories, setGameCategories] = useState([]);
   const [flashSaleCount, setFlashSaleCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -24,6 +25,7 @@ export default function ClientLayout() {
   const drawerTriggerRef = useRef(null);
   const profileMenuRef = useRef(null);
   const profileTriggerRef = useRef(null);
+  const categoryMenuRef = useRef(null);
 
   // Sync favicon if set
   useEffect(() => {
@@ -42,6 +44,7 @@ export default function ClientLayout() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsProfileMenuOpen(false);
+    if (categoryMenuRef.current) categoryMenuRef.current.open = false;
   }, [location.pathname]);
 
   useEffect(() => {
@@ -117,6 +120,26 @@ export default function ClientLayout() {
     };
   }, [isProfileMenuOpen]);
 
+  useEffect(() => {
+    function closeCategoryMenu(event) {
+      const menu = categoryMenuRef.current;
+      if (!menu?.open) return;
+      if (event.type === "keydown" && event.key === "Escape") {
+        menu.open = false;
+        menu.querySelector("summary")?.focus();
+      } else if (event.type === "pointerdown" && !menu.contains(event.target)) {
+        menu.open = false;
+      }
+    }
+
+    document.addEventListener("pointerdown", closeCategoryMenu);
+    document.addEventListener("keydown", closeCategoryMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeCategoryMenu);
+      document.removeEventListener("keydown", closeCategoryMenu);
+    };
+  }, []);
+
   // Periodically refresh profile data to sync wallet balance and details
   async function fetchProfile() {
     if (!token) return;
@@ -145,6 +168,7 @@ export default function ClientLayout() {
         }
       }
       setFlashSaleCount(Array.isArray(res.data?.data?.flashSaleAccounts) ? res.data.data.flashSaleAccounts.length : 0);
+      setGameCategories(Array.isArray(res.data?.data?.categories) ? res.data.data.categories : []);
     } catch (err) {
       console.error("Failed to sync settings:", err);
     }
@@ -165,6 +189,7 @@ export default function ClientLayout() {
       // The local session must still be cleared when its token is already invalid.
     }
     localStorage.clear();
+    sessionStorage.removeItem("adminSession");
     navigate("/");
     window.location.reload();
   }
@@ -192,21 +217,24 @@ export default function ClientLayout() {
           )}
         </Link>
 
-        <nav className="client-nav">
+        <nav className="client-nav" aria-label="Điều hướng chính">
           <NavLink to="/" end className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-            <Home size={15} />
             <span>Trang chủ</span>
           </NavLink>
-          
-          <NavLink to="/accounts" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-            <ListFilter size={15} />
-            <span>Kho tài khoản</span>
-          </NavLink>
-          
-          <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-            <CreditCard size={15} />
-            <span>Nạp tiền</span>
-          </NavLink>
+          <details className="client-category-menu" ref={categoryMenuRef}>
+            <summary className="client-nav-link">
+              <span>Danh mục game</span>
+              <ChevronDown size={16} aria-hidden="true" />
+            </summary>
+            <div className="client-category-popover">
+              <Link to="/accounts" onClick={() => { categoryMenuRef.current.open = false; }}>Tất cả tài khoản <ArrowRight size={15} aria-hidden="true" /></Link>
+              {gameCategories.map((category) => (
+                <Link to={`/accounts?danhmuc_id=${category.id}`} key={category.id} onClick={() => { categoryMenuRef.current.open = false; }}>
+                  {category.name}<ChevronRight size={15} aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          </details>
 
           {token && (
             <NavLink to="/my-orders" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
@@ -214,9 +242,13 @@ export default function ClientLayout() {
               <span>Đã mua</span>
             </NavLink>
           )}
+          <NavLink to="/contact" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+            <span>Liên hệ</span>
+          </NavLink>
         </nav>
 
         <div className={`client-actions ${token ? "logged-in" : "logged-out"}`}>
+          <Link to="/nap-tien" className="client-recharge-button"><span className="client-recharge-icon">₫</span> Nạp tiền</Link>
           {token ? (
             <>
               <Link
@@ -268,12 +300,7 @@ export default function ClientLayout() {
           ) : (
             <>
               <ThemeToggle compact={true} />
-              <Link to="/login" className="btn-outline desktop-auth-action">
-                Đăng nhập
-              </Link>
-              <Link to="/register" className="btn-primary desktop-auth-action">
-                Đăng ký
-              </Link>
+              <Link to="/login" className="client-auth-link"><User size={19} aria-hidden="true" /><span>Đăng nhập / Đăng ký</span></Link>
             </>
           )}
         </div>
@@ -405,6 +432,12 @@ export default function ClientLayout() {
                 <ListFilter size={18} />
                 <span>Kho tài khoản</span>
               </NavLink>
+              {gameCategories.map((category) => (
+                <NavLink to={`/accounts?danhmuc_id=${category.id}`} className="mobile-drawer-link mobile-drawer-category" key={category.id} onClick={() => setIsMobileMenuOpen(false)}>
+                  <ChevronRight size={17} aria-hidden="true" />
+                  <span>{category.name}</span>
+                </NavLink>
+              ))}
 
               <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
                 <CreditCard size={18} />

@@ -13,11 +13,12 @@ let refreshPromise = null;
 
 function requestKey(url, config = {}) {
   const token = localStorage.getItem("accessToken") || "anonymous";
+  const adminSession = sessionStorage.getItem("adminSession") || "";
   const params = config.params ? JSON.stringify(Object.keys(config.params).sort().reduce((result, key) => {
     result[key] = config.params[key];
     return result;
   }, {})) : "";
-  return `${token}:${url}?${params}`;
+  return `${token}:${adminSession}:${url}?${params}`;
 }
 
 export function clearApiGetCache() {
@@ -30,6 +31,8 @@ api.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
+  const adminSession = sessionStorage.getItem("adminSession");
+  if (adminSession) config.headers["X-Admin-Session"] = adminSession;
 
   // A mutation can alter any previously fetched collection or balance. We only
   // deduplicate short-lived GETs; no POST/PUT/DELETE response is ever cached.
@@ -42,6 +45,10 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
+    if (["ADMIN_SECOND_FACTOR_REQUIRED", "ADMIN_SECOND_FACTOR_SETUP_REQUIRED"].includes(error.response?.data?.code)) {
+      sessionStorage.removeItem("adminSession");
+      window.dispatchEvent(new Event("admin-session-expired"));
+    }
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
 
@@ -77,6 +84,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         localStorage.clear();
+        sessionStorage.removeItem("adminSession");
 
         window.location.href = "/login";
 

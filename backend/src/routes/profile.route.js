@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { adminSessionIfAdmin } from "../middlewares/admin.middleware.js";
 
 import {
   getProfile,
@@ -59,6 +60,6 @@ router.get("/", authMiddleware, getProfile);
  *       401:
  *         description: Chưa đăng nhập
  */
-router.post("/change-password", authMiddleware, changePassword);
+router.post("/change-password", authMiddleware, adminSessionIfAdmin, changePassword);
 
 export default router;
