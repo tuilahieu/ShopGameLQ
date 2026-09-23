@@ -1,2 +1,7 @@
 shop_game.sql
 backend/uploads/
+
+# Local environment configuration
+.env
+.env.*
+!.env.example
