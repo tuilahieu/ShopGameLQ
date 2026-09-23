@@ -180,10 +180,10 @@
 
 @media (max-width: 48rem) {
   .shop-assistant { right: 0.75rem; bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px)); }
-  body:has(.mobile-purchase-bar):not(:has(input:focus, textarea:focus, select:focus)) .shop-assistant:not(.is-open) {
+  body.has-mobile-purchase-bar:not(.has-form-focus) .shop-assistant:not(.is-open) {
     bottom: calc(10rem + env(safe-area-inset-bottom, 0px));
   }
-  body:has(.shop-assistant.is-open) .mobile-purchase-bar { display: none; }
+  body.shop-assistant-open .mobile-purchase-bar { display: none; }
   .shop-assistant.is-open {
     top: max(0.5rem, env(safe-area-inset-top, 0px));
     right: 0.5rem;

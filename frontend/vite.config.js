@@ -1,10 +1,19 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import legacy from "@vitejs/plugin-legacy";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      legacy({
+        targets: ["defaults", "not IE 11", "iOS >= 12", "Android >= 8"],
+      }),
+    ],
+    build: {
+      cssTarget: "safari12",
+    },
     server: {
       host: "0.0.0.0",
       allowedHosts: ["competition-interpreted-meet-see.trycloudflare.com"],

@@ -2179,7 +2179,7 @@
 
 .mobile-purchase-bar .btn-primary { min-height: 3rem; justify-content: center; }
 
-body:has(input:focus, textarea:focus, select:focus) .mobile-purchase-bar { display: none; }
+body.has-form-focus .mobile-purchase-bar { display: none; }
 
 .purchase-confirmation { display: grid; gap: var(--space-3); text-align: start; }
 .purchase-confirmation > p { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-label); }

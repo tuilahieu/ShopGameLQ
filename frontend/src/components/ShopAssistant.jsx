@@ -131,6 +131,11 @@ export default function ShopAssistant({ profile }) {
   }, [messages, open, busy, scrollToLatest]);
 
   useEffect(() => {
+    document.body.classList.toggle("shop-assistant-open", open);
+    return () => document.body.classList.remove("shop-assistant-open");
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (event) => {
       if (event.key === "Escape") closeChat();

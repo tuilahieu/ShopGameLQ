@@ -343,6 +343,12 @@ export default function AccountDetail() {
   }, [loadData]);
 
   useEffect(() => {
+    const hasPurchaseBar = Boolean(account && Number(account.status) !== 1);
+    document.body.classList.toggle("has-mobile-purchase-bar", hasPurchaseBar);
+    return () => document.body.classList.remove("has-mobile-purchase-bar");
+  }, [account]);
+
+  useEffect(() => {
     if (account) {
       const { currentPrice: seoPrice } = getAccountPricing(account);
       updateSEO({
