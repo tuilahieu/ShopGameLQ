@@ -180,7 +180,7 @@ export default function ShopAssistant({ profile }) {
     setMessages((current) => [...current, { role: "user", text }]);
     setInput("");
     const looksLikeSearch = /(?:acc|nick|tìm|tim|giá|gia|sale)|^\s*\d+(?:[.,]\d+)?\s*(?:k|tr|triệu|nghìn|ngàn|đ)?\s*$/iu.test(text);
-    setBusyLabel(looksLikeSearch ? "Mình đang tìm cho bạn đây..." : `${assistantName} đang trả lời...`);
+    setBusyLabel(looksLikeSearch ? "Mình đang tìm cho bạn đây" : `${assistantName} đang suy nghĩ`);
     setBusy(true);
     try {
       const saved = threadRef.current;
@@ -249,7 +249,15 @@ export default function ShopAssistant({ profile }) {
                 </div>
               </div>
             ))}
-            {(busy || restoring) && <p className="shop-assistant-typing" role="status">{restoring ? "Đang tải cuộc trò chuyện…" : busyLabel}</p>}
+            {(busy || restoring) && (
+              <div className="shop-assistant-thinking" role="status" aria-live="polite">
+                <AssistantAvatar name={assistantName} avatarUrl={avatarUrl} small />
+                <div className="shop-assistant-thinking-bubble">
+                  <span>{restoring ? "Đang tải cuộc trò chuyện" : busyLabel}</span>
+                  <span className="shop-assistant-thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+                </div>
+              </div>
+            )}
           </div>
           <div className="shop-assistant-composer">
             <div className="shop-assistant-suggestions" aria-label="Câu hỏi gợi ý">

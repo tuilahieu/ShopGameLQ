@@ -9,6 +9,7 @@ import { createAssistantLlmProvider } from "../services/assistant-llm-provider.s
 import { executeAgentQuery, parseAgentQuery } from "../assistant/tools.js";
 import { getAssistantRuntimeStatus, observeAssistantProvider } from "../assistant/runtime-status.js";
 import { ASSISTANT_LIMITS } from "../assistant/instructions.js";
+import { validateAssistantAccounts } from "../assistant/output-validator.js";
 import { errorResponse, successResponse } from "../utils/response.util.js";
 
 const router = Router();
@@ -82,7 +83,7 @@ router.get("/agent-query", async (req, res) => {
     return errorResponse(res, "Mức giá không hợp lệ", 400, "INVALID_AGENT_QUERY", req);
   }
   try {
-    const accounts = await executeAgentQuery(req.query);
+    const accounts = validateAssistantAccounts(await executeAgentQuery(req.query));
     return successResponse(res, "Tìm tài khoản cho trợ lý thành công", { accounts });
   } catch (error) {
     console.error("ASSISTANT AGENT QUERY ERROR:", error);

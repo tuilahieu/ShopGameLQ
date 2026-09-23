@@ -3,6 +3,7 @@ import { DEFAULT_ASSISTANT_NAME, normalizeAssistantName } from "./profile.js";
 import { ASSISTANT_TOOLS, executeAssistantTool } from "./tools.js";
 import { getAssistantSkillResponse, matchAssistantSkill } from "./skills.js";
 import { answerShoppingRequest, parseShoppingRequest } from "../services/shop-assistant.service.js";
+import { sanitizeAssistantText, validateAssistantAnswer } from "./output-validator.js";
 
 export function compactAssistantHistory(history) {
   if (!Array.isArray(history)) return [];
@@ -58,35 +59,13 @@ function isSimpleShoppingRequest(request) {
   return /^(?:(?:cho mình|cho minh) )?(?:tìm|tim|xem) (?:acc|nick)(?: đang bán| dang ban)?[.!?]*$/u.test(normalized);
 }
 
-function isClearlyUnrelatedRequest(message) {
-  return /(?:viết|viet|làm|lam|giải|giai)\s+(?:code|thơ|tho|văn|van|bài tập|bai tap)|(?:thời tiết|thoi tiet|chính trị|chinh tri|bóng đá|bong da|nấu ăn|nau an|dịch bài|dich bai)|\b(?:python|javascript|java|c\+\+)\b/iu.test(message);
-}
-
-function isPotentialShopQuestion(request, history) {
-  const normalized = request.message.toLocaleLowerCase("vi-VN").trim();
-  if (isClearlyUnrelatedRequest(normalized)) return false;
-  return isWebsiteQuestion(normalized)
-    || isShoppingRequest(request)
-    || /(?:acc|nick|liên quân|lien quan|đơn hàng|don hang|nạp tiền|nap tien|bảo hành|bao hanh|admin|zalo|mã acc|ma acc)/u.test(normalized)
-    || /^\d{1,7}(?:[.,]\d+)?\s*(?:k|tr|triệu|nghìn|ngàn|đ|vnd)?[.!?]*$/u.test(normalized)
-    || (Array.isArray(history) && history.length > 0 && normalized.length <= 120);
-}
-
 function containsInstructionAttack(message) {
   return /ignore (all |previous |prior )?instructions|bỏ qua (mọi |tất cả |các )?(chỉ dẫn|hướng dẫn|quy tắc)|đóng vai|giả làm (system|developer|admin)|system prompt|developer message|tiết lộ (prompt|instruction)|reveal (prompt|secret)|<\/?(?:system|developer|assistant)>|\[INST\]|```/iu.test(message);
 }
 
 function sanitizeModelReply(value) {
-  if (typeof value !== "string") return "";
-  const clean = value
-    .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
-    .replace(/<[^>]*>/gu, " ")
-    .replace(/(?:https?:\/\/|www\.)\S+/giu, "")
-    .replace(/[\u0000-\u001F\u007F]/gu, " ")
-    .replace(/\s+/gu, " ")
-    .trim();
-  const sentences = clean.match(/[^.!?]+[.!?]?/gu)?.slice(0, 2).join(" ").trim() || "";
-  return sentences.slice(0, 320).trim();
+  const clean = sanitizeAssistantText(value);
+  return clean.match(/[^.!?]+[.!?]?/gu)?.slice(0, 2).join(" ").trim() || "";
 }
 
 function parseModelDecision(value) {
@@ -97,9 +76,13 @@ function parseModelDecision(value) {
   let decision;
   try { decision = JSON.parse(value.slice(start, end + 1)); } catch { return null; }
   if (!decision || typeof decision !== "object") return null;
-  if (decision.action === "out_of_scope") return { action: "out_of_scope" };
+  if (decision.action === "out_of_scope") {
+    const reply = sanitizeModelReply(decision.reply);
+    return reply ? { action: "out_of_scope", reply } : null;
+  }
   if (decision.action === "support" && ["orders", "topup", "warranty", "contact"].includes(decision.skill)) {
-    return { action: "support", skill: decision.skill };
+    const reply = sanitizeModelReply(decision.reply);
+    return reply ? { action: "support", skill: decision.skill, reply } : null;
   }
   if (decision.action === "reply") {
     const reply = sanitizeModelReply(decision.reply);
@@ -107,29 +90,33 @@ function parseModelDecision(value) {
   }
   if (decision.action !== "search_accounts") return null;
   const budget = Number(decision.budget);
+  const foundReply = sanitizeModelReply(decision.foundReply);
+  const emptyReply = sanitizeModelReply(decision.emptyReply);
+  if (!foundReply || !emptyReply) return null;
   return {
     action: "search_accounts",
     budget: Number.isSafeInteger(budget) && budget >= 10_000 && budget <= 100_000_000 ? budget : null,
     underBudget: decision.underBudget === true,
     saleOnly: decision.saleOnly === true,
+    foundReply,
+    emptyReply,
   };
 }
 
-export async function runShopAssistant({ message, history = [], provider = null, profile = null }) {
+async function executeShopAssistant({ message, history = [], provider = null, profile = null }) {
   const request = parseShoppingRequest(message);
   const displayName = normalizeAssistantName(profile?.name) || DEFAULT_ASSISTANT_NAME;
   if (containsInstructionAttack(request.message)) return { text: OUT_OF_SCOPE, accounts: [] };
 
-  const conversational = conversationalReply(request.message, displayName);
-  if (conversational) return conversational;
-  const support = !request.budget && !request.saleOnly && matchAssistantSkill(request.message);
-  if (support) return support;
-  if (isSimpleShoppingRequest(request)) {
-    const accounts = await executeAssistantTool("search_accounts", request);
-    return answerShoppingRequest(request, accounts);
-  }
-
   if (!provider) {
+    const conversational = conversationalReply(request.message, displayName);
+    if (conversational) return conversational;
+    const support = !request.budget && !request.saleOnly && matchAssistantSkill(request.message);
+    if (support) return support;
+    if (isSimpleShoppingRequest(request)) {
+      const accounts = await executeAssistantTool("search_accounts", request);
+      return answerShoppingRequest(request, accounts);
+    }
     if (isShoppingRequest(request)) {
       const accounts = await executeAssistantTool("search_accounts", request);
       return answerShoppingRequest(request, accounts);
@@ -139,8 +126,6 @@ export async function runShopAssistant({ message, history = [], provider = null,
       accounts: [],
     } : { text: OUT_OF_SCOPE, accounts: [] };
   }
-
-  if (!isPotentialShopQuestion(request, history)) return { text: OUT_OF_SCOPE, accounts: [] };
 
   const compactHistory = compactAssistantHistory(history);
   const conversation = compactHistory.length ? compactHistory : [{
@@ -167,13 +152,25 @@ export async function runShopAssistant({ message, history = [], provider = null,
       saleOnly: decision.saleOnly,
     };
     const accounts = await executeAssistantTool("search_accounts", toolRequest);
+    if (accounts.length && decision.foundReply) return { text: decision.foundReply, accounts };
+    if (!accounts.length && decision.emptyReply) {
+      return { text: decision.emptyReply, accounts: [], link: { label: "Xem kho acc", href: "/accounts" } };
+    }
     return answerShoppingRequest(toolRequest, accounts);
   }
   if (decision?.action === "reply") return { text: decision.reply, accounts: [] };
-  if (decision?.action === "support") return getAssistantSkillResponse(decision.skill);
-  if (decision?.action === "out_of_scope") return { text: OUT_OF_SCOPE, accounts: [] };
+  if (decision?.action === "support") {
+    const response = getAssistantSkillResponse(decision.skill);
+    return { ...response, text: decision.reply };
+  }
+  if (decision?.action === "out_of_scope") return { text: decision.reply, accounts: [] };
   return {
     text: "Mình hỗ trợ tìm acc, xem đơn, nạp tiền với liên hệ shop nhaa. Bạn đang cần mục nào nè?",
     accounts: [],
   };
+}
+
+export async function runShopAssistant(input) {
+  const answer = await executeShopAssistant(input);
+  return validateAssistantAnswer(answer, "Mình chưa hiểu ý bạn lắm á. Bạn hỏi lại về shop giúp mình nha.");
 }

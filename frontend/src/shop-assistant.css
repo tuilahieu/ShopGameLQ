@@ -178,7 +178,34 @@
 .shop-assistant-more svg { flex: 0 0 auto; }
 .shop-assistant-more:hover { color: #fff; background: #263bad; transform: translateY(-2px); box-shadow: 0 6px 0 #1d2b74; }
 .shop-assistant-more:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d2b74; }
-.shop-assistant-typing { margin: 0; padding-left: 2.2rem; color: #485470; font-size: 0.8rem; }
+.shop-assistant-thinking { display: flex; align-items: flex-end; gap: 0.4rem; animation: shop-assistant-thinking-in 0.22s ease-out both; }
+.shop-assistant-thinking-bubble {
+  min-height: 2.85rem;
+  padding: 0.65rem 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #33416f;
+  background: linear-gradient(145deg, #fff, #f5f7ff);
+  border: 1px solid #cbd3eb;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.28rem;
+  box-shadow: 0 3px 0 #d7ddf1, 0 8px 18px rgb(37 55 140 / 0.08);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.shop-assistant-thinking-dots { display: inline-flex; align-items: center; gap: 0.22rem; }
+.shop-assistant-thinking-dots i {
+  width: 0.38rem;
+  height: 0.38rem;
+  display: block;
+  background: #4055cf;
+  border-radius: 50%;
+  animation: shop-assistant-thinking-dot 0.85s ease-in-out infinite;
+}
+.shop-assistant-thinking-dots i:nth-child(2) { animation-delay: 0.12s; }
+.shop-assistant-thinking-dots i:nth-child(3) { animation-delay: 0.24s; }
+@keyframes shop-assistant-thinking-in { from { opacity: 0; transform: translateY(0.4rem) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes shop-assistant-thinking-dot { 0%, 65%, 100% { opacity: 0.38; transform: translateY(0); } 32% { opacity: 1; transform: translateY(-0.28rem); } }
 
 .shop-assistant-composer { min-width: 0; background: #fffefa; border-top: 1px solid #d8def0; }
 .shop-assistant-suggestions { min-width: 0; padding: 0.55rem 0.7rem 0.25rem; display: flex; gap: 0.45rem; overflow-x: auto; scrollbar-width: thin; }
@@ -228,5 +255,7 @@
   .shop-assistant-panel,
   .shop-assistant.is-closing .shop-assistant-panel,
   .shop-assistant-toggle { animation: none; }
+  .shop-assistant-thinking,
+  .shop-assistant-thinking-dots i { animation: none; }
   .shop-assistant-cursor { animation: none; }
 }

@@ -16,20 +16,26 @@ bao gồm giá sale còn hiệu lực.
 
 Adapter Gemini hoặc VILAO cung cấp
 `generate({ instructions, messages, tools, maxOutputTokens })` và trả
-`{ text }`. API key chỉ nằm ở backend, không gửi cho trình duyệt. Cổng rule trả
-ngay các câu đơn giản như chào, cảm ơn, liên hệ, nạp tiền, đơn hàng và yêu cầu
-tìm acc đã có giá rõ ràng. Câu ngoài phạm vi và prompt injection bị chặn trước
-provider. Các câu liên quan shop cần hiểu ngữ cảnh mới được gửi tới LLM để chọn
-một action JSON: trả lời ngắn, tìm acc, mở luồng hỗ trợ hoặc từ chối ngoài phạm vi.
+`{ text }`. API key chỉ nằm ở backend, không gửi cho trình duyệt. Khi đã có
+provider, mọi tin nhắn đều được LLM đọc cùng lịch sử và chọn một action JSON:
+trả lời, tìm acc, mở luồng hỗ trợ hoặc từ chối ngoài phạm vi. Chỉ prompt
+injection bị chặn cứng trước provider. Khi chưa có key, harness dùng rule cũ làm
+chế độ dự phòng.
 Ví dụ sau câu hỏi về ngân sách, câu trả lời `500` được model hiểu là 500.000đ và
 chọn `search_accounts`; backend mới truy vấn kho rồi trả tối đa bốn card.
-Khi chưa cấu hình provider, câu chào, hỗ trợ và tìm acc vẫn chạy bằng rule cũ.
+Với action `search_accounts`, model phải trả cả `foundReply` và `emptyReply`;
+backend chọn câu tương ứng sau khi tool tìm xong rồi mới gửi response.
 
 `GET /api/assistant/agent-query?price=500` là tool API dùng chung với action
 `search_accounts`; `500` được chuẩn hóa thành 500.000đ. API nhận thêm
 `under_budget=true` và `sale_only=true`, chỉ trả tối đa bốn card công khai.
 Backend gọi trực tiếp cùng executor thay vì tự gửi HTTP về chính nó. Khi chờ kết
 quả tìm kiếm, giao diện hiện “Mình đang tìm cho bạn đây...”.
+
+Trước khi trả về client, `output-validator.js` loại script/HTML/URL ngoài, giới
+hạn văn bản, dựng lại title và href từ ID, chỉ giữ các field card công khai và
+giới hạn bốn card. Cùng validator được dùng cho tool API, nên response HTTP và
+response chat có cùng schema an toàn.
 Giao diện hiển thị chữ dần cho câu trả lời của chatbot; đây là hiệu ứng ở
 trình duyệt, API vẫn trả JSON một lần.
 Harness giữ tối đa tám tin nhắn gần nhất, mỗi tin 220 ký tự, giới hạn cứng
