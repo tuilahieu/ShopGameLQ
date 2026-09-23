@@ -39,6 +39,25 @@ test("brief social replies stay natural and within shop support", async () => {
   assert.match((await runShopAssistant({ message: "xin chào" })).text, /Chào bạn/u);
   assert.match((await runShopAssistant({ message: "cảm ơn nha" })).text, /không có gì/iu);
   assert.match((await runShopAssistant({ message: "hi" })).text, /Gia Linh/u);
+  assert.match((await runShopAssistant({ message: "bạn là ai v" })).text, /Gia Linh/u);
+});
+
+test("short contextual follow-ups reach the LLM while clearly unrelated work stays blocked", async () => {
+  let calls = 0;
+  const provider = { generate: async () => {
+    calls += 1;
+    return { text: '{"action":"reply","reply":"Thật mà nhaa, mình đang ở đây để giúp bạn chọn acc hợp túi tiền nè!"}' };
+  } };
+  const history = [
+    { role: "user", text: "Shop có acc tầm 500k không?" },
+    { role: "assistant", text: "Có nha, mình vừa tìm thấy vài acc cho bạn nè." },
+  ];
+  const followUp = await runShopAssistant({ message: "thật hả", history, provider });
+  assert.match(followUp.text, /Thật mà/u);
+  assert.equal(calls, 1);
+  const unrelated = await runShopAssistant({ message: "viết code Python cho mình", history, provider });
+  assert.match(unrelated.text, /chỉ tư vấn về shop/u);
+  assert.equal(calls, 1);
 });
 
 test("admin chatbot identity is validated and used consistently without changing instructions", async () => {

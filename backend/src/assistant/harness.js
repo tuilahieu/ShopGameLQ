@@ -23,7 +23,7 @@ function conversationalReply(message, displayName) {
   if (namedThanks || /^(?:cảm ơn|cam on|thank(?:s| you)?|cám ơn|tks|thx)(?:[\s!.,]*(?:bạn|ban|nha|nhé|nhe|ạ|a|shop))*[\s!.,]*$/u.test(normalized)) {
     return { text: "Không có gì đâu nhaa! Cần tìm acc theo giá thì bạn cứ nhắn mình nhé.", accounts: [] };
   }
-  if (/^(?:bạn tên gì|ten ban la gi|tên bạn là gì|bạn là ai|ban la ai)$/u.test(simpleMessage)) {
+  if (/^(?:bạn tên gì|ten ban la gi|tên bạn là gì|bạn là ai|ban la ai)(?:\s+(?:v|vậy|vay|thế|the))?$/u.test(simpleMessage)) {
     return { text: `Mình là ${displayName}, nhân viên tư vấn của shop nè. Bạn đang muốn tìm acc nào thế?`, accounts: [] };
   }
   const namedGreeting = simpleMessage === `chào ${displayName.toLocaleLowerCase("vi-VN")}`;
@@ -58,12 +58,18 @@ function isSimpleShoppingRequest(request) {
   return /^(?:(?:cho mình|cho minh) )?(?:tìm|tim|xem) (?:acc|nick)(?: đang bán| dang ban)?[.!?]*$/u.test(normalized);
 }
 
-function isPotentialShopQuestion(request) {
+function isClearlyUnrelatedRequest(message) {
+  return /(?:viết|viet|làm|lam|giải|giai)\s+(?:code|thơ|tho|văn|van|bài tập|bai tap)|(?:thời tiết|thoi tiet|chính trị|chinh tri|bóng đá|bong da|nấu ăn|nau an|dịch bài|dich bai)|\b(?:python|javascript|java|c\+\+)\b/iu.test(message);
+}
+
+function isPotentialShopQuestion(request, history) {
   const normalized = request.message.toLocaleLowerCase("vi-VN").trim();
+  if (isClearlyUnrelatedRequest(normalized)) return false;
   return isWebsiteQuestion(normalized)
     || isShoppingRequest(request)
     || /(?:acc|nick|liên quân|lien quan|đơn hàng|don hang|nạp tiền|nap tien|bảo hành|bao hanh|admin|zalo|mã acc|ma acc)/u.test(normalized)
-    || /^\d{1,7}(?:[.,]\d+)?\s*(?:k|tr|triệu|nghìn|ngàn|đ|vnd)?[.!?]*$/u.test(normalized);
+    || /^\d{1,7}(?:[.,]\d+)?\s*(?:k|tr|triệu|nghìn|ngàn|đ|vnd)?[.!?]*$/u.test(normalized)
+    || (Array.isArray(history) && history.length > 0 && normalized.length <= 120);
 }
 
 function containsInstructionAttack(message) {
@@ -134,7 +140,7 @@ export async function runShopAssistant({ message, history = [], provider = null,
     } : { text: OUT_OF_SCOPE, accounts: [] };
   }
 
-  if (!isPotentialShopQuestion(request)) return { text: OUT_OF_SCOPE, accounts: [] };
+  if (!isPotentialShopQuestion(request, history)) return { text: OUT_OF_SCOPE, accounts: [] };
 
   const compactHistory = compactAssistantHistory(history);
   const conversation = compactHistory.length ? compactHistory : [{
