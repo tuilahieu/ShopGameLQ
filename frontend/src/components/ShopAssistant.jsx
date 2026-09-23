@@ -86,7 +86,6 @@ export default function ShopAssistant({ profile }) {
   const [messages, setMessages] = useState([STARTER]);
   const [busy, setBusy] = useState(false);
   const [restoring, setRestoring] = useState(() => Boolean(readStoredThread()));
-  const inputRef = useRef(null);
   const messagesRef = useRef(null);
   const threadRef = useRef(readStoredThread());
   const openRef = useRef(false);
@@ -126,10 +125,6 @@ export default function ShopAssistant({ profile }) {
     }).finally(() => { if (active) setRestoring(false); });
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
 
   useEffect(() => {
     if (open) scrollToLatest();
@@ -220,7 +215,7 @@ export default function ShopAssistant({ profile }) {
             </div>
             <form className="shop-assistant-form" autoComplete="off" onSubmit={(event) => { event.preventDefault(); send(input); }}>
               <label className="sr-only" htmlFor="shop-assistant-input">Nhắn tin cho {assistantName}</label>
-              <input id="shop-assistant-input" name="shop-assistant-message" ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} autoComplete="off" maxLength={500} placeholder={`Nhắn ${assistantName}, ví dụ: acc 200k`} />
+              <input id="shop-assistant-input" name="shop-assistant-message" value={input} onChange={(event) => setInput(event.target.value)} autoComplete="off" maxLength={500} placeholder={`Nhắn ${assistantName}, ví dụ: acc 200k`} />
               <button type="submit" disabled={busy || restoring || !input.trim()} aria-label="Gửi câu hỏi"><Send size={19} /></button>
             </form>
           </div>

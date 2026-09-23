@@ -8,6 +8,17 @@ import "./ui-audit.css";
 import "./client-toy.css";
 import "./admin-toy.css";
 
+if (window.matchMedia("(pointer: coarse)").matches) {
+  const preventPinchZoom = (event) => event.preventDefault();
+  const preventMultiTouchZoom = (event) => {
+    if (event.touches.length > 1) event.preventDefault();
+  };
+
+  document.addEventListener("gesturestart", preventPinchZoom, { passive: false });
+  document.addEventListener("gesturechange", preventPinchZoom, { passive: false });
+  document.addEventListener("touchmove", preventMultiTouchZoom, { passive: false });
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />

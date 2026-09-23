@@ -4,6 +4,11 @@
 /* ========================================================================== 
    1. Primitive tokens
    ========================================================================== */
+html,
+body {
+  touch-action: pan-x pan-y;
+}
+
 :root {
   --primitive-white: #ffffff;
   --primitive-slate-25: #fcfcfd;
