@@ -18,11 +18,15 @@ test("admin settings response contains only SePay status, never its secret", () 
   const result = serializeAdminSetting({
     id: 1,
     ten_web: "Shop Game",
+    assistant_name: "Mai Anh",
+    assistant_avatar: "/uploads/avatar.webp",
     sepay_secret: "private-hmac-secret",
     js_web: "private-script",
   }, { enabled: true, webhookSecret: "private-hmac-secret" });
   assert.equal(result.sepay_configured, true);
   assert.equal(result.sepay_secret_saved, true);
+  assert.equal(result.assistant_name, "Mai Anh");
+  assert.equal(result.assistant_avatar, "/uploads/avatar.webp");
   assert.ok(!Object.hasOwn(result, "sepay_secret"));
   assert.ok(!JSON.stringify(result).includes("private-hmac-secret"));
   assert.ok(!Object.hasOwn(result, "js_web"));

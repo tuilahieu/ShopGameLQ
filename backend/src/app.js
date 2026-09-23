@@ -21,6 +21,7 @@ import homeRoute from "./routes/home.route.js";
 import profileRoute from "./routes/profile.route.js";
 import bankRoute from "./routes/bank.route.js";
 import paymentRoute from "./routes/payment.route.js";
+import assistantRoute from "./routes/assistant.route.js";
 import { sepayWebhook } from "./controllers/payment.controller.js";
 
 import ctvRoute from "./routes/ctv.route.js";
@@ -40,7 +41,7 @@ export function createApp() {
       return callback(Object.assign(new Error("Origin không được phép truy cập API"), { status: 403 }));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id", "X-Admin-Session"],
+    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id", "X-Admin-Session", "X-Assistant-Thread-Token"],
     maxAge: 86_400,
   }));
   // SePay's HMAC is over the exact bytes it sent. This must be mounted before
@@ -74,6 +75,7 @@ export function createApp() {
   app.use("/api/upload", uploadRoute);
   app.use("/api/banks", bankRoute);
   app.use("/api/payments", paymentRoute);
+  app.use("/api/assistant", assistantRoute);
   app.use("/api/ctv", ctvRoute);
   app.use("/api/admin", adminRoute);
   app.use(notFoundHandler);

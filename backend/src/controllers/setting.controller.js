@@ -1,4 +1,5 @@
 import { Setting } from "../models/index.js";
+import { publicAssistantProfile } from "../assistant/profile.js";
 import { successResponse, errorResponse } from "../utils/response.util.js";
 
 export async function getPublicSetting(req, res) {
@@ -9,6 +10,7 @@ export async function getPublicSetting(req, res) {
       return successResponse(res, "OK", {});
     }
 
+    const assistantProfile = publicAssistantProfile(setting);
     return successResponse(res, "Lấy cấu hình website thành công", {
       ten_web: setting.ten_web,
       logo: setting.logo,
@@ -18,6 +20,8 @@ export async function getPublicSetting(req, res) {
       fb_admin: setting.fb_admin,
       sdt_admin: setting.sdt_admin,
       email: setting.email,
+      assistant_name: assistantProfile.name,
+      assistant_avatar: assistantProfile.avatar,
       ck_ctv: setting.ck_ctv,
       thongbao: setting.thongbao,
     });

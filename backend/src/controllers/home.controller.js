@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "../utils/response.util.js";
 import { Sequelize } from "sequelize";
 import { buildActiveSaleWhere } from "../services/sale.service.js";
 import { resolveAccountPricing } from "../services/pricing.service.js";
+import { publicAssistantProfile } from "../assistant/profile.js";
 
 export async function getHome(req, res) {
   try {
@@ -122,6 +123,7 @@ export async function getHome(req, res) {
       });
 
     // Never expose payment secrets or executable admin-managed code to anonymous clients.
+    const assistantProfile = publicAssistantProfile(setting);
     const publicSetting = setting ? {
       ten_web: setting.ten_web,
       logo: setting.logo,
@@ -131,6 +133,8 @@ export async function getHome(req, res) {
       fb_admin: setting.fb_admin,
       sdt_admin: setting.sdt_admin,
       email: setting.email,
+      assistant_name: assistantProfile.name,
+      assistant_avatar: assistantProfile.avatar,
       thongbao: setting.thongbao,
     } : {};
 

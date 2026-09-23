@@ -19,6 +19,12 @@ export const Setting = sequelize.define(
     fb_admin: DataTypes.STRING(255),
     sdt_admin: DataTypes.STRING(50),
     email: DataTypes.STRING(255),
+    assistant_name: DataTypes.STRING(80),
+    assistant_avatar: DataTypes.STRING(1024),
+    assistant_llm_provider: DataTypes.STRING(24),
+    assistant_llm_api_key: DataTypes.TEXT,
+    assistant_llm_model: DataTypes.STRING(120),
+    assistant_llm_endpoint: DataTypes.STRING(255),
 
     sepay_secret: DataTypes.TEXT,
 

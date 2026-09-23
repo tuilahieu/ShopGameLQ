@@ -7,6 +7,7 @@ import SafeImage from "../components/SafeImage";
 import AppLoader from "../components/AppLoader";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import useMotionReveal from "../hooks/useMotionReveal";
+import ShopAssistant from "../components/ShopAssistant";
 
 export default function ClientLayout() {
   const navigate = useNavigate();
@@ -635,6 +636,8 @@ export default function ClientLayout() {
           <div className="footer-bottom-rights">Hệ thống bán tài khoản game tự động · All rights reserved.</div>
         </div>
       </footer>
+
+      <ShopAssistant profile={{ name: setting.assistant_name, avatar: setting.assistant_avatar }} />
 
       {/* Floating Mobile Bottom Navigation Dock (Luôn luôn nổi lên trên cùng) */}
       <nav className="mobile-bottom-nav" aria-label="Điều hướng chính trên di động">

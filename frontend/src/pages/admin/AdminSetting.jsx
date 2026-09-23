@@ -100,6 +100,12 @@ export default function AdminSetting() {
   const [saving, setSaving] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [sepaySecretInput, setSepaySecretInput] = useState("");
+  const [llmKeyInput, setLlmKeyInput] = useState("");
+  const [showLlmKey, setShowLlmKey] = useState(false);
+  const [clearLlmKey, setClearLlmKey] = useState(false);
+  const [llmConfigDirty, setLlmConfigDirty] = useState(false);
+  const [llmTestBusy, setLlmTestBusy] = useState(false);
+  const [llmTestResult, setLlmTestResult] = useState(null);
   const [securityForm, setSecurityForm] = useState({ currentPassword: "", oldSecondPassword: "", newSecondPassword: "", confirmPassword: "" });
   const [securityError, setSecurityError] = useState("");
   const [securityBusy, setSecurityBusy] = useState(false);
@@ -123,18 +129,26 @@ export default function AdminSetting() {
     try {
       const settings = { ...form };
       delete settings.sepay_secret;
+      delete settings.assistant_llm_api_key;
       const res = await api.put("/admin/setting", {
         ...settings,
         ...(sepaySecretInput.trim() && { sepay_secret: sepaySecretInput.trim() }),
+        ...(!clearLlmKey && llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }),
+        ...(clearLlmKey && { assistant_llm_clear_key: true }),
       });
       if (res.data?.data) {
         setForm(res.data.data);
       }
       setSepaySecretInput("");
       setShowSecret(false);
+      setLlmKeyInput("");
+      setShowLlmKey(false);
+      setClearLlmKey(false);
+      setLlmConfigDirty(false);
+      setLlmTestResult(null);
       alert("Đã lưu cấu hình thành công!");
-    } catch {
-      alert("Lưu thất bại, vui lòng thử lại.");
+    } catch (error) {
+      alert(error.response?.data?.message || "Lưu thất bại, vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -142,6 +156,20 @@ export default function AdminSetting() {
 
   function set(key, val) {
     setForm((prev) => ({ ...prev, [key]: val }));
+  }
+
+  async function testLlmConnection() {
+    if (llmTestBusy) return;
+    setLlmTestBusy(true);
+    setLlmTestResult(null);
+    try {
+      const res = await api.post("/admin/assistant/test-llm");
+      setLlmTestResult({ success: true, message: `Model ${res.data.data.model} trả lời: “${res.data.data.reply}” (${res.data.data.latency_ms} ms)` });
+    } catch (error) {
+      setLlmTestResult({ success: false, message: error.response?.data?.message || "Không thể kết nối tới model lúc này." });
+    } finally {
+      setLlmTestBusy(false);
+    }
   }
 
   async function changeSecondPassword(event) {
@@ -301,6 +329,102 @@ export default function AdminSetting() {
             />
           </div>
 
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Nhân viên tư vấn chatbot</h3>
+        <p>Tên và avatar này hiển thị trong khung chat. Tên cũng được dùng trong lời chào và instruction của trợ lý.</p>
+        <div className="form-grid" style={{ marginTop: "16px" }}>
+          <div className="form-group-premium">
+            <label htmlFor="admin-setting-assistant-name">Tên chatbot</label>
+            <input
+              id="admin-setting-assistant-name"
+              maxLength={40}
+              placeholder="Gia Linh"
+              value={form.assistant_name || ""}
+              onChange={(e) => set("assistant_name", e.target.value)}
+            />
+            <small>2–40 ký tự; chỉ dùng chữ, số và dấu cách.</small>
+          </div>
+          <ImageUploadField
+            label="Avatar chatbot"
+            fieldKey="assistant_avatar"
+            value={form.assistant_avatar}
+            onChange={set}
+          />
+          <div className="form-group-premium">
+            <label htmlFor="admin-setting-llm-provider">Nhà cung cấp LLM dự kiến</label>
+            <select
+              id="admin-setting-llm-provider"
+              value={form.assistant_llm_provider || "none"}
+              onChange={(e) => { setForm((prev) => ({ ...prev, assistant_llm_provider: e.target.value, assistant_llm_model: "" })); setLlmConfigDirty(true); setLlmTestResult(null); }}
+            >
+              <option value="none">Chưa chọn</option>
+              <option value="gemini">Gemini</option>
+              <option value="vilao">VILAO</option>
+            </select>
+          </div>
+          <div className="form-group-premium">
+            <label htmlFor="admin-setting-llm-model">Mã model</label>
+            <input
+              id="admin-setting-llm-model"
+              maxLength={120}
+              placeholder={form.assistant_llm_provider === "vilao" ? "Model hoặc alias đã đăng ký trên ViLao" : "gemini-3.5-flash-lite"}
+              value={form.assistant_llm_model || ""}
+              onChange={(e) => { set("assistant_llm_model", e.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }}
+            />
+            <small>Gemini để trống sẽ dùng Flash-Lite. ViLao cần model hoặc alias đã đăng ký cho key.</small>
+          </div>
+          {form.assistant_llm_provider === "vilao" && (
+            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
+              <label htmlFor="admin-setting-llm-endpoint">Endpoint ViLao</label>
+              <input
+                id="admin-setting-llm-endpoint"
+                type="url"
+                maxLength={255}
+                placeholder="https://api.vilao.ai/v1"
+                value={form.assistant_llm_endpoint || ""}
+                onChange={(e) => { set("assistant_llm_endpoint", e.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }}
+              />
+              <small>Dùng URL endpoint /v1 ghi trong trang API Keys của ViLao.</small>
+            </div>
+          )}
+          <div className="form-group-premium">
+            <label htmlFor="admin-setting-llm-key">API key LLM</label>
+            <p role="status" style={{ margin: "0 0 8px", color: "var(--text-secondary)" }}>
+              {form.assistant_llm_key_saved ? "Đã lưu API key mã hóa." : "Chưa có API key."}
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                id="admin-setting-llm-key"
+                type={showLlmKey ? "text" : "password"}
+                autoComplete="new-password"
+                maxLength={4096}
+                placeholder={form.assistant_llm_key_saved ? "Để trống nếu không đổi key" : "Nhập API key"}
+                value={llmKeyInput}
+                onChange={(e) => { setLlmKeyInput(e.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }}
+                disabled={clearLlmKey}
+              />
+              <button type="button" className="small-btn" onClick={() => setShowLlmKey((value) => !value)} aria-label={showLlmKey ? "Ẩn API key LLM" : "Hiện API key LLM"} aria-pressed={showLlmKey}>
+                {showLlmKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {form.assistant_llm_key_saved && (
+              <label style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px" }}>
+                <input type="checkbox" checked={clearLlmKey} onChange={(e) => { setClearLlmKey(e.target.checked); setLlmKeyInput(""); setLlmConfigDirty(true); setLlmTestResult(null); }} />
+                Xóa API key hiện tại khi lưu
+              </label>
+            )}
+            <small>Key chỉ gửi khi lưu và không hiển thị lại. Nút kiểm tra sẽ gửi một câu hello tới model; chat với khách vẫn chạy bằng bộ quy tắc.</small>
+          </div>
+          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
+            <button type="button" className="small-btn" onClick={testLlmConnection} disabled={llmTestBusy || llmConfigDirty || !form.assistant_llm_key_saved || form.assistant_llm_provider === "none" || (form.assistant_llm_provider === "vilao" && !form.assistant_llm_model?.trim())}>
+              {llmTestBusy ? "Đang gửi hello…" : "Kiểm tra API key với model"}
+            </button>
+            {llmConfigDirty && <small style={{ display: "block", marginTop: "8px" }}>Lưu cấu hình trước khi kiểm tra.</small>}
+            {llmTestResult && <p role="status" className={llmTestResult.success ? "alert-success" : "alert-error"}>{llmTestResult.message}</p>}
+          </div>
         </div>
       </div>
 

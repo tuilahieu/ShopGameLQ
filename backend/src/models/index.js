@@ -12,6 +12,8 @@ import { Bank } from "./bank.model.js";
 import { IdempotencyKey } from "./idempotencyKey.model.js";
 import { PaymentIntent } from "./paymentIntent.model.js";
 import { PaymentEvent } from "./paymentEvent.model.js";
+import { AssistantThread } from "./assistantThread.model.js";
+import { AssistantMessage } from "./assistantMessage.model.js";
 
 /**
  * Category -> AccountType
@@ -164,6 +166,8 @@ PaymentIntent.hasMany(PaymentEvent, { foreignKey: "payment_intent_id", as: "even
 PaymentEvent.belongsTo(PaymentIntent, { foreignKey: "payment_intent_id", as: "paymentIntent" });
 User.hasMany(PaymentEvent, { foreignKey: "user_id", as: "paymentEvents" });
 PaymentEvent.belongsTo(User, { foreignKey: "user_id", as: "user" });
+AssistantThread.hasMany(AssistantMessage, { foreignKey: "thread_id", as: "messages" });
+AssistantMessage.belongsTo(AssistantThread, { foreignKey: "thread_id", as: "thread" });
 
 export {
   User,
@@ -180,4 +184,6 @@ export {
   IdempotencyKey,
   PaymentIntent,
   PaymentEvent,
+  AssistantThread,
+  AssistantMessage,
 };

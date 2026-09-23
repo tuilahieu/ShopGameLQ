@@ -2,6 +2,9 @@ import { Router } from "express";
 
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { adminMiddleware } from "../middlewares/admin.middleware.js";
+import { createRateLimit } from "../config/http.js";
+import { probeAssistantLlm, AssistantLlmProbeError } from "../services/assistant-llm-probe.service.js";
+import { successResponse, errorResponse } from "../utils/response.util.js";
 
 import {
   getAdminDashboard,
@@ -280,11 +283,67 @@ router.get("/setting", getAdminSetting);
  *       - Admin
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               assistant_name:
+ *                 type: string
+ *                 maxLength: 40
+ *               assistant_avatar:
+ *                 type: string
+ *                 description: URL HTTPS hoặc đường dẫn /uploads
+ *               assistant_llm_provider:
+ *                 type: string
+ *                 enum: [none, gemini, vilao]
+ *               assistant_llm_model:
+ *                 type: string
+ *                 description: Mã model hoặc alias; Gemini để trống dùng Flash-Lite
+ *               assistant_llm_endpoint:
+ *                 type: string
+ *                 description: URL HTTPS /v1 của ViLao API key
+ *               assistant_llm_api_key:
+ *                 type: string
+ *                 writeOnly: true
+ *                 description: Chỉ gửi khi thêm hoặc thay key; không được trả lại
+ *               assistant_llm_clear_key:
+ *                 type: boolean
+ *                 description: Gửi true để xóa key hiện tại
  *     responses:
  *       200:
  *         description: Cập nhật cấu hình website thành công
  */
 router.put("/setting", updateAdminSetting);
+
+/**
+ * @swagger
+ * /api/admin/assistant/test-llm:
+ *   post:
+ *     summary: Gửi hello tới model LLM đã lưu để kiểm tra kết nối
+ *     tags: [Admin, Assistant]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Model đã trả lời; chỉ trả tên model, câu trả lời ngắn và thời gian
+ *       400:
+ *         description: Chưa lưu cấu hình hoặc thiếu model
+ *       422:
+ *         description: Key, model, số dư hoặc quyền truy cập không hợp lệ
+ */
+router.post("/assistant/test-llm", createRateLimit({ windowMs: 60_000, max: 3 }), async (req, res) => {
+  try {
+    const result = await probeAssistantLlm();
+    res.setHeader("Cache-Control", "no-store");
+    return successResponse(res, "Model đã phản hồi", result);
+  } catch (error) {
+    if (error instanceof AssistantLlmProbeError) return errorResponse(res, error.message, error.status, error.code, req);
+    console.error("ASSISTANT LLM PROBE ERROR:", error?.name || "unknown");
+    return errorResponse(res, "Không kiểm tra được model lúc này", 500, "LLM_PROBE_FAILED", req);
+  }
+});
 
 /**
  * @swagger

@@ -21,6 +21,8 @@ import { parseMoney, requirePositiveMoney } from "../utils/money.util.js";
 import { applyWalletMutation } from "../services/wallet.service.js";
 import { decryptCredential, encryptCredential } from "../utils/credential.util.js";
 import { getSePayConfig } from "../services/sepay-config.service.js";
+import { normalizeAssistantAvatar, normalizeAssistantName, publicAssistantProfile } from "../assistant/profile.js";
+import { normalizeAssistantLlmModel, normalizeAssistantLlmProvider, normalizeVilaoEndpoint, serializeAssistantLlmStatus } from "../services/assistant-llm-config.service.js";
 import { completeIdempotencyKey, getIdempotencyInput, reserveIdempotencyKey } from "../services/idempotency.service.js";
 import {
   parseDate,
@@ -658,6 +660,7 @@ export async function deleteAdminDiscount(req, res) {
 }
 
 export function serializeAdminSetting(setting, sepay) {
+  const assistant = publicAssistantProfile(setting);
   return {
     id: setting.id,
     ten_web: setting.ten_web,
@@ -668,6 +671,9 @@ export function serializeAdminSetting(setting, sepay) {
     fb_admin: setting.fb_admin,
     sdt_admin: setting.sdt_admin,
     email: setting.email,
+    assistant_name: assistant.name,
+    assistant_avatar: assistant.avatar,
+    ...serializeAssistantLlmStatus(setting),
     ck_ctv: setting.ck_ctv,
     thongbao: setting.thongbao,
     sepay_configured: sepay.enabled,
@@ -713,6 +719,13 @@ export async function updateAdminSetting(req, res) {
       fb_admin,
       sdt_admin,
       email,
+      assistant_name,
+      assistant_avatar,
+      assistant_llm_provider,
+      assistant_llm_model,
+      assistant_llm_endpoint,
+      assistant_llm_api_key,
+      assistant_llm_clear_key,
       sepay_secret,
       ck_ctv,
       thongbao,
@@ -725,6 +738,25 @@ export async function updateAdminSetting(req, res) {
     if (sepay_secret !== undefined && (typeof sepay_secret !== "string" || sepay_secret.trim().length < 16 || sepay_secret.trim().length > 2048)) {
       return errorResponse(res, "Khóa SePay phải có từ 16 đến 2048 ký tự", 400, "INVALID_SEPAY_SECRET", req);
     }
+    const assistantName = assistant_name === undefined ? undefined : normalizeAssistantName(assistant_name);
+    const assistantAvatar = assistant_avatar === undefined ? undefined : normalizeAssistantAvatar(assistant_avatar);
+    if (assistantName === null) return errorResponse(res, "Tên chatbot phải dài 2–40 ký tự và chỉ gồm chữ, số, dấu cách", 400, "INVALID_ASSISTANT_NAME", req);
+    if (assistantAvatar === null) return errorResponse(res, "Avatar chatbot phải là URL HTTPS hoặc ảnh trong /uploads", 400, "INVALID_ASSISTANT_AVATAR", req);
+    const llmProvider = assistant_llm_provider === undefined ? undefined : normalizeAssistantLlmProvider(assistant_llm_provider);
+    if (llmProvider === null) return errorResponse(res, "Nhà cung cấp LLM không hợp lệ", 400, "INVALID_ASSISTANT_LLM_PROVIDER", req);
+    const llmModel = assistant_llm_model === undefined ? undefined : normalizeAssistantLlmModel(assistant_llm_model);
+    if (llmModel === null) return errorResponse(res, "Tên model LLM không hợp lệ", 400, "INVALID_ASSISTANT_LLM_MODEL", req);
+    const llmEndpoint = assistant_llm_endpoint === undefined ? undefined : normalizeVilaoEndpoint(assistant_llm_endpoint);
+    if (llmEndpoint === null) return errorResponse(res, "Endpoint ViLao phải là URL HTTPS /v1 thuộc vilao.ai", 400, "INVALID_ASSISTANT_LLM_ENDPOINT", req);
+    if (assistant_llm_api_key !== undefined && (typeof assistant_llm_api_key !== "string" || assistant_llm_api_key.trim().length < 16 || assistant_llm_api_key.trim().length > 4096)) {
+      return errorResponse(res, "API key LLM phải có từ 16 đến 4096 ký tự", 400, "INVALID_ASSISTANT_LLM_KEY", req);
+    }
+    if (assistant_llm_clear_key !== undefined && typeof assistant_llm_clear_key !== "boolean") {
+      return errorResponse(res, "Yêu cầu xóa API key không hợp lệ", 400, "INVALID_ASSISTANT_LLM_CLEAR", req);
+    }
+    if (assistant_llm_clear_key && assistant_llm_api_key !== undefined) {
+      return errorResponse(res, "Không thể vừa thay vừa xóa API key LLM", 400, "INVALID_ASSISTANT_LLM_KEY", req);
+    }
 
     await setting.update({
       ...(ten_web !== undefined && { ten_web }),
@@ -735,6 +767,13 @@ export async function updateAdminSetting(req, res) {
       ...(fb_admin !== undefined && { fb_admin }),
       ...(sdt_admin !== undefined && { sdt_admin }),
       ...(email !== undefined && { email }),
+      ...(assistantName !== undefined && { assistant_name: assistantName }),
+      ...(assistantAvatar !== undefined && { assistant_avatar: assistantAvatar }),
+      ...(llmProvider !== undefined && { assistant_llm_provider: llmProvider }),
+      ...(llmModel !== undefined && { assistant_llm_model: llmModel }),
+      ...(llmEndpoint !== undefined && { assistant_llm_endpoint: llmEndpoint }),
+      ...(assistant_llm_api_key !== undefined && { assistant_llm_api_key: encryptCredential(assistant_llm_api_key.trim()) }),
+      ...(assistant_llm_clear_key && { assistant_llm_api_key: null }),
       ...(sepay_secret !== undefined && { sepay_secret: encryptCredential(sepay_secret.trim()) }),
       ...(commissionRate !== undefined && { ck_ctv: commissionRate }),
       ...(thongbao !== undefined && { thongbao }),

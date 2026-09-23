@@ -71,4 +71,4 @@
 #           port: ${{ secrets.VPS_PORT || 22 }}
 #           script: |
 #             cd /var/www/SHOPGAME/backend
-#             pm2 restart all || pm2 start src/app.js --name "shop-game-backend"
+#             pm2 restart all || pm2 start src/server.js --name "shop-game-backend"
