@@ -6,31 +6,10 @@
   font-family: var(--font-main);
 }
 .shop-assistant-launcher { display: flex; align-items: center; justify-content: flex-end; gap: 0.55rem; }
-.shop-assistant-unread {
-  max-width: 14rem;
-  min-height: 2.65rem;
-  padding: 0.55rem 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: #263487;
-  background: #fffdf7;
-  border: 2px solid #ffcf4f;
-  border-radius: 0.9rem;
-  box-shadow: 0 4px 0 #e8b937, 0 0 0 0 rgb(255 196 55 / 0.55);
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 850;
-  line-height: 1.2;
-  text-align: left;
-  cursor: pointer;
-  animation: shop-assistant-unread-pulse 1.6s ease-in-out infinite;
-}
-.shop-assistant-unread:hover { transform: translateY(-2px); }
-.shop-assistant-unread-dot { width: 0.55rem; height: 0.55rem; flex: 0 0 auto; background: #e04335; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgb(224 67 53 / 0.18); }
+.shop-assistant-unread-dot { width: 0.58rem; height: 0.58rem; flex: 0 0 auto; display: inline-block; background: #ff7267; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 0 rgb(255 114 103 / 0.7); animation: shop-assistant-unread-pulse 1.35s ease-in-out infinite; }
 @keyframes shop-assistant-unread-pulse {
-  0%, 100% { box-shadow: 0 4px 0 #e8b937, 0 0 0 0 rgb(255 196 55 / 0.55); }
-  50% { box-shadow: 0 4px 0 #e8b937, 0 0 0 8px rgb(255 196 55 / 0); }
+  0%, 100% { transform: scale(0.88); box-shadow: 0 0 0 0 rgb(255 114 103 / 0.65); }
+  50% { transform: scale(1.12); box-shadow: 0 0 0 0.35rem rgb(255 114 103 / 0); }
 }
 
 .shop-assistant-toggle {
@@ -274,7 +253,6 @@
 
 @media (max-width: 24rem) {
   .shop-assistant-launcher { gap: 0.35rem; }
-  .shop-assistant-unread { max-width: 10.5rem; padding-inline: 0.55rem; font-size: 0.68rem; }
   .shop-assistant-toggle { min-height: 3rem; padding: 0.6rem 0.75rem; }
   .shop-assistant-form input { font-size: 0.76rem; }
 }
@@ -286,6 +264,6 @@
   .shop-assistant-toggle { animation: none; }
   .shop-assistant-thinking,
   .shop-assistant-thinking-dots i,
-  .shop-assistant-unread { animation: none; }
+  .shop-assistant-unread-dot { animation: none; }
   .shop-assistant-cursor { animation: none; }
 }

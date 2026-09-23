@@ -279,15 +279,10 @@ export default function ShopAssistant({ profile }) {
       )}
       {!panelMounted && (
         <div className="shop-assistant-launcher">
-          {unreadNotice && (
-            <button type="button" className="shop-assistant-unread" onClick={openChat} aria-label={`${assistantName} vừa trả lời, mở cuộc trò chuyện`} aria-live="polite">
-              <span className="shop-assistant-unread-dot" aria-hidden="true" />
-              <span>{assistantName} vừa trả lời bạn nè!</span>
-            </button>
-          )}
-          <button type="button" className="shop-assistant-toggle" onClick={openChat} aria-expanded={false} aria-label={`Chat với AI - ${assistantName}`}>
+          <button type="button" className="shop-assistant-toggle" onClick={openChat} aria-expanded={false} aria-label={`Chat với AI - ${assistantName}${unreadNotice ? ", có tin nhắn mới" : ""}`}>
             <MessageCircle size={21} aria-hidden="true" />
             <span>Chat với AI</span>
+            {unreadNotice && <span className="shop-assistant-unread-dot" aria-label="Có tin nhắn mới" />}
           </button>
         </div>
       )}
