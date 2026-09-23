@@ -88,6 +88,7 @@ export default function ShopAssistant({ profile }) {
   const [busyLabel, setBusyLabel] = useState("");
   const [panelMounted, setPanelMounted] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("fallback");
+  const [unreadNotice, setUnreadNotice] = useState(false);
   const [restoring, setRestoring] = useState(() => Boolean(readStoredThread()));
   const messagesRef = useRef(null);
   const rootRef = useRef(null);
@@ -107,6 +108,7 @@ export default function ShopAssistant({ profile }) {
   const openChat = () => {
     window.clearTimeout(closeTimerRef.current);
     openRef.current = true;
+    setUnreadNotice(false);
     setPanelMounted(true);
     setOpen(true);
   };
@@ -203,6 +205,7 @@ export default function ShopAssistant({ profile }) {
           : [],
         link: answer?.link,
       }]);
+      if (!openRef.current) setUnreadNotice(true);
     } catch (error) {
       if (error.response?.status === 404 && error.response?.data?.code === "THREAD_NOT_FOUND") {
         threadRef.current = null;
@@ -215,6 +218,7 @@ export default function ShopAssistant({ profile }) {
         accounts: [],
         link: { href: "/accounts", label: "Xem kho acc" },
       }]);
+      if (!openRef.current) setUnreadNotice(true);
     } finally {
       setBusy(false);
       setBusyLabel("");
@@ -273,10 +277,20 @@ export default function ShopAssistant({ profile }) {
           </div>
         </section>
       )}
-      {!panelMounted && <button type="button" className="shop-assistant-toggle" onClick={openChat} aria-expanded={false} aria-label={`Chat với AI - ${assistantName}`}>
-        <MessageCircle size={21} aria-hidden="true" />
-        <span>Chat với AI</span>
-      </button>}
+      {!panelMounted && (
+        <div className="shop-assistant-launcher">
+          {unreadNotice && (
+            <button type="button" className="shop-assistant-unread" onClick={openChat} aria-label={`${assistantName} vừa trả lời, mở cuộc trò chuyện`} aria-live="polite">
+              <span className="shop-assistant-unread-dot" aria-hidden="true" />
+              <span>{assistantName} vừa trả lời bạn nè!</span>
+            </button>
+          )}
+          <button type="button" className="shop-assistant-toggle" onClick={openChat} aria-expanded={false} aria-label={`Chat với AI - ${assistantName}`}>
+            <MessageCircle size={21} aria-hidden="true" />
+            <span>Chat với AI</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
