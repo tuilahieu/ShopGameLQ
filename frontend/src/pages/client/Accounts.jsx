@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers, ShieldCheck } from "lucide-react";
 import { StatusMessage } from "../../components/Ui";
+import SkeletonLoading from "../../components/SkeletonLoading";
 import { updateSEO } from "../../utils/seo";
 import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
 
@@ -17,7 +18,8 @@ export default function Accounts() {
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [catalogueLoaded, setCatalogueLoaded] = useState(false);
+  const catalogueLoaded = useRef(false);
+  const loadSequence = useRef(0);
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -39,13 +41,14 @@ export default function Accounts() {
     ? types.filter((type) => String(type.danhmuc_id) === categoryId)
     : types;
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setLoadError("");
     try {
       // Account types rarely change during one customer session. Avoid loading
       // the full catalogue again for each pagination/sort interaction.
-      const homeRequest = catalogueLoaded ? null : api.get("/home");
+      const homeRequest = catalogueLoaded.current ? null : api.get("/home");
 
       if (loaiId) {
         const [homeRes, accRes] = await Promise.all([
@@ -59,11 +62,12 @@ export default function Accounts() {
             },
           }),
         ]);
+        if (sequence !== loadSequence.current) return;
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
           setCategories(homeRes.data?.data?.categories || []);
           setCounts(homeRes.data?.data?.accountCountByType || {});
-          setCatalogueLoaded(true);
+          catalogueLoaded.current = true;
         }
         setAccounts(accRes.data?.data?.accounts || []);
         if (accRes.data?.data?.pagination) {
@@ -71,11 +75,12 @@ export default function Accounts() {
         }
       } else {
         const homeRes = homeRequest ? await homeRequest : null;
+        if (sequence !== loadSequence.current) return;
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
           setCategories(homeRes.data?.data?.categories || []);
           setCounts(homeRes.data?.data?.accountCountByType || {});
-          setCatalogueLoaded(true);
+          catalogueLoaded.current = true;
         }
         setAccounts([]);
         setPagination({
@@ -86,12 +91,11 @@ export default function Accounts() {
         });
       }
     } catch (error) {
-      console.error(error);
-      setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
+      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }
+  }, [loaiId, sort, page]);
 
   function updateFilter(key, value) {
     const next = new URLSearchParams(searchParams);
@@ -118,7 +122,7 @@ export default function Accounts() {
 
   useEffect(() => {
     loadData();
-  }, [loaiId, sort, page]);
+  }, [loadData]);
 
   useEffect(() => {
     if (loaiId && selectedType) {
@@ -139,11 +143,7 @@ export default function Accounts() {
   return (
     <div className="page-container catalogue-page">
       {loading ? (
-        <div className="catalogue-skeleton" aria-busy="true" aria-label="Đang tải kho tài khoản">
-          <div className="skeleton-heading" />
-          <div className="skeleton-filter" />
-          <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
-        </div>
+        <SkeletonLoading variant={loaiId ? "catalogue-results" : "catalogue"} items={loaiId ? 3 : 6} label="Đang tải kho tài khoản" />
       ) : loadError ? (
         <StatusMessage title="Không thể tải kho tài khoản" description={loadError} action={<button className="btn-primary" onClick={loadData}>Tải lại</button>} />
       ) : !loaiId ? (
@@ -201,7 +201,7 @@ export default function Accounts() {
 
           {/* Type Info Banner - shown when a specific type is selected */}
           {selectedType && (
-            <div className="type-info-banner" style={{ marginBottom: "32px" }}>
+            <div className="type-info-banner">
               <div className="type-info-banner-img">
                 <SafeImage
                   src={resolveAccountTypeImage(selectedType)}
@@ -216,7 +216,7 @@ export default function Accounts() {
               <div className="type-info-banner-body">
                 <h2 className="type-info-banner-title">{selectedType.name}</h2>
                 {selectedType.noidung && (
-                  <p className="type-info-banner-desc" style={{ whiteSpace: "pre-line" }}>{selectedType.noidung}</p>
+                  <p className="type-info-banner-desc">{selectedType.noidung}</p>
                 )}
                 {selectedType.camket && (
                   <div className="type-info-banner-warranty">
@@ -247,7 +247,7 @@ export default function Accounts() {
             <StatusMessage className="catalogue-empty-state" title="Tạm hết hàng" description="Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác." action={<button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>} />
           ) : (
             <>
-              <div className="account-grid">
+              <div className={`account-grid ${accounts.length === 1 ? "is-single" : ""}`}>
                 {accounts.map((acc, index) => (
                   <AccountCard acc={acc} key={acc.id} priority={index < 2} />
                 ))}

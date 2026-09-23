@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import SafeImage from "./SafeImage";
 import { getAccountPricing } from "../utils/accountPricing";
 
@@ -29,6 +30,7 @@ export default function AccountCard({ acc, priority = false, className = "" }) {
   return (
     <Link 
       to={`/account/${acc.id}`} 
+      aria-label={`Xem tài khoản Liên Quân #${acc.id}, giá ${formatPrice(pricing.currentPrice)}${isSold ? ", đã bán" : ", mua được ngay"}`}
       className={`account-card-premium ${isSold ? "sold" : ""} ${className}`.trim()}
       style={{ textDecoration: "none", color: "inherit", display: "block" }}
     >
@@ -82,6 +84,10 @@ export default function AccountCard({ acc, priority = false, className = "" }) {
             {isSold ? "Đã bán" : "Mua được ngay"}
           </span>
         </div>
+        <span className="account-card-action" aria-hidden="true">
+          {isSold ? "Xem chi tiết" : "Xem Acc"}
+          <ArrowRight size={17} />
+        </span>
       </div>
     </Link>
   );

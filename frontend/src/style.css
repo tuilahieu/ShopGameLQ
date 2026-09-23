@@ -195,42 +195,13 @@ img {
    keeping the handoff smooth on low-end mobile devices. */
 .app-loader {
   min-height: 100dvh;
-  display: grid;
-  place-content: center;
-  gap: 13px;
-  padding: 24px;
-  color: var(--text-secondary);
+  width: 100%;
   background: var(--bg-primary);
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 650;
 }
 
-.app-loader-mark {
-  display: inline-flex;
-  justify-content: center;
-  gap: 5px;
-  height: 26px;
-  align-items: end;
-}
-
-.app-loader-mark i {
-  width: 5px;
-  height: 10px;
-  border-radius: var(--radius-pill);
-  background: var(--accent-color);
-  animation: app-loader-pulse 0.8s ease-in-out infinite alternate;
-}
-
-.app-loader-mark i:nth-child(2) { height: 20px; animation-delay: 0.12s; }
-.app-loader-mark i:nth-child(3) { height: 14px; animation-delay: 0.24s; }
-
-@keyframes app-loader-pulse {
-  to { transform: scaleY(0.55); opacity: 0.55; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-loader-mark i { animation: none; }
+.app-loader--inline {
+  min-height: clamp(18rem, 55dvh, 38rem);
+  background: transparent;
 }
 
 .captcha-shell {
@@ -3268,6 +3239,8 @@ tbody tr:hover td {
   border-radius: var(--radius-md);
 }
 .skeleton-banner { min-height: clamp(180px, 28vw, 300px); }
+.skeleton-banner-media { overflow: hidden; aspect-ratio: 16 / 9; }
+.skeleton-banner-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .skeleton-heading { width: min(280px, 58%); height: 28px; }
 .skeleton-filter { height: 72px; }
 .skeleton-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }

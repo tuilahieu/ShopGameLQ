@@ -1,53 +1,40 @@
 # Cấu hình nạp tiền tự động SePay
 
-Ứng dụng đã tạo mã nạp một lần cho từng yêu cầu và chỉ cộng ví khi callback
-SePay có chữ ký HMAC hợp lệ, đúng mã nạp, đúng số tiền và chưa từng được xử lý.
+## Cấu hình trong Admin
 
-## 1. Thêm một secret vào API
+1. Vào **Admin → Cấu hình → Thanh toán & Cộng tác viên**. Dán khóa HMAC webhook
+   SePay vào ô **Khóa bảo mật webhook SePay** rồi lưu. Ô này để trống ở những lần
+   lưu sau nếu không đổi khóa. API chỉ trả trạng thái đã cấu hình, không trả khóa.
+2. Vào **Admin → Ngân hàng**, thêm tài khoản nhận tiền và bật trạng thái hoạt
+   động. Khách sẽ chọn tài khoản này khi tạo mã nạp.
+3. Trong SePay Dashboard, tạo webhook **Money in**, định dạng **JSON**, chọn đúng
+   tài khoản ngân hàng và dùng URL webhook hiển thị trong Admin:
 
-Trong `backend/.env`, thêm secret HMAC mà SePay Dashboard cấp cho webhook:
+   ```text
+   https://api.ten-mien-cua-ban/api/payments/sepay/webhook
+   ```
 
-```env
-SEPAY_WEBHOOK_SECRET=secret-hmac-cua-ban
-```
+   Chọn xác thực **HMAC SHA-256** và dùng đúng khóa đã lưu trong Admin. Cấu hình
+   lọc mã giao dịch với tiền tố `NAP` (hoặc `SEPAY_PAYMENT_PREFIX` nếu hệ thống
+   đã đổi). Không cần sửa code hay khởi động lại backend khi đổi khóa trong Admin.
 
-Các biến bên dưới đã có giá trị mặc định; không cần thêm nếu không muốn đổi:
+Khóa lưu trong database được mã hóa bằng `ACCOUNT_CREDENTIALS_ENCRYPTION_KEY`
+đã dùng cho thông tin tài khoản. Giữ nguyên khóa mã hóa này qua các lần triển
+khai; nếu thay, khóa SePay đã lưu sẽ không thể giải mã.
+Khóa từng lưu dạng chữ thường bởi phiên bản cũ được mã hóa lại khi backend đọc
+cấu hình lần đầu sau khi cập nhật.
 
-```env
-SEPAY_PAYMENT_PREFIX=NAP
-SEPAY_PAYMENT_TTL_MINUTES=15
-```
+## Triển khai cũ và tùy chọn
 
-Sau đó chạy migration một lần và khởi động lại backend:
+`SEPAY_WEBHOOK_SECRET` trong `backend/.env` vẫn dùng làm dự phòng nếu Admin chưa
+lưu khóa. Khóa trong Admin được ưu tiên ngay sau khi lưu. Có thể đặt
+`SEPAY_WEBHOOK_ENABLED=false` để tạm ngừng nạp tự động. Tiền tố mã nạp và thời
+gian hiệu lực mặc định là `NAP` và 15 phút; có thể đổi bằng
+`SEPAY_PAYMENT_PREFIX` và `SEPAY_PAYMENT_TTL_MINUTES` trong môi trường.
 
-```bash
-cd backend
-npm run migrate
-npm start
-```
+Webhook không cần Bearer token; server kiểm tra chữ ký HMAC trên raw body,
+timestamp tối đa 5 phút và ID giao dịch duy nhất. Mỗi yêu cầu nạp có mã riêng;
+giao dịch sai mã hoặc sai số tiền không được cộng ví.
 
-## 2. Tạo webhook trong SePay Dashboard
-
-Tạo webhook kiểu **Money in**, định dạng **JSON**, chọn đúng tài khoản ngân
-hàng nhận tiền và đặt URL:
-
-```text
-https://api.ten-mien-cua-ban/api/payments/sepay/webhook
-```
-
-Chọn xác thực **HMAC SHA-256**, dùng cùng secret đã đặt ở API. Bật lọc mã giao
-dịch với tiền tố `NAP` (hoặc giá trị `SEPAY_PAYMENT_PREFIX` nếu đã đổi).
-
-Endpoint này không cần Bearer token và không được đặt sau Cloudflare Access hay
-một lớp Basic Auth. Nó vẫn an toàn vì kiểm tra chữ ký HMAC trên chính raw body,
-timestamp tối đa 5 phút và ID giao dịch SePay duy nhất.
-
-## 3. Lưu ý khi test local
-
-SePay phải gọi được endpoint qua HTTPS công khai. Khi chạy local, mở tunnel
-(ví dụ Cloudflare Tunnel) tới cổng backend `3000`, rồi dùng URL tunnel ở bước
-2. Không dùng `localhost` trong SePay Dashboard.
-
-Mỗi lần khách bấm “Tạo mã nạp tiền”, UI sinh QR với đúng số tiền và nội dung
-riêng. Không đổi số tiền hay nội dung khi chuyển khoản: giao dịch sai sẽ được
-lưu audit nhưng không cộng ví.
+Khi test local, SePay cần gọi được endpoint HTTPS công khai. Dùng tunnel tới
+backend thay vì `localhost` trong SePay Dashboard.

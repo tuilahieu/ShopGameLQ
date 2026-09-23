@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Upload, Pencil, Trash2, Plus, X, ShoppingBag, EyeOff } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
+import TableLoadingRows from "../../components/TableLoadingRows";
+import { SkeletonBlock } from "../../components/SkeletonLoading";
 
 const STATUS_MAP = {
   0: { label: "Đang bán", color: "var(--green-color)" },
@@ -37,6 +39,14 @@ export default function AdminAccounts() {
   const [pagination, setPagination] = useState({ total: 0, totalPage: 1 });
   const [selected, setSelected] = useState(new Set());
   const imgRef = useRef();
+  const loadSequence = useRef(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState("");
+  const [metadataLoading, setMetadataLoading] = useState(true);
+  const [metadataError, setMetadataError] = useState("");
+  const [metadataRetry, setMetadataRetry] = useState(0);
 
   function makeEmpty(zalo) {
     return {
@@ -59,7 +69,10 @@ export default function AdminAccounts() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
+    setLoadError("");
     try {
       const params = {};
       if (filters.loai_id) params.loai_id = filters.loai_id;
@@ -67,31 +80,42 @@ export default function AdminAccounts() {
       params.page = filters.page;
       params.limit = 20;
 
-      const [accRes, typeRes, settingRes] = await Promise.all([
-        api.get("/admin/accounts", { params }),
-        api.get("/account-types"),
-        api.get("/home"),
-      ]);
+      const accRes = await api.get("/admin/accounts", { params });
+      if (sequence !== loadSequence.current) return;
 
       setAccounts(accRes.data?.data?.accounts || accRes.data?.data || []);
       if (accRes.data?.data?.pagination) setPagination(accRes.data.data.pagination);
-      setTypes(typeRes.data?.data || []);
       setSelected(new Set()); // clear selection on reload
+    } catch (error) {
+      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
+    }
+  }, [filters]);
 
-      const s = settingRes.data?.data?.setting || {};
-      setSetting(s);
-      // Update default login with actual zalo number
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    let active = true;
+    setMetadataLoading(true);
+    setMetadataError("");
+    Promise.all([api.get("/account-types"), api.get("/home")]).then(([typeRes, settingRes]) => {
+      if (!active) return;
+      setTypes(typeRes.data?.data || []);
+      const nextSetting = settingRes.data?.data?.setting || {};
+      setSetting(nextSetting);
       setForm((prev) =>
         prev.login === buildDefaultLogin("") || prev.login === buildDefaultLogin("admin")
-          ? { ...prev, login: buildDefaultLogin(s.sdt_admin) }
+          ? { ...prev, login: buildDefaultLogin(nextSetting.sdt_admin) }
           : prev
       );
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  useEffect(() => { loadData(); }, [filters]);
+    }).catch((error) => {
+      if (active) setMetadataError(error.response?.data?.message || "Không thể tải loại tài khoản và cài đặt.");
+    }).finally(() => {
+      if (active) setMetadataLoading(false);
+    });
+    return () => { active = false; };
+  }, [metadataRetry]);
 
   async function uploadImage(file) {
     const fd = new FormData();
@@ -110,6 +134,7 @@ export default function AdminAccounts() {
   }
 
   async function saveAccount() {
+    if (saving) return;
     if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản!");
     if (!form.gia) return alert("Vui lòng nhập giá bán!");
     const imageUrl = form.img.trim();
@@ -121,6 +146,8 @@ export default function AdminAccounts() {
     delete payload.is_sale;
     delete payload.status;
 
+    setSaving(true);
+    setSaveProgress("Đang lưu tài khoản…");
     try {
       if (editingId) {
         // Update mode — single account
@@ -142,6 +169,7 @@ export default function AdminAccounts() {
       let success = 0;
       let failed = 0;
       for (const loginLine of lines) {
+        setSaveProgress(`Đang thêm ${success + failed + 1}/${lines.length} tài khoản…`);
         try {
           await api.post("/accounts", { ...payload, login: loginLine });
           success++;
@@ -153,13 +181,16 @@ export default function AdminAccounts() {
       if (failed > 0) {
         alert(`Đã thêm ${success}/${lines.length} tài khoản. ${failed} dòng bị lỗi.`);
       } else {
-        alert(`✅ Đã thêm thành công ${success} tài khoản!`);
+        alert(`Đã thêm thành công ${success} tài khoản.`);
       }
 
       closeForm();
       loadData();
     } catch (error) {
       alert(error?.response?.data?.message || "Có lỗi xảy ra");
+    } finally {
+      setSaving(false);
+      setSaveProgress("");
     }
   }
 
@@ -254,7 +285,7 @@ export default function AdminAccounts() {
       {showForm && (
         <div className="card" style={{ marginBottom: "28px", position: "relative" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h3 style={{ margin: 0 }}>{editingId ? `✏️ Sửa Account #${editingId}` : "➕ Thêm Account Mới"}</h3>
+            <h3 style={{ margin: 0 }}>{editingId ? `Sửa account #${editingId}` : "Thêm account mới"}</h3>
             <button onClick={closeForm} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
               <X size={20} />
             </button>
@@ -444,15 +475,17 @@ export default function AdminAccounts() {
           </div>
 
           <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-            <button className="small-btn" onClick={saveAccount}>
-              {editingId ? "💾 Cập nhật" : "➕ Thêm mới"}
+            <button className="small-btn" onClick={saveAccount} disabled={saving} aria-busy={saving}>
+              {saving ? saveProgress : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
-            <button className="btn-outline" onClick={closeForm} style={{ padding: "8px 16px" }}>Hủy</button>
+            <button className="btn-outline" onClick={closeForm} disabled={saving} style={{ padding: "8px 16px" }}>Hủy</button>
           </div>
         </div>
       )}
 
       {/* ── Filters ── */}
+      {metadataLoading && <div role="status" aria-label="Đang tải loại tài khoản và cài đặt" className="workspace-inline-skeleton"><SkeletonBlock className="is-line is-45" /></div>}
+      {metadataError && <div className="table-load-error" role="alert">{metadataError} <button type="button" className="btn-outline" onClick={() => setMetadataRetry((count) => count + 1)}>Thử lại</button></div>}
       <div className="card" style={{ marginBottom: "20px", padding: "16px 20px" }}>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-end" }}>
           <div className="form-group-premium" style={{ margin: 0, minWidth: "180px" }}>
@@ -512,9 +545,10 @@ export default function AdminAccounts() {
       )}
 
       {/* ── Table ── */}
+      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={loadData}>Thử lại</button></div>}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table className="table-premium" style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="table-premium" aria-busy={loading} style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
                 <th style={{ width: "40px", textAlign: "center" }}>
@@ -537,7 +571,7 @@ export default function AdminAccounts() {
               </tr>
             </thead>
             <tbody>
-              {accounts.length === 0 ? (
+              {loading && accounts.length === 0 ? <TableLoadingRows columns={9} /> : !loadError && accounts.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>
                     <ShoppingBag size={32} style={{ opacity: 0.3, marginBottom: "8px", display: "block", margin: "0 auto 8px" }} />

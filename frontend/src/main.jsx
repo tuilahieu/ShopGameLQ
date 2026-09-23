@@ -5,6 +5,8 @@ import "./style.css";
 import "./foundation.css";
 import "./storefront.css";
 import "./ui-audit.css";
+import "./client-toy.css";
+import "./admin-toy.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

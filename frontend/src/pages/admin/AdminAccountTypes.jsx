@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../api/api";
 import { Upload } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
+import PanelLoading from "../../components/PanelLoading";
 
 export default function AdminAccountTypes() {
   const [types, setTypes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Form states
   const [form, setForm] = useState({
@@ -19,7 +21,7 @@ export default function AdminAccountTypes() {
   });
   const [editingId, setEditingId] = useState(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [typeRes, catRes] = await Promise.all([
@@ -31,8 +33,8 @@ export default function AdminAccountTypes() {
       
       // Default danhmuc_id to first category if form is empty
       const cats = catRes.data.data || [];
-      if (cats.length > 0 && !form.danhmuc_id) {
-        setForm(prev => ({ ...prev, danhmuc_id: cats[0].id }));
+      if (cats.length > 0) {
+        setForm(prev => prev.danhmuc_id ? prev : { ...prev, danhmuc_id: cats[0].id });
       }
     } catch (err) {
       console.error(err);
@@ -40,7 +42,7 @@ export default function AdminAccountTypes() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   async function handleUpload(e) {
     const file = e.target.files[0];
@@ -68,9 +70,11 @@ export default function AdminAccountTypes() {
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.danhmuc_id) return alert("Vui lòng chọn danh mục cha");
     if (!form.name) return alert("Vui lòng nhập tên loại tài khoản");
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/account-types/${editingId}`, form);
@@ -93,6 +97,8 @@ export default function AdminAccountTypes() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Lỗi lưu loại tài khoản");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -134,7 +140,7 @@ export default function AdminAccountTypes() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <div>
@@ -229,13 +235,14 @@ export default function AdminAccountTypes() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Thêm mới"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
             {editingId && (
               <button
                 type="button"
                 className="small-btn danger-btn"
+                disabled={saving}
                 onClick={() => {
                   setEditingId(null);
                   setForm({
@@ -258,7 +265,7 @@ export default function AdminAccountTypes() {
       {/* List Table */}
       <div className="table-box">
         {loading ? (
-          <p>Đang tải loại tài khoản...</p>
+          <PanelLoading label="Đang tải loại tài khoản" />
         ) : types.length === 0 ? (
           <p>Không có loại tài khoản nào.</p>
         ) : (

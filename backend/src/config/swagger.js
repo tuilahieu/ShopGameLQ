@@ -163,6 +163,8 @@ export const swaggerSpec = swaggerJsdoc({
             logo: { type: "string", nullable: true },
             banner: { type: "string", nullable: true },
             thongbao: { type: "string", nullable: true },
+            sepay_configured: { type: "boolean", description: "Trạng thái tích hợp SePay; chỉ có trong response Admin" },
+            sepay_secret_saved: { type: "boolean", description: "Đã lưu khóa SePay trong Admin; không trả nội dung khóa" },
             created_at: { type: "string", format: "date-time" },
             updated_at: { type: "string", format: "date-time" },
           },

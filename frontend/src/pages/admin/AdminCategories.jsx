@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
+import PanelLoading from "../../components/PanelLoading";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Form states
   const [form, setForm] = useState({
@@ -30,8 +32,10 @@ export default function AdminCategories() {
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.name) return alert("Vui lòng nhập tên danh mục");
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/categories/${editingId}`, form);
@@ -46,6 +50,8 @@ export default function AdminCategories() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Lỗi lưu danh mục");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -127,13 +133,14 @@ export default function AdminCategories() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Thêm mới"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
             {editingId && (
               <button
                 type="button"
                 className="small-btn danger-btn"
+                disabled={saving}
                 onClick={() => {
                   setEditingId(null);
                   setForm({ name: "", noidung: "", type: "", status: 1 });
@@ -149,7 +156,7 @@ export default function AdminCategories() {
       {/* List Table */}
       <div className="table-box">
         {loading ? (
-          <p>Đang tải danh mục...</p>
+          <PanelLoading label="Đang tải danh mục" />
         ) : categories.length === 0 ? (
           <p>Không có danh mục nào.</p>
         ) : (

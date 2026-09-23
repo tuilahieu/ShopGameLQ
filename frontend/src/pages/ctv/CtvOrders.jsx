@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../../api/api";
+import PanelLoading from "../../components/PanelLoading";
 
 export default function CtvOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const loadSequence = useRef(0);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPage: 1 });
 
   async function loadOrders(page = 1) {
+    const sequence = ++loadSequence.current;
     setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get(`/ctv/orders?page=${page}&limit=20`);
+      if (sequence !== loadSequence.current) return;
       setOrders(res.data.data.orders || []);
       setPagination(res.data.data.pagination || { page, limit: 20, total: 0, totalPage: 1 });
     } catch (err) {
-      console.error("Failed to load CTV orders:", err);
+      if (sequence === loadSequence.current) setLoadError(err.response?.data?.message || "Không thể tải đơn hàng.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }
 
@@ -29,7 +35,9 @@ export default function CtvOrders() {
 
       <div className="table-box">
         {loading ? (
-          <p style={{ color: "var(--text-secondary)" }}>Đang tải danh sách đơn hàng...</p>
+          <PanelLoading label="Đang tải danh sách đơn hàng" />
+        ) : loadError ? (
+          <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={() => loadOrders(pagination.page)}>Thử lại</button></div>
         ) : orders.length === 0 ? (
           <p style={{ color: "var(--text-secondary)" }}>Không có đơn hàng nào.</p>
         ) : (

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Landmark } from "lucide-react";
+import TableLoadingRows from "../../components/TableLoadingRows";
 
 export default function AdminBanks() {
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
@@ -15,20 +19,26 @@ export default function AdminBanks() {
   });
 
   async function load() {
+    setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/admin/banks");
       setItems(res.data.data || []);
     } catch (err) {
-      console.error("Failed to load banks list:", err);
+      setLoadError(err.response?.data?.message || "Không thể tải tài khoản ngân hàng.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.name || !form.account_no || !form.account_name || !form.bank_id) {
       return alert("Vui lòng nhập đầy đủ thông tin ngân hàng!");
     }
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/admin/banks/${editingId}`, form);
@@ -42,6 +52,8 @@ export default function AdminBanks() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Lỗi lưu thông tin ngân hàng");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -142,11 +154,11 @@ export default function AdminBanks() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Thêm mới"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
             {(editingId || form.name) && (
-              <button type="button" className="btn-outline" onClick={resetForm} style={{ padding: "8px 16px" }}>
+              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving} style={{ padding: "8px 16px" }}>
                 Hủy bỏ
               </button>
             )}
@@ -156,8 +168,9 @@ export default function AdminBanks() {
 
       <div className="card" style={{ marginTop: "24px" }}>
         <h3>Danh sách tài khoản ngân hàng</h3>
+        {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
         <div style={{ overflowX: "auto", marginTop: "16px" }}>
-          <table>
+          <table aria-busy={loading}>
             <thead>
               <tr>
                 <th>ID</th>
@@ -170,7 +183,7 @@ export default function AdminBanks() {
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
+              {loading && items.length === 0 ? <TableLoadingRows columns={7} /> : !loadError && items.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: "center", color: "var(--text-secondary)" }}>
                     Chưa cấu hình tài khoản ngân hàng nào.

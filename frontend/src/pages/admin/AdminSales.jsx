@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
+import TableLoadingRows from "../../components/TableLoadingRows";
+import SkeletonLoading from "../../components/SkeletonLoading";
 
 export default function AdminSales() {
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
@@ -25,11 +30,15 @@ export default function AdminSales() {
   const [selectedAccDetails, setSelectedAccDetails] = useState(null);
 
   async function load() {
+    setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/admin/sales");
       setItems(res.data.data || []);
     } catch (err) {
-      console.error(err);
+      setLoadError(err.response?.data?.message || "Không thể tải flash sale.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -80,6 +89,7 @@ export default function AdminSales() {
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.acc_id) return alert("Vui lòng chọn tài khoản");
     if (!form.sale_price) return alert("Vui lòng nhập giá flash sale");
     if (!form.batdau || !form.ketthuc) return alert("Vui lòng nhập thời gian bắt đầu và kết thúc");
@@ -87,6 +97,7 @@ export default function AdminSales() {
       return alert("Giá sale phải thấp hơn giá bán gốc để khách nhìn thấy mức giảm giá.");
     }
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/admin/sales/${editingId}`, form);
@@ -100,6 +111,8 @@ export default function AdminSales() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Lỗi lưu flash sale");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -237,11 +250,11 @@ export default function AdminSales() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Tạo Sale"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Tạo Sale"}
             </button>
             {(editingId || form.acc_id) && (
-              <button type="button" className="btn-outline" onClick={resetForm} style={{ padding: "8px 16px" }}>
+              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving} style={{ padding: "8px 16px" }}>
                 Hủy / Reset
               </button>
             )}
@@ -249,7 +262,8 @@ export default function AdminSales() {
         </form>
       </div>
 
-      <div className="table-box">
+      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
+      <div className="table-box" aria-busy={loading}>
         <table>
           <thead>
             <tr>
@@ -263,6 +277,7 @@ export default function AdminSales() {
           </thead>
 
           <tbody>
+            {loading && items.length === 0 && <TableLoadingRows columns={6} />}
             {items.map((s) => (
               <tr key={s.id}>
                 <td>{s.id}</td>
@@ -296,7 +311,7 @@ export default function AdminSales() {
                 </td>
               </tr>
             ))}
-            {items.length === 0 && (
+            {!loading && !loadError && items.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
                   Không có chương trình khuyến mãi nào được tìm thấy.
@@ -377,7 +392,7 @@ export default function AdminSales() {
             {/* List */}
             <div style={{ flexGrow: 1, overflowY: "auto", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
               {modalLoading ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>Đang tải danh sách tài khoản chưa bán...</div>
+                <SkeletonLoading variant="list" items={5} label="Đang tải danh sách tài khoản chưa bán" />
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>

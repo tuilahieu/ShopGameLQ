@@ -74,9 +74,8 @@ function captchaConfig() {
 
 function sepayConfig() {
   const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET?.trim() || null;
-  // Adding the HMAC secret is sufficient to turn the integration on. Set this
-  // explicitly to false only when temporarily disabling inbound callbacks.
-  const enabled = webhookSecret !== null && process.env.SEPAY_WEBHOOK_ENABLED !== "false";
+  // A secret saved in Admin can enable SePay without an environment secret.
+  const enabled = process.env.SEPAY_WEBHOOK_ENABLED !== "false";
   const paymentPrefix = (process.env.SEPAY_PAYMENT_PREFIX || "NAP").trim().toUpperCase();
   if (!/^[A-Z0-9]{2,12}$/.test(paymentPrefix)) {
     throw new Error("SEPAY_PAYMENT_PREFIX must contain 2-12 uppercase letters or digits");

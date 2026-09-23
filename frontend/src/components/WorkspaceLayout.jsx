@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, LogOut, Menu, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import api from "../api/api";
+import AppLoader from "./AppLoader";
+import useMotionReveal from "../hooks/useMotionReveal";
 
 export default function WorkspaceLayout({ title, role, links }) {
   const navigate = useNavigate();
@@ -10,7 +12,14 @@ export default function WorkspaceLayout({ title, role, links }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef(null);
   const sidebarRef = useRef(null);
+  const mainRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const routeKey = `${location.pathname}${location.search}`;
+  const activeLink = [...links]
+    .sort((a, b) => b.to.length - a.to.length)
+    .find((link) => link.end ? location.pathname === link.to : location.pathname.startsWith(link.to));
+
+  useMotionReveal(mainRef, routeKey);
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
@@ -56,7 +65,7 @@ export default function WorkspaceLayout({ title, role, links }) {
     <div className="admin-container workspace-shell">
       <a className="skip-link" href="#workspace-main">Bỏ qua điều hướng</a>
       <header className="admin-mobile-topbar">
-        <strong>{title}</strong>
+        <div><small>{role}</small><strong>{activeLink?.label || title}</strong></div>
         <button ref={menuButtonRef} type="button" className="admin-mobile-menu-button" onClick={() => setMenuOpen(true)} aria-label={`Mở menu ${role}`} aria-expanded={menuOpen} aria-controls="workspace-sidebar">
           <Menu size={20} aria-hidden="true" />
         </button>
@@ -73,10 +82,13 @@ export default function WorkspaceLayout({ title, role, links }) {
           <strong>{user.username || "Tài khoản"}</strong>
         </div>
         <nav className="admin-nav-links" aria-label={`Các trang ${role}`}>
-          {links.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}>
-              <Icon size={18} aria-hidden="true" /><span>{label}</span>
-            </NavLink>
+          {links.map(({ to, label, icon: Icon, end, group }, index) => (
+            <Fragment key={to}>
+              {group && group !== links[index - 1]?.group && <span className="workspace-nav-group-label">{group}</span>}
+              <NavLink to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}>
+                <Icon size={18} aria-hidden="true" /><span>{label}</span><ChevronRight className="workspace-nav-chevron" size={15} aria-hidden="true" />
+              </NavLink>
+            </Fragment>
           ))}
         </nav>
         <div className="workspace-sidebar-footer">
@@ -85,7 +97,13 @@ export default function WorkspaceLayout({ title, role, links }) {
           <button type="button" onClick={logout} className="btn-ghost workspace-footer-link"><LogOut size={16} aria-hidden="true" /> Đăng xuất</button>
         </div>
       </aside>
-      <main id="workspace-main" tabIndex={-1} className="admin-content workspace-content"><Outlet /></main>
+      <main ref={mainRef} id="workspace-main" tabIndex={-1} className="admin-content workspace-content">
+        <header className="workspace-contextbar">
+          <div><small>{activeLink?.group || role}</small><strong>{activeLink?.label || title}</strong></div>
+          <span>Xin chào, <b>{user.username || "Quản trị viên"}</b></span>
+        </header>
+        <div className="workspace-route-stage" key={routeKey}><Suspense fallback={<AppLoader inline />}><Outlet /></Suspense></div>
+      </main>
     </div>
   );
 }

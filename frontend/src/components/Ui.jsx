@@ -17,9 +17,9 @@ export function StatusMessage({ title, description, action, className = "" }) {
   );
 }
 
-export function StatCard({ label, value, icon: Icon, tone = "default" }) {
+export function StatCard({ label, value, icon: Icon, tone = "default", className = "" }) {
   return (
-    <div className={`dashboard-card ui-stat-card ui-stat-card--${tone}`}>
+    <div className={`dashboard-card ui-stat-card ui-stat-card--${tone} ${className}`.trim()}>
       <h3>{label}</h3>
       <strong>{value}</strong>
       <Icon className="card-icon" size={36} aria-hidden="true" />

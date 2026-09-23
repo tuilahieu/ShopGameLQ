@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
+import TableLoadingRows from "../../components/TableLoadingRows";
 
 export default function AdminTransactions() {
   const [items, setItems] = useState([]);
@@ -12,8 +13,14 @@ export default function AdminTransactions() {
     total: 0,
     totalPage: 1
   });
+  const loadSequence = useRef(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/admin/transactions", {
         params: {
@@ -22,14 +29,17 @@ export default function AdminTransactions() {
           search: search || undefined
         }
       });
+      if (sequence !== loadSequence.current) return;
       setItems(res.data.data.transactions || []);
       if (res.data.data.pagination) {
         setPagination(res.data.data.pagination);
       }
     } catch (err) {
-      console.error(err);
+      if (sequence === loadSequence.current) setLoadError(err.response?.data?.message || "Không thể tải giao dịch.");
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }
+  }, [page, search]);
 
   function handleSearch(e) {
     e.preventDefault();
@@ -50,7 +60,7 @@ export default function AdminTransactions() {
 
   useEffect(() => {
     load();
-  }, [page, search]);
+  }, [load]);
 
   return (
     <div>
@@ -81,7 +91,8 @@ export default function AdminTransactions() {
         </div>
       </div>
 
-      <div className="table-box">
+      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
+      <div className="table-box" aria-busy={loading}>
         <table>
           <thead>
             <tr>
@@ -96,6 +107,7 @@ export default function AdminTransactions() {
           </thead>
 
           <tbody>
+            {loading && items.length === 0 && <TableLoadingRows columns={7} />}
             {items.map((t) => {
               const amount = Number(t.amount || 0);
               const isAdd = amount > 0;
@@ -124,7 +136,7 @@ export default function AdminTransactions() {
                 <td style={{ fontSize: "0.9rem" }}>{t.description}</td>
               </tr>;
             })}
-            {items.length === 0 && (
+            {!loading && !loadError && items.length === 0 && (
               <tr>
                 <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
                   Không tìm thấy lịch sử giao dịch nào phù hợp.

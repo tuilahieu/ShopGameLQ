@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLoader from "./components/AppLoader";
+import NetworkActivity from "./components/NetworkActivity";
 
 // Keep the first bundle limited to routing, theme and the loading shell. Each
 // page is fetched only when its route is needed, especially admin screens that
@@ -65,6 +66,7 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <NetworkActivity />
         <Suspense fallback={<AppLoader />}>
         <Routes>
           <Route element={<ClientLayout />}>

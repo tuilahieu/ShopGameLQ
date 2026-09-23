@@ -1,5 +1,5 @@
 import { ImageOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 
 /**
@@ -20,14 +20,14 @@ export default function SafeImage({
   loading = "lazy",
   decoding = "async",
   fetchPriority,
+  onLoad,
   ...props
 }) {
   const resolvedSrc = resolveMediaUrl(src);
-  const [failed, setFailed] = useState(!resolvedSrc);
-
-  useEffect(() => {
-    setFailed(!resolvedSrc);
-  }, [resolvedSrc]);
+  const [failedSrc, setFailedSrc] = useState(null);
+  const [loadedSrc, setLoadedSrc] = useState(null);
+  const failed = !resolvedSrc || failedSrc === resolvedSrc;
+  const loaded = loadedSrc === resolvedSrc;
 
   if (failed) {
     const fallbackStyle = {
@@ -59,10 +59,14 @@ export default function SafeImage({
       loading={loading}
       decoding={decoding}
       fetchPriority={fetchPriority}
-      className={className}
+      className={`safe-image ${loaded ? "is-loaded" : "is-loading"} ${className}`.trim()}
       style={style}
+      onLoad={(event) => {
+        setLoadedSrc(resolvedSrc);
+        onLoad?.(event);
+      }}
       onError={(event) => {
-        setFailed(true);
+        setFailedSrc(resolvedSrc);
         onError?.(event);
       }}
     />

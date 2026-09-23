@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { Key, CreditCard, History, Check, AlertCircle, ChevronDown } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
+import SkeletonLoading from "../../components/SkeletonLoading";
 
 export default function Profile() {
   const token = localStorage.getItem("accessToken");
@@ -125,7 +126,7 @@ export default function Profile() {
       </header>
 
       {loading ? (
-        <div className="customer-loading-state" aria-live="polite">Đang tải thông tin cá nhân…</div>
+        <SkeletonLoading variant="profile" compact label="Đang tải thông tin cá nhân" />
       ) : loadError || !profile ? (
         <div className="empty-state"><p>{loadError || "Không tìm thấy thông tin tài khoản."}</p><button className="btn-primary" onClick={loadProfileAndTx}>Tải lại</button></div>
       ) : (

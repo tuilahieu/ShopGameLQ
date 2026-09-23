@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Gamepad2, ShoppingBag, Eye, EyeOff, CheckSquare } from "lucide-react";
 import { PageHeading, StatCard, StatusMessage } from "../../components/Ui";
+import SkeletonLoading from "../../components/SkeletonLoading";
 
 export default function CtvDashboard() {
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export default function CtvDashboard() {
   }, []);
 
   if (loading) {
-    return <StatusMessage title="Đang tải số liệu…" />;
+    return <SkeletonLoading variant="stats" items={6} label="Đang tải số liệu cộng tác viên" />;
   }
 
   if (!data) {

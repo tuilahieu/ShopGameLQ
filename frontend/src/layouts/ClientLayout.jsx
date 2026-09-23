@@ -1,10 +1,12 @@
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { ArrowRight, LogIn, LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, LogIn, LogOut, User, Wallet, Home, ListFilter, CreditCard, History, Menu, X, Shield, ShieldCheck, Briefcase, FileText, Phone, ChevronDown, ChevronRight, MessageCircle, Flame, Gamepad2 } from "lucide-react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import api from "../api/api";
 import ThemeToggle from "../components/ThemeToggle";
 import SafeImage from "../components/SafeImage";
+import AppLoader from "../components/AppLoader";
 import { resolveMediaUrl } from "../utils/mediaUrl";
+import useMotionReveal from "../hooks/useMotionReveal";
 
 export default function ClientLayout() {
   const navigate = useNavigate();
@@ -20,12 +22,41 @@ export default function ClientLayout() {
   const [gameCategories, setGameCategories] = useState([]);
   const [flashSaleCount, setFlashSaleCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuRendered, setIsMobileMenuRendered] = useState(false);
+  const [isMobileMenuClosing, setIsMobileMenuClosing] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const drawerRef = useRef(null);
   const drawerTriggerRef = useRef(null);
   const profileMenuRef = useRef(null);
   const profileTriggerRef = useRef(null);
   const categoryMenuRef = useRef(null);
+  const mainRef = useRef(null);
+  const routeKey = `${location.pathname}${location.search}`;
+
+  useMotionReveal(mainRef, routeKey);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      setIsMobileMenuRendered(true);
+      setIsMobileMenuClosing(false);
+      return undefined;
+    }
+    if (!isMobileMenuRendered) return undefined;
+    setIsMobileMenuClosing(true);
+    const timer = window.setTimeout(() => {
+      setIsMobileMenuRendered(false);
+      setIsMobileMenuClosing(false);
+    }, 190);
+    return () => window.clearTimeout(timer);
+  }, [isMobileMenuOpen, isMobileMenuRendered]);
+
+  useEffect(() => {
+    if (!location.hash) return undefined;
+    const timer = window.setTimeout(() => {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [location.hash, location.pathname]);
 
   // Sync favicon if set
   useEffect(() => {
@@ -141,7 +172,7 @@ export default function ClientLayout() {
   }, []);
 
   // Periodically refresh profile data to sync wallet balance and details
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     if (!token) return;
     try {
       const res = await api.get("/profile");
@@ -153,7 +184,7 @@ export default function ClientLayout() {
     } catch (err) {
       console.error("Failed to sync profile:", err);
     }
-  }
+  }, [token]);
 
   // Fetch public website setting configurations
   async function fetchSettings() {
@@ -176,7 +207,7 @@ export default function ClientLayout() {
 
   useEffect(() => {
     fetchProfile();
-  }, [location.pathname, token]);
+  }, [location.pathname, fetchProfile]);
 
   useEffect(() => {
     fetchSettings();
@@ -209,6 +240,7 @@ export default function ClientLayout() {
               alt={`Logo ${setting.ten_web || "cửa hàng"}`}
               width={132}
               height={32}
+              loading="eager"
               style={{ maxHeight: "45px" }}
               fallbackLabel={setting.ten_web || "Cửa hàng game"}
             />
@@ -316,6 +348,7 @@ export default function ClientLayout() {
                 alt={`Logo ${setting.ten_web || "cửa hàng"}`}
                 width={116}
                 height={30}
+                loading="eager"
                 style={{ maxHeight: "30px" }}
                 fallbackLabel={setting.ten_web || "Cửa hàng"}
               />
@@ -373,8 +406,8 @@ export default function ClientLayout() {
       )}
 
       {/* Mobile Slide-Out Drawer Menu */}
-      {isMobileMenuOpen && (
-        <div className="mobile-drawer-backdrop" onClick={() => setIsMobileMenuOpen(false)}>
+      {isMobileMenuRendered && (
+        <div className={`mobile-drawer-backdrop${isMobileMenuClosing ? " is-closing" : ""}`} onClick={() => setIsMobileMenuOpen(false)}>
           <aside
             id="mobile-account-drawer"
             ref={drawerRef}
@@ -432,12 +465,24 @@ export default function ClientLayout() {
                 <ListFilter size={18} />
                 <span>Kho tài khoản</span>
               </NavLink>
-              {gameCategories.map((category) => (
-                <NavLink to={`/accounts?danhmuc_id=${category.id}`} className="mobile-drawer-link mobile-drawer-category" key={category.id} onClick={() => setIsMobileMenuOpen(false)}>
-                  <ChevronRight size={17} aria-hidden="true" />
-                  <span>{category.name}</span>
-                </NavLink>
-              ))}
+              {gameCategories.length > 0 && (
+                <details className="mobile-drawer-categories">
+                  <summary className="mobile-drawer-link">
+                    <Gamepad2 size={18} aria-hidden="true" />
+                    <span>Danh mục game</span>
+                    <small>{gameCategories.length}</small>
+                    <ChevronDown size={17} aria-hidden="true" />
+                  </summary>
+                  <div className="mobile-drawer-category-list">
+                    {gameCategories.map((category) => (
+                      <NavLink to={`/accounts?danhmuc_id=${category.id}`} className="mobile-drawer-link mobile-drawer-category" key={category.id} onClick={() => setIsMobileMenuOpen(false)}>
+                        <ChevronRight size={17} aria-hidden="true" />
+                        <span>{category.name}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
+              )}
 
               <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}>
                 <CreditCard size={18} />
@@ -484,12 +529,6 @@ export default function ClientLayout() {
                 <span>Liên hệ hỗ trợ</span>
               </NavLink>
 
-              {token && (
-                <button type="button" className="mobile-drawer-link logout" onClick={logout}>
-                  <LogOut size={18} />
-                  <span>Đăng xuất</span>
-                </button>
-              )}
             </div>
 
             <div className="mobile-drawer-footer">
@@ -508,8 +547,10 @@ export default function ClientLayout() {
         </div>
       )}
 
-      <main id="noi-dung-chinh" tabIndex={-1} style={{ flexGrow: 1 }}>
-        <Outlet />
+      <main ref={mainRef} id="noi-dung-chinh" tabIndex={-1} style={{ flexGrow: 1 }}>
+        <div className="client-route-stage" key={routeKey}>
+          <Suspense fallback={<AppLoader inline />}><Outlet /></Suspense>
+        </div>
       </main>
 
       <footer className="client-footer">
@@ -607,22 +648,22 @@ export default function ClientLayout() {
           <span>Kho acc</span>
         </NavLink>
         
+        <Link
+          to="/accounts?loai_id=3"
+          className="mobile-nav-item mobile-sale-item"
+          aria-label="Xem tài khoản Sale"
+        >
+          <span className="mobile-sale-icon">
+            <Flame size={21} aria-hidden="true" />
+            {flashSaleCount > 0 && <b>{flashSaleCount > 9 ? "9+" : flashSaleCount}</b>}
+          </span>
+          <span>Sale</span>
+        </Link>
+
         <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
           <CreditCard size={20} />
           <span>Nạp tiền</span>
         </NavLink>
-
-        {token ? (
-          <NavLink to="/my-orders" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
-            <History size={20} />
-            <span>Đã mua</span>
-          </NavLink>
-        ) : (
-          <NavLink to="/login" className={({ isActive }) => isActive ? "mobile-nav-item active" : "mobile-nav-item"}>
-            <User size={20} />
-            <span>Đăng nhập</span>
-          </NavLink>
-        )}
 
         <button
           type="button"

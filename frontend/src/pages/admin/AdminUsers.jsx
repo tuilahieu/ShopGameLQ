@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import CurrencyInput from "../../components/CurrencyInput";
+import TableLoadingRows from "../../components/TableLoadingRows";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -19,8 +20,14 @@ export default function AdminUsers() {
   const [adjustmentError, setAdjustmentError] = useState("");
   const [adjusting, setAdjusting] = useState(false);
   const adjustmentKeyRef = useRef(null);
+  const loadSequence = useRef(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/admin/users", {
         params: {
@@ -29,14 +36,17 @@ export default function AdminUsers() {
           search: search || undefined
         }
       });
+      if (sequence !== loadSequence.current) return;
       setUsers(res.data.data.users || []);
       if (res.data.data.pagination) {
         setPagination(res.data.data.pagination);
       }
     } catch (err) {
-      console.error(err);
+      if (sequence === loadSequence.current) setLoadError(err.response?.data?.message || "Không thể tải người dùng.");
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }
+  }, [page, search]);
 
   async function updateUser(id, body) {
     try {
@@ -103,7 +113,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     load();
-  }, [page, search]);
+  }, [load]);
 
   return (
     <div>
@@ -112,9 +122,11 @@ export default function AdminUsers() {
       {/* Search Bar */}
       <div className="filter-wrapper" style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <form onSubmit={handleSearch} style={{ display: "flex", gap: "10px", alignItems: "center", flexGrow: 1 }}>
+          <label className="sr-only" htmlFor="admin-user-search">Tìm kiếm người dùng</label>
           <input
+            id="admin-user-search"
             type="text"
-            placeholder="Tìm kiếm username..."
+            placeholder="Tìm theo tên đăng nhập..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="filter-input"
@@ -125,7 +137,7 @@ export default function AdminUsers() {
           </button>
           {search && (
             <button type="button" className="btn-outline" onClick={handleReset} style={{ padding: "8px 16px" }}>
-              Reset
+              Đặt lại
             </button>
           )}
         </form>
@@ -134,20 +146,22 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="table-box">
+      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
+      <div className="table-box" aria-busy={loading}>
         <table>
           <thead>
             <tr>
               <th>ID</th>
-              <th>Username</th>
-              <th>Level</th>
-              <th>Money</th>
-              <th>Banned</th>
-              <th>Action</th>
+              <th>Tên đăng nhập</th>
+              <th>Quyền</th>
+              <th>Số dư</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
 
           <tbody>
+            {loading && users.length === 0 && <TableLoadingRows columns={6} />}
             {users.map((u) => (
               <tr key={u.id}>
                 <td>{u.id}</td>
@@ -216,7 +230,7 @@ export default function AdminUsers() {
                 </td>
               </tr>
             ))}
-            {users.length === 0 && (
+            {!loading && !loadError && users.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
                   Không tìm thấy người dùng nào phù hợp.

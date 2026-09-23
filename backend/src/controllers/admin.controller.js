@@ -19,7 +19,8 @@ import { writeLog } from "../utils/log.util.js";
 import { parsePagination } from "../utils/pagination.util.js";
 import { parseMoney, requirePositiveMoney } from "../utils/money.util.js";
 import { applyWalletMutation } from "../services/wallet.service.js";
-import { decryptCredential } from "../utils/credential.util.js";
+import { decryptCredential, encryptCredential } from "../utils/credential.util.js";
+import { getSePayConfig } from "../services/sepay-config.service.js";
 import { completeIdempotencyKey, getIdempotencyInput, reserveIdempotencyKey } from "../services/idempotency.service.js";
 import {
   parseDate,
@@ -656,6 +657,24 @@ export async function deleteAdminDiscount(req, res) {
   }
 }
 
+export function serializeAdminSetting(setting, sepay) {
+  return {
+    id: setting.id,
+    ten_web: setting.ten_web,
+    logo: setting.logo,
+    favicon: setting.favicon,
+    banner: setting.banner,
+    background: setting.background,
+    fb_admin: setting.fb_admin,
+    sdt_admin: setting.sdt_admin,
+    email: setting.email,
+    ck_ctv: setting.ck_ctv,
+    thongbao: setting.thongbao,
+    sepay_configured: sepay.enabled,
+    sepay_secret_saved: Boolean(setting.sepay_secret),
+  };
+}
+
 export async function getAdminSetting(req, res) {
   try {
     let setting = await Setting.findByPk(1);
@@ -667,7 +686,8 @@ export async function getAdminSetting(req, res) {
       });
     }
 
-    return successResponse(res, "Lấy cấu hình website thành công", setting);
+    res.setHeader("Cache-Control", "no-store");
+    return successResponse(res, "Lấy cấu hình website thành công", serializeAdminSetting(setting, await getSePayConfig()));
   } catch (error) {
     console.error("GET ADMIN SETTING ERROR:", error);
     return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
@@ -702,6 +722,10 @@ export async function updateAdminSetting(req, res) {
       ? undefined
       : parsePercentage(ck_ctv, "Chiết khấu CTV", { min: 0, max: 100 });
 
+    if (sepay_secret !== undefined && (typeof sepay_secret !== "string" || sepay_secret.trim().length < 16 || sepay_secret.trim().length > 2048)) {
+      return errorResponse(res, "Khóa SePay phải có từ 16 đến 2048 ký tự", 400, "INVALID_SEPAY_SECRET", req);
+    }
+
     await setting.update({
       ...(ten_web !== undefined && { ten_web }),
       ...(logo !== undefined && { logo }),
@@ -711,7 +735,7 @@ export async function updateAdminSetting(req, res) {
       ...(fb_admin !== undefined && { fb_admin }),
       ...(sdt_admin !== undefined && { sdt_admin }),
       ...(email !== undefined && { email }),
-      ...(sepay_secret !== undefined && { sepay_secret }),
+      ...(sepay_secret !== undefined && { sepay_secret: encryptCredential(sepay_secret.trim()) }),
       ...(commissionRate !== undefined && { ck_ctv: commissionRate }),
       ...(thongbao !== undefined && { thongbao }),
     });
@@ -722,10 +746,11 @@ export async function updateAdminSetting(req, res) {
       req.clientIp,
     );
 
+    res.setHeader("Cache-Control", "no-store");
     return successResponse(
       res,
       "Cập nhật cấu hình website thành công",
-      setting,
+      serializeAdminSetting(setting, await getSePayConfig()),
     );
   } catch (error) {
     console.error("UPDATE ADMIN SETTING ERROR:", error);

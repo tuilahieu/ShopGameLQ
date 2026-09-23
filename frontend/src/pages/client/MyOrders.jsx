@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
+import SkeletonLoading from "../../components/SkeletonLoading";
 import { Key, Calendar, ShieldCheck, Copy, Check, Info } from "lucide-react";
 
 export default function MyOrders() {
@@ -68,7 +69,7 @@ export default function MyOrders() {
       </header>
 
       {loading ? (
-        <div className="customer-loading-state" aria-live="polite">Đang tải tài khoản đã mua…</div>
+        <SkeletonLoading variant="orders" items={4} compact label="Đang tải tài khoản đã mua" />
       ) : loadError ? (
         <div className="empty-state"><p>{loadError}</p><button className="btn-primary" onClick={load}>Tải lại</button></div>
       ) : orders.length === 0 ? (
@@ -126,7 +127,7 @@ export default function MyOrders() {
         }
       >
         {modalLoading ? (
-          <div className="customer-loading-state">Đang tải thông tin acc…</div>
+          <SkeletonLoading variant="form" items={3} compact label="Đang tải thông tin tài khoản" />
         ) : detailError ? (
           <div className="alert-error" role="alert">{detailError}</div>
         ) : selectedOrder ? (

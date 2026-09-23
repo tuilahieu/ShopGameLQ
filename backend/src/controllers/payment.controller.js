@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 
 import { sequelize } from "../config/database.js";
-import { env } from "../config/env.js";
 import { Bank, PaymentEvent, PaymentIntent, User } from "../models/index.js";
 import { applyWalletMutation } from "../services/wallet.service.js";
+import { getSePayConfig } from "../services/sepay-config.service.js";
 import { writeLog } from "../utils/log.util.js";
 import { parseMoney, requirePositiveMoney } from "../utils/money.util.js";
 import { errorResponse, successResponse } from "../utils/response.util.js";
@@ -12,9 +12,9 @@ import { verifySePaySignature } from "../utils/sepay.util.js";
 const MINIMUM_TOPUP = 10_000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 
-function createTransferCode() {
+function createTransferCode(config) {
   // Upper-case alphanumeric avoids ambiguity in banking-app transfer content.
-  return `${env.sepay.paymentPrefix}${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
+  return `${config.paymentPrefix}${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
 }
 
 function serializeBank(bank) {
@@ -57,7 +57,8 @@ function markExpired(intent) {
 
 export async function createPaymentIntent(req, res) {
   try {
-    if (!env.sepay.enabled) {
+    const sepay = await getSePayConfig();
+    if (!sepay.enabled) {
       return errorResponse(res, "Cổng nạp tự động chưa được cấu hình", 503, "PAYMENT_NOT_CONFIGURED", req);
     }
 
@@ -73,7 +74,7 @@ export async function createPaymentIntent(req, res) {
     const bank = await Bank.findOne({ where: { id: bankId, status: 1 } });
     if (!bank) return errorResponse(res, "Tài khoản nhận tiền không còn hoạt động", 404, "BANK_NOT_FOUND", req);
 
-    const expiresAt = new Date(Date.now() + env.sepay.intentTtlMinutes * 60_000);
+    const expiresAt = new Date(Date.now() + sepay.intentTtlMinutes * 60_000);
     let intent;
     // The database unique index remains the final guard even though collisions
     // from 64 random bits are practically impossible.
@@ -82,7 +83,7 @@ export async function createPaymentIntent(req, res) {
         intent = await PaymentIntent.create({
           user_id: req.user.id,
           bank_id: bank.id,
-          code: createTransferCode(),
+          code: createTransferCode(sepay),
           amount,
           status: "pending",
           expires_at: expiresAt,
@@ -121,12 +122,12 @@ export async function getPaymentIntent(req, res) {
   }
 }
 
-function hasValidSignature(req) {
+function hasValidSignature(req, secret) {
   return verifySePaySignature({
     rawBody: req.body,
     signature: req.get("x-sepay-signature"),
     timestamp: req.get("x-sepay-timestamp"),
-    secret: env.sepay.webhookSecret,
+    secret,
     maxAgeSeconds: WEBHOOK_MAX_AGE_SECONDS,
   });
 }
@@ -158,7 +159,14 @@ async function createIgnoredEvent({ details, payload, status, reason, transactio
 }
 
 export async function sepayWebhook(req, res) {
-  if (!env.sepay.enabled || !hasValidSignature(req)) {
+  let sepay;
+  try {
+    sepay = await getSePayConfig();
+  } catch (error) {
+    console.error("SEPAY CONFIG ERROR:", error);
+    return errorResponse(res, "Không thể xử lý webhook", 500, "WEBHOOK_PROCESSING_FAILED", req);
+  }
+  if (!sepay.enabled || !hasValidSignature(req, sepay.webhookSecret)) {
     // Never reveal whether a key or a payment code was valid.
     return errorResponse(res, "Webhook không hợp lệ", 401, "INVALID_WEBHOOK", req);
   }

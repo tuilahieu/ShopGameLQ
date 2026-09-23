@@ -10,6 +10,14 @@ const api = axios.create({
 const GET_DEDUP_WINDOW_MS = 5_000;
 const getCache = new Map();
 let refreshPromise = null;
+let activeRequests = 0;
+
+function finishActivity(config) {
+  if (!config?._tracksActivity) return;
+  config._tracksActivity = false;
+  activeRequests = Math.max(0, activeRequests - 1);
+  window.dispatchEvent(new CustomEvent("api-activity", { detail: activeRequests }));
+}
 
 function requestKey(url, config = {}) {
   const token = localStorage.getItem("accessToken") || "anonymous";
@@ -38,13 +46,25 @@ api.interceptors.request.use((config) => {
   // deduplicate short-lived GETs; no POST/PUT/DELETE response is ever cached.
   if ((config.method || "get").toLowerCase() !== "get") clearApiGetCache();
 
+  // Polling is background work; user-initiated requests show a quiet progress
+  // indicator without covering the current screen or blocking interaction.
+  if (!config.params?.poll && !config.silent) {
+    config._tracksActivity = true;
+    activeRequests += 1;
+    window.dispatchEvent(new CustomEvent("api-activity", { detail: activeRequests }));
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    finishActivity(response.config);
+    return response;
+  },
 
   async (error) => {
+    finishActivity(error.config);
     if (["ADMIN_SECOND_FACTOR_REQUIRED", "ADMIN_SECOND_FACTOR_SETUP_REQUIRED"].includes(error.response?.data?.code)) {
       sessionStorage.removeItem("adminSession");
       window.dispatchEvent(new Event("admin-session-expired"));
@@ -98,9 +118,23 @@ api.interceptors.response.use(
 
 const rawGet = api.get.bind(api);
 api.get = (url, config = {}) => {
+  // Polling URLs are unique on every tick; caching them would grow the map
+  // indefinitely during a long payment session. Aborted requests must also
+  // stay independent of other callers.
+  if (config.params?.poll || config.signal || config.cache === false) return rawGet(url, config);
+
   const key = requestKey(url, config);
   const cached = getCache.get(key);
   if (cached && Date.now() - cached.createdAt < GET_DEDUP_WINDOW_MS) return cached.promise;
+
+  if (cached) getCache.delete(key);
+  if (getCache.size >= 128) {
+    const now = Date.now();
+    for (const [cacheKey, entry] of getCache) {
+      if (now - entry.createdAt >= GET_DEDUP_WINDOW_MS) getCache.delete(cacheKey);
+    }
+    if (getCache.size >= 128) getCache.delete(getCache.keys().next().value);
+  }
 
   const promise = rawGet(url, config).catch((error) => {
     // Errors must not be cached: the user should be able to retry immediately.

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, Bell, Clock, CreditCard, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Bell, Clock, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import Modal from "../../components/Modal";
 import RecentPurchases from "../../components/RecentPurchases";
+import SkeletonLoading from "../../components/SkeletonLoading";
 import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/storefrontAssets";
 
 function SaleCountdown({ endTimes, onExpired }) {
@@ -45,7 +46,7 @@ function SaleCountdown({ endTimes, onExpired }) {
     return () => window.clearInterval(intervalId);
   }, [endTimes, onExpired]);
 
-  return <div className="flash-sale-timer" aria-live="polite">Kết thúc sau <span>{timeLeft || "--:--:--"}</span></div>;
+  return <div className="flash-sale-timer">Kết thúc sau <span>{timeLeft || "--:--:--"}</span></div>;
 }
 
 export default function Home() {
@@ -112,11 +113,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="page-container catalogue-skeleton" aria-busy="true" aria-label="Đang tải cửa hàng">
-        <div className="skeleton-banner" />
-        <div className="skeleton-heading" />
-        <div className="skeleton-grid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton-card" key={index} />)}</div>
-      </div>
+      <div className="page-container home storefront-home storefront-home-loading"><SkeletonLoading variant="home" label="Đang tải cửa hàng" /></div>
     );
   }
 
@@ -133,47 +130,47 @@ export default function Home() {
   return (
     <div className="page-container home storefront-home">
       <div className="storefront-hero-stack">
-        <section className="storefront-hero" aria-labelledby="home-hero-title">
+        <section className="storefront-hero" aria-label="Banner cửa hàng và thao tác nhanh">
+          <h1 className="storefront-hero-title">ACC LIÊN QUÂN RẺ NHẤT VIỆT NAM</h1>
           <div className="storefront-hero-copy">
-            <span className="storefront-eyebrow">
-              <Gamepad2 size={17} aria-hidden="true" />
-              {Number(data.totalAccounts || 0).toLocaleString()} tài khoản đang bán
-            </span>
-            <h1 id="home-hero-title">
-              <span className="storefront-title-mobile">
-                Còn {Number(data.totalAccounts || 0).toLocaleString()} tài khoản đang bán
-              </span>
-              <span className="storefront-title-desktop">Chọn acc hợp gu, nhận thông tin ngay</span>
-            </h1>
-            <p>Xem rõ hình ảnh, thông tin và giá trước khi mua. Thao tác gọn trên điện thoại.</p>
             <div className="storefront-hero-actions">
               <Link to="/accounts" className="btn-primary storefront-primary-cta">
-                Chọn tài khoản <ArrowRight size={19} aria-hidden="true" />
-              </Link>
-              <Link to="/nap-tien" className="btn-outline storefront-secondary-cta">
-                <CreditCard size={18} aria-hidden="true" /> Nạp tiền
+                Khám phá acc <ArrowRight size={19} aria-hidden="true" />
               </Link>
             </div>
           </div>
 
           <div className="storefront-hero-media">
-            {heroImage ? (
-              <SafeImage
-                src={heroImage}
-                alt={`Banner ${data.setting?.ten_web || "cửa hàng tài khoản game"}`}
-                width={1600}
-                height={900}
-                fetchPriority="high"
-                decoding="async"
-                fallbackLabel="Ảnh giới thiệu cửa hàng"
-              />
-            ) : (
-              <div className="home-banner-placeholder">
-                <Gamepad2 size={42} aria-hidden="true" />
-                <p>{data.setting?.ten_web || "Shop Game"}</p>
-                <small>Kho tài khoản được cập nhật thường xuyên.</small>
+            <div className="storefront-banner-frame">
+              <div className="storefront-banner-frame-top" aria-hidden="true">
+                <span className="storefront-banner-lights"><i /><i /><i /></span>
               </div>
-            )}
+              <div className="storefront-banner-screen">
+                {heroImage ? (
+                  <SafeImage
+                    src={heroImage}
+                    alt={`Banner ${data.setting?.ten_web || "cửa hàng tài khoản game"}`}
+                    width={1600}
+                    height={900}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    fallbackLabel="Ảnh giới thiệu cửa hàng"
+                  />
+                ) : (
+                  <div className="home-banner-placeholder">
+                    <Gamepad2 size={44} aria-hidden="true" />
+                    <p>{data.setting?.ten_web || "Shop Game"}</p>
+                    <small>Chọn nhân vật. Chọn cuộc chơi.</small>
+                  </div>
+                )}
+              </div>
+              <div className="storefront-banner-frame-bottom" aria-hidden="true">
+                <span className="storefront-banner-pad" />
+                <span className="storefront-banner-buttons"><i /><i /></span>
+              </div>
+            </div>
+            <span className="storefront-banner-count"><Gamepad2 size={17} aria-hidden="true" /> {Number(data.totalAccounts || 0).toLocaleString()} acc đang bán</span>
           </div>
         </section>
 
@@ -261,8 +258,12 @@ export default function Home() {
               <h2 id={`game-category-title-${category.id}`}><Flame size={25} aria-hidden="true" /> {category.name}</h2>
               <p>{category.noidung?.trim() || `${category.types.length} loại tài khoản đang được giới thiệu`}</p>
             </div>
-            <Link to={`/accounts?danhmuc_id=${category.id}`} className="storefront-game-explore">
-              Khám phá <ArrowRight size={18} aria-hidden="true" />
+            <Link
+              to={`/accounts?danhmuc_id=${category.id}`}
+              className="storefront-game-explore"
+              aria-label={`Xem tất cả tài khoản ${category.name}`}
+            >
+              <span>Khám phá</span><ArrowRight size={18} aria-hidden="true" />
             </Link>
           </div>
 
@@ -285,8 +286,16 @@ export default function Home() {
                     </div>
                     <div className="storefront-category-copy">
                       <h3>{type.name}</h3>
-                      <p>Tài khoản hiện có: <strong>{count.toLocaleString("vi-VN")}</strong></p>
-                      <span className="storefront-category-action">Xem tài khoản <ArrowRight size={16} aria-hidden="true" /></span>
+                      <p>
+                        <span className="storefront-stock-label">Tài khoản hiện có: </span>
+                        <strong>{count.toLocaleString("vi-VN")}</strong>
+                        <span className="storefront-stock-unit"> acc</span>
+                      </p>
+                      <span className="storefront-category-action">
+                        <span className="storefront-action-desktop">Xem tài khoản</span>
+                        <span className="storefront-action-mobile">Xem acc</span>
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </span>
                     </div>
                   </Link>
                 );
@@ -308,8 +317,8 @@ export default function Home() {
             <Link to="/accounts" className="storefront-text-link">Xem toàn bộ <ArrowRight size={17} aria-hidden="true" /></Link>
           </div>
           <div className="account-grid storefront-latest-grid">
-            {data.latestAccounts.map((acc, index) => (
-              <AccountCard key={acc.id} acc={acc} priority={index < 2} />
+            {data.latestAccounts.map((acc) => (
+              <AccountCard key={acc.id} acc={acc} />
             ))}
           </div>
         </section>

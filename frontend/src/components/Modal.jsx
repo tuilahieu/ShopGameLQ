@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -26,6 +26,23 @@ export default function Modal({
   const previouslyFocusedRef = useRef(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
+  const [isRendered, setIsRendered] = useState(isOpen);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsRendered(true);
+      setIsClosing(false);
+      return undefined;
+    }
+    if (!isRendered) return undefined;
+    setIsClosing(true);
+    const timer = window.setTimeout(() => {
+      setIsRendered(false);
+      setIsClosing(false);
+    }, 170);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, isRendered]);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -93,7 +110,7 @@ export default function Modal({
     };
   }, [closeOnEscape, isOpen]);
 
-  if (!isOpen) return null;
+  if (!isRendered) return null;
 
   const handleBackdropClick = (event) => {
     if (closeOnBackdrop && event.target === event.currentTarget) {
@@ -102,10 +119,10 @@ export default function Modal({
   };
 
   return createPortal(
-    <div className="modal-backdrop" onClick={handleBackdropClick}>
+    <div className={`modal-backdrop${isClosing ? " is-closing" : ""}`} onClick={handleBackdropClick}>
       <div
         ref={dialogRef}
-        className={`modal-content-wrapper ${className}`.trim()}
+        className={`modal-content-wrapper ${isClosing ? "is-closing" : ""} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

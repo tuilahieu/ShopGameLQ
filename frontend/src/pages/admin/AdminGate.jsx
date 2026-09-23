@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
+import SkeletonLoading from "../../components/SkeletonLoading";
 
 export default function AdminGate({ children }) {
   const [mode, setMode] = useState("loading");
@@ -96,7 +97,7 @@ export default function AdminGate({ children }) {
   }
 
   if (mode === "ready") return children;
-  if (mode === "loading") return <div className="auth-page-wrapper"><div className="auth-card">Đang kiểm tra quyền quản trị…</div></div>;
+  if (mode === "loading") return <div className="auth-page-wrapper"><div className="auth-card"><SkeletonLoading variant="form" items={2} compact label="Đang kiểm tra quyền quản trị" /></div></div>;
   if (mode === "error") return <div className="auth-page-wrapper"><div className="auth-card" role="alert">{error}<p><Link to="/">Về trang chủ</Link></p></div></div>;
   return (
     <div className="auth-page-wrapper">

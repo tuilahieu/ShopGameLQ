@@ -6,6 +6,7 @@ import { updateSEO } from "../../utils/seo";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
+import SkeletonLoading from "../../components/SkeletonLoading";
 
 export default function Recharge() {
   const token = localStorage.getItem("accessToken");
@@ -58,29 +59,50 @@ export default function Recharge() {
   const selectedBank = banks.find((b) => b.id.toString() === selectedBankId);
   const activeBank = paymentIntent?.bank || selectedBank;
   const qrUrl = paymentIntent?.qr_url || "";
+  const paymentIntentId = paymentIntent?.id;
+  const paymentIntentStatus = paymentIntent?.status;
 
   useEffect(() => {
-    if (!isQrModalOpen || !paymentIntent || paymentIntent.status !== "pending") return undefined;
+    if (!isQrModalOpen || !paymentIntentId || paymentIntentStatus !== "pending") return undefined;
 
     let cancelled = false;
+    let inFlight = false;
+    let timer;
     const checkStatus = async () => {
+      if (cancelled) return;
+      if (document.hidden) {
+        timer = window.setTimeout(checkStatus, 2500);
+        return;
+      }
+      inFlight = true;
       try {
-        const response = await api.get(`/payments/intents/${paymentIntent.id}`, {
-          params: { poll: Math.floor(Date.now() / 2500) },
+        const response = await api.get(`/payments/intents/${paymentIntentId}`, {
+          params: { poll: Date.now() },
         });
         if (!cancelled) setPaymentIntent(response.data.data);
       } catch (error) {
         // Keep the transfer instructions available; a temporary polling error
         // must never make a valid payment code disappear.
         console.error("Failed to poll payment status:", error);
+      } finally {
+        inFlight = false;
+        if (!cancelled) timer = window.setTimeout(checkStatus, 2500);
       }
     };
-    const timer = window.setInterval(checkStatus, 2500);
+    const onVisibilityChange = () => {
+      if (!document.hidden && !inFlight) {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(checkStatus, 0);
+      }
+    };
+    timer = window.setTimeout(checkStatus, 2500);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [isQrModalOpen, paymentIntent?.id, paymentIntent?.status]);
+  }, [isQrModalOpen, paymentIntentId, paymentIntentStatus]);
 
   function handleCopy(text, fieldName) {
     navigator.clipboard.writeText(text);
@@ -211,7 +233,7 @@ export default function Recharge() {
         <div className="recharge-step recharge-bank-step">
           <div className="recharge-step-title"><span>2</span><strong>Chọn tài khoản nhận</strong></div>
           {banksLoading ? (
-            <div className="recharge-inline-loading" aria-live="polite">Đang tải danh sách ngân hàng…</div>
+            <SkeletonLoading variant="form" items={1} compact label="Đang tải danh sách ngân hàng" />
           ) : (
             <div className="form-group-premium">
               <label htmlFor="payment-bank">Ngân hàng</label>

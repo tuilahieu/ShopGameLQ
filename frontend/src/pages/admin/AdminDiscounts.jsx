@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../../api/api";
+import TableLoadingRows from "../../components/TableLoadingRows";
 
 export default function AdminDiscounts() {
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
@@ -14,19 +18,25 @@ export default function AdminDiscounts() {
   });
 
   async function load() {
+    setLoading(true);
+    setLoadError("");
     try {
       const res = await api.get("/admin/discounts");
       setItems(res.data.data || []);
     } catch (err) {
-      console.error(err);
+      setLoadError(err.response?.data?.message || "Không thể tải mã giảm giá.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.magiamgia) return alert("Vui lòng nhập mã giảm giá");
     if (!form.giamgia) return alert("Vui lòng nhập số tiền hoặc phần trăm giảm");
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/admin/discounts/${editingId}`, form);
@@ -40,6 +50,8 @@ export default function AdminDiscounts() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Lỗi lưu mã giảm giá");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -143,11 +155,11 @@ export default function AdminDiscounts() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Tạo mã"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Tạo mã"}
             </button>
             {(editingId || form.magiamgia) && (
-              <button type="button" className="btn-outline" onClick={resetForm} style={{ padding: "8px 16px" }}>
+              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving} style={{ padding: "8px 16px" }}>
                 Hủy / Reset
               </button>
             )}
@@ -155,7 +167,8 @@ export default function AdminDiscounts() {
         </form>
       </div>
 
-      <div className="table-box">
+      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
+      <div className="table-box" aria-busy={loading}>
         <table>
           <thead>
             <tr>
@@ -170,6 +183,7 @@ export default function AdminDiscounts() {
           </thead>
 
           <tbody>
+            {loading && items.length === 0 && <TableLoadingRows columns={7} />}
             {items.map((d) => (
               <tr key={d.id}>
                 <td>{d.id}</td>
@@ -199,6 +213,7 @@ export default function AdminDiscounts() {
                 </td>
               </tr>
             ))}
+            {!loading && !loadError && items.length === 0 && <tr><td colSpan="7" className="table-empty-cell">Chưa có mã giảm giá nào.</td></tr>}
           </tbody>
         </table>
       </div>

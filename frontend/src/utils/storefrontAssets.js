@@ -1,5 +1,4 @@
 const STOREFRONT_ASSETS = Object.freeze({
-  hero: "/storefront/hero-marketplace.webp",
   accountTypes: Object.freeze({
     3: "/storefront/category-budget.webp",
     4: "/storefront/category-entry.webp",
@@ -11,7 +10,7 @@ export function resolveStorefrontHero(source) {
   if (source && typeof source === "string" && source.trim() && source.trim() !== "0" && source.trim().toLowerCase() !== "null") {
     return source.trim();
   }
-  return STOREFRONT_ASSETS.hero;
+  return "";
 }
 
 export function resolveAccountTypeImage(accountType) {
@@ -20,4 +19,3 @@ export function resolveAccountTypeImage(accountType) {
   }
   return STOREFRONT_ASSETS.accountTypes[Number(accountType?.id)] || "";
 }
-

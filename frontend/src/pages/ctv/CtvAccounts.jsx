@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
 import { Edit2, EyeOff, Upload, RefreshCw } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
+import PanelLoading from "../../components/PanelLoading";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
@@ -22,38 +23,44 @@ export default function CtvAccounts() {
   const [accounts, setAccounts] = useState([]);
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const loadSequence = useRef(0);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPage: 1 });
   const [filterStatus, setFilterStatus] = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(makeEmptyForm());
 
-  async function loadData(page = 1) {
+  const loadData = useCallback(async (page = 1) => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
+    setLoadError("");
     try {
       const statusQuery = filterStatus !== "" ? `&status=${filterStatus}` : "";
       const [accRes, typeRes] = await Promise.all([
         api.get(`/ctv/accounts?page=${page}&limit=20${statusQuery}`),
         api.get("/account-types"),
       ]);
+      if (sequence !== loadSequence.current) return;
 
       setAccounts(accRes.data.data.accounts || []);
       setPagination(accRes.data.data.pagination || { page, limit: 20, total: 0, totalPage: 1 });
       setTypes(typeRes.data.data || []);
       
-      if (typeRes.data.data?.length > 0 && !form.loai_id) {
-        setForm((prev) => ({ ...prev, loai_id: typeRes.data.data[0].id }));
+      if (typeRes.data.data?.length > 0) {
+        setForm((prev) => prev.loai_id ? prev : { ...prev, loai_id: typeRes.data.data[0].id });
       }
     } catch (error) {
-      console.error("Failed to load CTV accounts data:", error);
+      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải danh sách tài khoản.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }
+  }, [filterStatus]);
 
   useEffect(() => {
     loadData(1);
-  }, [filterStatus]);
+  }, [loadData]);
 
   async function handleUpload(e) {
     const file = e.target.files[0];
@@ -81,6 +88,7 @@ export default function CtvAccounts() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (saving) return;
     if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản");
     if (!form.gia || Number(form.gia) < 0) return alert("Vui lòng nhập giá bán hợp lệ");
     if (!form.login) return alert("Vui lòng điền thông tin đăng nhập");
@@ -90,6 +98,7 @@ export default function CtvAccounts() {
     const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
     delete payload.is_sale;
 
+    setSaving(true);
     try {
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
@@ -103,6 +112,8 @@ export default function CtvAccounts() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Có lỗi xảy ra khi lưu tài khoản");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -266,11 +277,11 @@ export default function CtvAccounts() {
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn">
-              {editingId ? "Cập nhật" : "Thêm mới"}
+            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
+              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
             {(editingId || form.thong_tin !== "Đổi được thông tin và mật khẩu\nHỗ trợ bảo hành" || form.login !== "liên hệ Zalo admin | để được nhận account #ID" || form.gia) && (
-              <button type="button" className="btn-outline" onClick={resetForm} style={{ padding: "8px 16px" }}>
+              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving} style={{ padding: "8px 16px" }}>
                 Hủy / Reset
               </button>
             )}
@@ -300,7 +311,9 @@ export default function CtvAccounts() {
 
       <div className="table-box">
         {loading ? (
-          <p style={{ color: "var(--text-secondary)" }}>Đang tải danh sách tài khoản...</p>
+          <PanelLoading label="Đang tải danh sách tài khoản" />
+        ) : loadError ? (
+          <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={() => loadData(pagination.page)}>Thử lại</button></div>
         ) : accounts.length === 0 ? (
           <p style={{ color: "var(--text-secondary)" }}>Không tìm thấy tài khoản nào.</p>
         ) : (

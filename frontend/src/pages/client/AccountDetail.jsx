@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
-import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, Gamepad2, ZoomIn } from "lucide-react";
+import SkeletonLoading from "../../components/SkeletonLoading";
+import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, ZoomIn } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
@@ -79,25 +80,27 @@ export default function AccountDetail() {
     }
   });
   const purchaseKeyRef = useRef(null);
+  const loadSequence = useRef(0);
 
   // Clipboard copy feedback
   const [copiedField, setCopiedField] = useState("");
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setLoadError("");
     try {
       const res = await api.get(`/accounts/${id}`);
+      if (sequence !== loadSequence.current) return;
       const nextAccount = res.data.data;
       setAccount(nextAccount);
       setActiveImg(getAccountImages(nextAccount)[0] || "");
     } catch (error) {
-      console.error(error);
-      setLoadError(error.response?.data?.message || "Không thể tải thông tin tài khoản. Vui lòng thử lại.");
+      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải thông tin tài khoản. Vui lòng thử lại.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }
+  }, [id]);
 
   // Parse images helper
   const images = getAccountImages(account);
@@ -337,7 +340,7 @@ export default function AccountDetail() {
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [loadData]);
 
   useEffect(() => {
     if (account) {
@@ -367,58 +370,7 @@ export default function AccountDetail() {
   }, []);
 
   if (loading) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "120px 0", gap: "16px" }}>
-        <div className="premium-loader-container-small">
-          <div className="loader-ring-small"></div>
-          <div className="loader-icon-box-small">
-            <Gamepad2 className="loader-gamepad-small" size={20} />
-          </div>
-        </div>
-        <style>{`
-          .premium-loader-container-small {
-            position: relative;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .loader-ring-small {
-            position: absolute;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top-color: var(--accent-color);
-            border-bottom-color: var(--cyan-color);
-            animation: loader-spin 1.2s linear infinite;
-          }
-          .loader-icon-box-small {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            background: var(--bg-secondary);
-            border-radius: 50%;
-            border: 1px solid var(--border-color);
-          }
-          .loader-gamepad-small {
-            color: var(--accent-color);
-            animation: pulse-glow-small 1.5s ease-in-out infinite;
-          }
-          @keyframes pulse-glow-small {
-            0%, 100% { opacity: 0.7; transform: scale(0.95); }
-            50% { opacity: 1; transform: scale(1.05); }
-          }
-          @keyframes loader-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <SkeletonLoading variant="detail" label="Đang tải chi tiết tài khoản" />;
   }
 
   if (loadError || !account) {
