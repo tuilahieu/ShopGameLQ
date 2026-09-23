@@ -1365,6 +1365,59 @@
         }
       }
     },
+    "/api/assistant/agent-query": {
+      "get": {
+        "summary": "Tool API tìm tối đa 4 acc công khai quanh mức giá",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "price",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Giá VND; giá viết tắt như 500 được hiểu là 500.000đ"
+          },
+          {
+            "in": "query",
+            "name": "under_budget",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sale_only",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tối đa 4 card acc đang bán, chỉ gồm dữ liệu công khai"
+          },
+          "400": {
+            "description": "Tham số giá không hợp lệ"
+          }
+        }
+      }
+    },
+    "/api/assistant/status": {
+      "get": {
+        "summary": "Lấy trạng thái kết nối LLM công khai của chatbot",
+        "tags": [
+          "Assistant"
+        ],
+        "responses": {
+          "200": {
+            "description": "Trạng thái online, offline hoặc fallback; không chứa cấu hình LLM"
+          }
+        }
+      }
+    },
     "/api/assistant/chat": {
       "post": {
         "summary": "Tìm tài khoản theo câu hỏi của khách và trả thẻ sản phẩm có link",

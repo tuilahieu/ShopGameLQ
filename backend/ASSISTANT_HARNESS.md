@@ -1,12 +1,12 @@
 # Chatbot hỗ trợ khách hàng
 
-Chatbot hiện chạy được **không cần API key**. `POST /api/assistant/chat` nhận
+Chatbot có chế độ dự phòng chạy **không cần API key**. `POST /api/assistant/chat` nhận
 `{ "message": "Tìm acc 200k" }` và trả văn bản cùng tối đa bốn thẻ acc đang bán.
 Mỗi thẻ có `href` dạng `/account/:id`; frontend dựng thẻ và nút bằng React,
 không render HTML do mô hình tạo. Giá dùng cùng hàm tính giá với trang sản phẩm,
 bao gồm giá sale còn hiệu lực.
 
-## Harness để nối LLM sau
+## Harness LLM
 
 - `src/assistant/instructions.js`: hướng dẫn vai trò, giới hạn đầu ra và ngữ cảnh.
 - `src/assistant/skills.js`: các luồng hỗ trợ cố định như đơn hàng, bảo hành,
@@ -14,20 +14,36 @@ bao gồm giá sale còn hiệu lực.
 - `src/assistant/tools.js`: công cụ `search_accounts` chỉ đọc tài khoản đang bán.
 - `src/assistant/harness.js`: điều phối câu hỏi và hợp đồng provider.
 
-Một adapter Gemini hoặc VILAO tương lai chỉ cần cung cấp
+Adapter Gemini hoặc VILAO cung cấp
 `generate({ instructions, messages, tools, maxOutputTokens })` và trả
-`{ text, toolCalls }`. API key phải nằm ở backend hoặc kho secret, không gửi
-cho trình duyệt. Các câu hỏi tìm acc đi thẳng tới công cụ và không tốn token LLM.
-Các câu chào, cảm ơn và nhờ giúp ngắn cũng được trả lời tự nhiên bằng mẫu ngắn;
-yêu cầu gặp admin hoặc hỗ trợ trực tiếp dẫn tới trang liên hệ có Zalo của shop.
+`{ text }`. API key chỉ nằm ở backend, không gửi cho trình duyệt. Cổng rule trả
+ngay các câu đơn giản như chào, cảm ơn, liên hệ, nạp tiền, đơn hàng và yêu cầu
+tìm acc đã có giá rõ ràng. Câu ngoài phạm vi và prompt injection bị chặn trước
+provider. Các câu liên quan shop cần hiểu ngữ cảnh mới được gửi tới LLM để chọn
+một action JSON: trả lời ngắn, tìm acc, mở luồng hỗ trợ hoặc từ chối ngoài phạm vi.
+Ví dụ sau câu hỏi về ngân sách, câu trả lời `500` được model hiểu là 500.000đ và
+chọn `search_accounts`; backend mới truy vấn kho rồi trả tối đa bốn card.
+Khi chưa cấu hình provider, câu chào, hỗ trợ và tìm acc vẫn chạy bằng rule cũ.
+
+`GET /api/assistant/agent-query?price=500` là tool API dùng chung với action
+`search_accounts`; `500` được chuẩn hóa thành 500.000đ. API nhận thêm
+`under_budget=true` và `sale_only=true`, chỉ trả tối đa bốn card công khai.
+Backend gọi trực tiếp cùng executor thay vì tự gửi HTTP về chính nó. Khi chờ kết
+quả tìm kiếm, giao diện hiện “Mình đang tìm cho bạn đây...”.
 Giao diện hiển thị chữ dần cho câu trả lời của chatbot; đây là hiệu ứng ở
 trình duyệt, API vẫn trả JSON một lần.
-Với câu hỏi khác, harness giữ tối đa bốn lượt ngữ cảnh, mỗi lượt 220 ký tự,
-giới hạn trả lời 120 token và tối đa một lần gọi công cụ. Bộ điều phối từ chối
+Harness giữ tối đa tám tin nhắn gần nhất, mỗi tin 220 ký tự, giới hạn cứng
+1024 output token và tối đa một lần gọi công cụ. Bộ điều phối từ chối
 câu hỏi ngoài website hoặc câu có dấu hiệu yêu cầu đổi vai trò/tiết lộ prompt
-trước khi gọi provider. Văn bản tự do do mô hình tạo không được hiển thị;
-giao diện chỉ nhận câu trả lời cố định hoặc dữ liệu công cụ và link nội bộ do
-server tạo.
+trước khi gọi provider. Văn bản tự do được loại HTML, URL ngoài và giới hạn còn
+hai câu ngắn. Card và link nội bộ luôn do server tạo.
+
+Instruction yêu cầu Gia Linh nói như một bạn nữ 16 tuổi miền Bắc: vui vẻ, tự
+nhiên, teencode vừa phải, xưng mình và gọi khách là bạn. Bot không nói mình là
+người thật, không dùng từ tục hoặc thả thính. Model không được nhận, yêu cầu hay
+trả tên đăng nhập game, mật khẩu, OTP, cookie, token, thông tin thẻ, API key,
+secret hoặc trường database riêng tư. Tool tìm acc chỉ chọn mã, loại, giá, sale,
+ảnh và backend tự tạo link chi tiết.
 
 Endpoint giới hạn 20 yêu cầu/phút theo IP và tối đa 500 ký tự/câu hỏi. Khi nối
 provider thật, cần giữ các giới hạn này và bổ sung quota/cost cap theo ngày.
@@ -68,8 +84,9 @@ key. Migrations `20260923_008_assistant_llm_config.js` và
 `20260923_009_assistant_llm_connection.js` thêm provider, key, model và endpoint
 vào `setting`; chúng tự chạy khi backend khởi động. Key được mã hóa AES-256-GCM bằng
 `ACCOUNT_CREDENTIALS_ENCRYPTION_KEY` trước khi ghi database. API admin chỉ trả
-`assistant_llm_key_saved` cùng cấu hình không bí mật; API công khai không trả key hay trạng
-thái cấu hình LLM. `getAssistantLlmConfig()` chỉ dùng ở backend để giải mã khi
+`assistant_llm_key_saved` cùng cấu hình không bí mật; API công khai không trả key.
+Endpoint trạng thái chatbot chỉ trả `online`, `offline` hoặc `fallback`, không
+trả provider, model hay secret. `getAssistantLlmConfig()` chỉ dùng ở backend để giải mã khi
 nối provider ở server. Nút **Kiểm tra API key với model** gọi
 `POST /api/admin/assistant/test-llm`; có thể dùng key đang nhập trước khi lưu và
 backend chỉ giữ key tạm trong một request. Backend gửi một câu `hello`
@@ -78,12 +95,11 @@ với tối đa 32 token đầu ra, timeout 12 giây và giới hạn ba lần/p
 Chỉ trả câu trả lời ngắn, tên model và thời gian; không trả key hoặc lỗi thô từ
 provider. Phép thử có thể phát sinh chi phí nhỏ.
 
-Khi cấu hình hợp lệ đã được lưu, chat khách dùng model cho các câu hỏi liên quan
-website mà bộ quy tắc chưa trả lời được. Tìm acc, chào hỏi, đơn hàng, nạp tiền,
-bảo hành và liên hệ vẫn đi qua rule/tool cố định để phản hồi nhanh và tiết kiệm
-token. Mỗi lần gọi model chỉ gửi bốn tin gần nhất, tối đa 220 ký tự mỗi tin và
-giới hạn 120 output token. Backend loại HTML và URL ngoài trước khi trả nội dung
-model cho client; key chỉ được giải mã và dùng trên server.
+Khi cấu hình hợp lệ đã được lưu, model phụ trách các câu liên quan shop cần suy
+luận; rule xử lý câu đơn giản để tiết kiệm token. Model chỉ quyết định action;
+tìm acc và link hỗ trợ vẫn do backend thực thi. Mỗi lần gọi model chỉ gửi tám tin gần nhất, tối đa 220 ký tự mỗi tin và
+giới hạn 1024 output token. Backend tiếp tục rút câu trả lời tự do xuống tối đa
+hai câu, loại HTML và URL ngoài; key chỉ được giải mã và dùng trên server.
 
 Tham khảo: [Gemini API](https://ai.google.dev/api),
 [model Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite),

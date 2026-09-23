@@ -13,11 +13,15 @@ export function parseShoppingRequest(input) {
   if (match) {
     const unit = match[2] || "";
     const raw = match[1];
-    const numeric = unit === "triệu" || unit === "tr" || unit === "m"
+    let numeric = unit === "triệu" || unit === "tr" || unit === "m"
       ? Number(raw.replace(",", ".")) * 1_000_000
       : unit === "nghìn" || unit === "ngàn" || unit === "k"
         ? Number(raw.replace(",", ".")) * 1_000
         : Number(raw.replace(/[.,\s]/g, ""));
+    const implicitThousands = !unit
+      && /^\d{2,4}$/u.test(raw)
+      && /\b(?:acc|nick)\b|tài khoản|tai khoan|giá|gia|tầm|tam|khoảng|khoang/u.test(normalized);
+    if (implicitThousands) numeric *= 1_000;
     if (Number.isSafeInteger(numeric) && numeric >= 10_000 && numeric <= 100_000_000) budget = numeric;
   }
   return {

@@ -20,8 +20,11 @@
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+  transform-origin: bottom right;
+  animation: shop-assistant-toggle-in 0.24s cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
 }
-.shop-assistant-toggle:active { transform: translateY(3px); box-shadow: 0 2px 0 #8f2d22; }
+.shop-assistant-toggle:hover { transform: translateY(-2px) rotate(-1deg); box-shadow: 0 7px 0 #8f2d22, 0 16px 28px rgb(31 45 112 / 0.25); }
+.shop-assistant-toggle:active { transform: translateY(3px) scale(0.98); box-shadow: 0 2px 0 #8f2d22; }
 
 .shop-assistant-panel {
   width: min(26rem, calc(100vw - 2rem));
@@ -35,6 +38,23 @@
   border: 2px solid #bdc8eb;
   border-radius: 1.3rem;
   box-shadow: 0 7px 0 #cbd3eb, 0 20px 44px rgb(15 24 70 / 0.25);
+  transform-origin: bottom right;
+  animation: shop-assistant-panel-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.shop-assistant.is-closing .shop-assistant-panel { animation: shop-assistant-panel-out 0.2s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+
+@keyframes shop-assistant-panel-in {
+  from { opacity: 0; transform: translateY(1.25rem) scale(0.88); filter: blur(5px); }
+  65% { opacity: 1; transform: translateY(-0.2rem) scale(1.012); filter: blur(0); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes shop-assistant-panel-out {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  to { opacity: 0; transform: translateY(1rem) scale(0.9); filter: blur(4px); }
+}
+@keyframes shop-assistant-toggle-in {
+  from { opacity: 0; transform: translateY(0.65rem) scale(0.75) rotate(5deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
 }
 
 .shop-assistant-header {
@@ -65,6 +85,9 @@
 .shop-assistant-identity { min-width: 0; flex: 1 1 auto; display: grid; gap: 0.1rem; }
 .shop-assistant-identity strong { font-size: 1rem; line-height: 1.2; }
 .shop-assistant-identity span { color: #e6eaff; font-size: 0.78rem; line-height: 1.2; }
+.shop-assistant-presence { display: inline-flex; align-items: center; gap: 0.35rem; }
+.shop-assistant-presence i { width: 0.55rem; height: 0.55rem; display: inline-block; background: #79e69a; border: 2px solid rgb(255 255 255 / 0.75); border-radius: 50%; box-shadow: 0 0 0 2px rgb(121 230 154 / 0.2); }
+.shop-assistant-presence.is-offline i { background: #ff8175; box-shadow: 0 0 0 2px rgb(255 129 117 / 0.2); }
 .shop-assistant-close {
   width: 2.75rem;
   height: 2.75rem;
@@ -184,7 +207,8 @@
     bottom: calc(10rem + env(safe-area-inset-bottom, 0px));
   }
   body.shop-assistant-open .mobile-purchase-bar { display: none; }
-  .shop-assistant.is-open {
+  .shop-assistant.is-open,
+  .shop-assistant.is-closing {
     top: max(0.5rem, env(safe-area-inset-top, 0px));
     right: 0.5rem;
     bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
@@ -201,5 +225,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .shop-assistant :where(button, a) { transition: none; }
+  .shop-assistant-panel,
+  .shop-assistant.is-closing .shop-assistant-panel,
+  .shop-assistant-toggle { animation: none; }
   .shop-assistant-cursor { animation: none; }
 }

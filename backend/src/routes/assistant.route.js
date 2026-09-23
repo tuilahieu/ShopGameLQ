@@ -6,6 +6,9 @@ import { Setting } from "../models/index.js";
 import { publicAssistantProfile } from "../assistant/profile.js";
 import { getAssistantLlmConfig } from "../services/assistant-llm-config.service.js";
 import { createAssistantLlmProvider } from "../services/assistant-llm-provider.service.js";
+import { executeAgentQuery, parseAgentQuery } from "../assistant/tools.js";
+import { getAssistantRuntimeStatus, observeAssistantProvider } from "../assistant/runtime-status.js";
+import { ASSISTANT_LIMITS } from "../assistant/instructions.js";
 import { errorResponse, successResponse } from "../utils/response.util.js";
 
 const router = Router();
@@ -44,6 +47,68 @@ router.get("/thread/:id", async (req, res) => {
   } catch (error) {
     console.error("SHOP ASSISTANT HISTORY ERROR:", error);
     return errorResponse(res, "Không tải được lịch sử trò chuyện", 500, "ASSISTANT_UNAVAILABLE", req);
+  }
+});
+
+/**
+ * @swagger
+ * /api/assistant/agent-query:
+ *   get:
+ *     summary: Tool API tìm tối đa 4 acc công khai quanh mức giá
+ *     tags: [Assistant]
+ *     parameters:
+ *       - in: query
+ *         name: price
+ *         schema:
+ *           type: integer
+ *         description: Giá VND; giá viết tắt như 500 được hiểu là 500.000đ
+ *       - in: query
+ *         name: under_budget
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: sale_only
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: Tối đa 4 card acc đang bán, chỉ gồm dữ liệu công khai
+ *       400:
+ *         description: Tham số giá không hợp lệ
+ */
+router.get("/agent-query", async (req, res) => {
+  const parsed = parseAgentQuery(req.query);
+  if ((req.query.price !== undefined || req.query.budget !== undefined) && !parsed.budget) {
+    return errorResponse(res, "Mức giá không hợp lệ", 400, "INVALID_AGENT_QUERY", req);
+  }
+  try {
+    const accounts = await executeAgentQuery(req.query);
+    return successResponse(res, "Tìm tài khoản cho trợ lý thành công", { accounts });
+  } catch (error) {
+    console.error("ASSISTANT AGENT QUERY ERROR:", error);
+    return errorResponse(res, "Không tìm được tài khoản lúc này", 500, "ASSISTANT_UNAVAILABLE", req);
+  }
+});
+
+/**
+ * @swagger
+ * /api/assistant/status:
+ *   get:
+ *     summary: Lấy trạng thái kết nối LLM công khai của chatbot
+ *     tags: [Assistant]
+ *     responses:
+ *       200:
+ *         description: Trạng thái online, offline hoặc fallback; không chứa cấu hình LLM
+ */
+router.get("/status", async (req, res) => {
+  try {
+    const setting = await Setting.findByPk(1);
+    const config = await getAssistantLlmConfig(setting);
+    return successResponse(res, "Lấy trạng thái trợ lý thành công", {
+      status: getAssistantRuntimeStatus(Boolean(config)),
+    });
+  } catch {
+    return successResponse(res, "Lấy trạng thái trợ lý thành công", { status: "offline" });
   }
 });
 
@@ -91,17 +156,22 @@ router.post("/chat", async (req, res) => {
     if (threadId && !threadToken) return errorResponse(res, "Thiếu mã cuộc trò chuyện", 400, "THREAD_TOKEN_REQUIRED", req);
     const thread = threadId ? await findOwnedThread(threadId, threadToken) : null;
     if (threadId && !thread) return errorResponse(res, "Không tìm thấy cuộc trò chuyện", 404, "THREAD_NOT_FOUND", req);
-    const history = thread ? await getThreadMessages(thread.id, 4) : [];
+    const history = thread ? await getThreadMessages(thread.id, ASSISTANT_LIMITS.maxHistoryMessages) : [];
     const setting = await Setting.findByPk(1);
     const profile = {
       ...publicAssistantProfile(setting),
       shopName: typeof setting?.ten_web === "string" ? setting.ten_web : "",
       contact: typeof setting?.sdt_admin === "string" ? setting.sdt_admin : "",
     };
-    const provider = createAssistantLlmProvider(await getAssistantLlmConfig(setting));
+    const llmConfig = await getAssistantLlmConfig(setting);
+    const provider = observeAssistantProvider(createAssistantLlmProvider(llmConfig));
     const answer = await runShopAssistant({ message, history, profile, provider });
     const session = await saveExchange({ thread, question: message.trim(), answer });
-    return successResponse(res, "Trả lời khách hàng thành công", { ...answer, ...session });
+    return successResponse(res, "Trả lời khách hàng thành công", {
+      ...answer,
+      ...session,
+      assistant_status: getAssistantRuntimeStatus(Boolean(llmConfig)),
+    });
   } catch (error) {
     console.error("SHOP ASSISTANT ERROR:", error);
     return errorResponse(res, "Chatbot đang bận, vui lòng thử lại sau", 500, "ASSISTANT_UNAVAILABLE", req);
