@@ -163,7 +163,12 @@ export default function AdminSetting() {
     setLlmTestBusy(true);
     setLlmTestResult(null);
     try {
-      const res = await api.post("/admin/assistant/test-llm");
+      const res = await api.post("/admin/assistant/test-llm", {
+        assistant_llm_provider: form.assistant_llm_provider || "none",
+        assistant_llm_model: form.assistant_llm_model || "",
+        assistant_llm_endpoint: form.assistant_llm_endpoint || "",
+        ...(llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }),
+      });
       setLlmTestResult({ success: true, message: `Model ${res.data.data.model} trả lời: “${res.data.data.reply}” (${res.data.data.latency_ms} ms)` });
     } catch (error) {
       setLlmTestResult({ success: false, message: error.response?.data?.message || "Không thể kết nối tới model lúc này." });
@@ -354,7 +359,7 @@ export default function AdminSetting() {
             onChange={set}
           />
           <div className="form-group-premium">
-            <label htmlFor="admin-setting-llm-provider">Nhà cung cấp LLM dự kiến</label>
+            <label htmlFor="admin-setting-llm-provider">Nhà cung cấp LLM</label>
             <select
               id="admin-setting-llm-provider"
               value={form.assistant_llm_provider || "none"}
@@ -393,7 +398,7 @@ export default function AdminSetting() {
           <div className="form-group-premium">
             <label htmlFor="admin-setting-llm-key">API key LLM</label>
             <p role="status" style={{ margin: "0 0 8px", color: "var(--text-secondary)" }}>
-              {form.assistant_llm_key_saved ? "Đã lưu API key mã hóa." : "Chưa có API key."}
+              {llmKeyInput.trim() ? "API key mới đang chờ lưu." : form.assistant_llm_key_saved ? "Đã lưu API key mã hóa." : "Chưa có API key."}
             </p>
             <div style={{ display: "flex", gap: "8px" }}>
               <input
@@ -416,13 +421,13 @@ export default function AdminSetting() {
                 Xóa API key hiện tại khi lưu
               </label>
             )}
-            <small>Key chỉ gửi khi lưu và không hiển thị lại. Nút kiểm tra sẽ gửi một câu hello tới model; chat với khách vẫn chạy bằng bộ quy tắc.</small>
+            <small>Key đang nhập có thể kiểm tra trước khi lưu. Key chỉ dùng cho request kiểm tra, không được ghi lại hoặc trả về; sau khi lưu, model sẽ trả lời các câu hỏi về website mà bộ quy tắc chưa xử lý.</small>
           </div>
           <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <button type="button" className="small-btn" onClick={testLlmConnection} disabled={llmTestBusy || llmConfigDirty || !form.assistant_llm_key_saved || form.assistant_llm_provider === "none" || (form.assistant_llm_provider === "vilao" && !form.assistant_llm_model?.trim())}>
+            <button type="button" className="small-btn" onClick={testLlmConnection} disabled={llmTestBusy || clearLlmKey || (!llmKeyInput.trim() && !form.assistant_llm_key_saved) || form.assistant_llm_provider === "none" || (form.assistant_llm_provider === "vilao" && !form.assistant_llm_model?.trim())}>
               {llmTestBusy ? "Đang gửi hello…" : "Kiểm tra API key với model"}
             </button>
-            {llmConfigDirty && <small style={{ display: "block", marginTop: "8px" }}>Lưu cấu hình trước khi kiểm tra.</small>}
+            {llmConfigDirty && <small style={{ display: "block", marginTop: "8px" }}>Đang dùng cấu hình trong form để kiểm tra; bấm Lưu sau khi kiểm tra thành công.</small>}
             {llmTestResult && <p role="status" className={llmTestResult.success ? "alert-success" : "alert-error"}>{llmTestResult.message}</p>}
           </div>
         </div>

@@ -43,8 +43,8 @@ export function serializeAssistantLlmStatus(setting) {
 }
 
 // Server-only accessor for a future provider adapter. Never use this in a response serializer.
-export async function getAssistantLlmConfig() {
-  const setting = await Setting.findByPk(1, { attributes: ["assistant_llm_provider", "assistant_llm_api_key", "assistant_llm_model", "assistant_llm_endpoint"] });
+export async function getAssistantLlmConfig(existingSetting = null) {
+  const setting = existingSetting || await Setting.findByPk(1, { attributes: ["assistant_llm_provider", "assistant_llm_api_key", "assistant_llm_model", "assistant_llm_endpoint"] });
   const provider = normalizeAssistantLlmProvider(setting?.assistant_llm_provider) || "none";
   return {
     provider,

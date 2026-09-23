@@ -7,7 +7,8 @@ import { up as addAssistantLlmColumns } from "../src/database/migrations/2026092
 import { up as addAssistantConnectionColumns } from "../src/database/migrations/20260923_009_assistant_llm_connection.js";
 import { HistoryLog, Setting } from "../src/models/index.js";
 import { DEFAULT_VILAO_ENDPOINT, getAssistantLlmConfig, normalizeAssistantLlmProvider, normalizeVilaoEndpoint } from "../src/services/assistant-llm-config.service.js";
-import { AssistantLlmProbeError, probeAssistantLlm } from "../src/services/assistant-llm-probe.service.js";
+import { AssistantLlmProbeError, probeAssistantLlm, resolveAssistantLlmProbeConfig } from "../src/services/assistant-llm-probe.service.js";
+import { createAssistantLlmProvider } from "../src/services/assistant-llm-provider.service.js";
 
 test("LLM config migration adds both columns once", async () => {
   const added = [];
@@ -88,6 +89,85 @@ test("hello probe calls ViLao on its fixed domain and maps provider errors safel
     probeAssistantLlm({ config, fetcher: async () => ({ ok: false, status: 401 }) }),
     (error) => error instanceof AssistantLlmProbeError && error.code === "LLM_KEY_REJECTED" && !error.message.includes(config.apiKey),
   );
+});
+
+test("admin can probe a draft key without storing or returning it", async (t) => {
+  t.mock.method(Setting, "findByPk", async () => ({
+    assistant_llm_provider: "none",
+    assistant_llm_api_key: null,
+    assistant_llm_model: null,
+    assistant_llm_endpoint: null,
+  }));
+  const draftKey = "draft-provider-key-123456";
+  const config = await resolveAssistantLlmProbeConfig({
+    assistant_llm_provider: "vilao",
+    assistant_llm_api_key: draftKey,
+    assistant_llm_model: "spd/gemini-3.8-flash-high",
+    assistant_llm_endpoint: "https://api.vilao.ai/v1",
+  });
+  assert.deepEqual(config, {
+    provider: "vilao",
+    apiKey: draftKey,
+    model: "spd/gemini-3.8-flash-high",
+    endpoint: DEFAULT_VILAO_ENDPOINT,
+  });
+
+  const result = await probeAssistantLlm({ config, fetcher: async (_url, options) => {
+    assert.equal(options.headers.Authorization, `Bearer ${draftKey}`);
+    return { ok: true, json: async () => ({ choices: [{ message: { content: "Hello" } }] }) };
+  } });
+  assert.ok(!JSON.stringify(result).includes(draftKey));
+  assert.equal(result.reply, "Hello");
+});
+
+test("customer chat provider sends bounded instructions to ViLao without exposing its key", async () => {
+  const apiKey = "private-live-chat-key";
+  let request;
+  const provider = createAssistantLlmProvider({
+    provider: "vilao",
+    apiKey,
+    model: "spd/gemini-3.8-flash-high",
+    endpoint: DEFAULT_VILAO_ENDPOINT,
+  }, { fetcher: async (url, options) => {
+    request = { url, options };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: "Shop hỗ trợ bạn nhé." } }] }) };
+  } });
+  const result = await provider.generate({
+    instructions: "Chỉ trả lời về shop.",
+    messages: [{ role: "user", text: "Shop bán gì?" }],
+    maxOutputTokens: 120,
+  });
+  const body = JSON.parse(request.options.body);
+  assert.equal(request.url, `${DEFAULT_VILAO_ENDPOINT}/chat/completions`);
+  assert.equal(request.options.headers.Authorization, `Bearer ${apiKey}`);
+  assert.equal(body.max_tokens, 120);
+  assert.equal(body.messages[0].role, "system");
+  assert.deepEqual(result, { text: "Shop hỗ trợ bạn nhé." });
+  assert.ok(!JSON.stringify(result).includes(apiKey));
+});
+
+test("customer chat provider maps system instructions and history to Gemini", async () => {
+  let request;
+  const provider = createAssistantLlmProvider({
+    provider: "gemini",
+    apiKey: "private-gemini-chat-key",
+    model: "gemini-3.5-flash-lite",
+    endpoint: DEFAULT_VILAO_ENDPOINT,
+  }, { fetcher: async (url, options) => {
+    request = { url, options };
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "Mình hỗ trợ bạn nhé." }] } }] }) };
+  } });
+  const result = await provider.generate({
+    instructions: "Chỉ trả lời về shop.",
+    messages: [{ role: "user", text: "Shop hỗ trợ gì?" }, { role: "assistant", text: "Mình đang kiểm tra." }],
+    maxOutputTokens: 120,
+  });
+  const body = JSON.parse(request.options.body);
+  assert.match(request.url, /generativelanguage\.googleapis\.com/u);
+  assert.equal(body.system_instruction.parts[0].text, "Chỉ trả lời về shop.");
+  assert.deepEqual(body.contents.map((item) => item.role), ["user", "model"]);
+  assert.equal(body.generationConfig.maxOutputTokens, 120);
+  assert.deepEqual(result, { text: "Mình hỗ trợ bạn nhé." });
 });
 
 test("public settings never expose LLM credentials or their status", async (t) => {

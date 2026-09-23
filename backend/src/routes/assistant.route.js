@@ -4,6 +4,8 @@ import { runShopAssistant } from "../assistant/harness.js";
 import { findOwnedThread, getThreadMessages, saveExchange } from "../services/assistant-thread.service.js";
 import { Setting } from "../models/index.js";
 import { publicAssistantProfile } from "../assistant/profile.js";
+import { getAssistantLlmConfig } from "../services/assistant-llm-config.service.js";
+import { createAssistantLlmProvider } from "../services/assistant-llm-provider.service.js";
 import { errorResponse, successResponse } from "../utils/response.util.js";
 
 const router = Router();
@@ -90,8 +92,14 @@ router.post("/chat", async (req, res) => {
     const thread = threadId ? await findOwnedThread(threadId, threadToken) : null;
     if (threadId && !thread) return errorResponse(res, "Không tìm thấy cuộc trò chuyện", 404, "THREAD_NOT_FOUND", req);
     const history = thread ? await getThreadMessages(thread.id, 4) : [];
-    const profile = publicAssistantProfile(await Setting.findByPk(1));
-    const answer = await runShopAssistant({ message, history, profile });
+    const setting = await Setting.findByPk(1);
+    const profile = {
+      ...publicAssistantProfile(setting),
+      shopName: typeof setting?.ten_web === "string" ? setting.ten_web : "",
+      contact: typeof setting?.sdt_admin === "string" ? setting.sdt_admin : "",
+    };
+    const provider = createAssistantLlmProvider(await getAssistantLlmConfig(setting));
+    const answer = await runShopAssistant({ message, history, profile, provider });
     const session = await saveExchange({ thread, question: message.trim(), answer });
     return successResponse(res, "Trả lời khách hàng thành công", { ...answer, ...session });
   } catch (error) {

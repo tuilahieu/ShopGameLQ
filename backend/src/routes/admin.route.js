@@ -3,7 +3,7 @@ import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { adminMiddleware } from "../middlewares/admin.middleware.js";
 import { createRateLimit } from "../config/http.js";
-import { probeAssistantLlm, AssistantLlmProbeError } from "../services/assistant-llm-probe.service.js";
+import { probeAssistantLlm, resolveAssistantLlmProbeConfig, AssistantLlmProbeError } from "../services/assistant-llm-probe.service.js";
 import { successResponse, errorResponse } from "../utils/response.util.js";
 
 import {
@@ -45,6 +45,24 @@ router.use(adminMiddleware);
  *       - Admin
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               assistant_llm_provider:
+ *                 type: string
+ *                 enum: [none, gemini, vilao]
+ *               assistant_llm_model:
+ *                 type: string
+ *               assistant_llm_endpoint:
+ *                 type: string
+ *               assistant_llm_api_key:
+ *                 type: string
+ *                 writeOnly: true
+ *                 description: Key tạm thời chỉ dùng cho lần kiểm tra này và không được lưu
  *     responses:
  *       200:
  *         description: Lấy dữ liệu dashboard thành công
@@ -335,7 +353,8 @@ router.put("/setting", updateAdminSetting);
  */
 router.post("/assistant/test-llm", createRateLimit({ windowMs: 60_000, max: 3 }), async (req, res) => {
   try {
-    const result = await probeAssistantLlm();
+    const config = await resolveAssistantLlmProbeConfig(req.body);
+    const result = await probeAssistantLlm({ config });
     res.setHeader("Cache-Control", "no-store");
     return successResponse(res, "Model đã phản hồi", result);
   } catch (error) {

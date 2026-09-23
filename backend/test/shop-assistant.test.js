@@ -64,7 +64,7 @@ test("prompt injection and unrelated questions cannot invoke a model or catalog"
   assert.equal(calls, 0);
 });
 
-test("future provider receives bounded context and cannot emit links or long replies", async () => {
+test("provider receives bounded context and its reply is short with external links removed", async () => {
   let request;
   const provider = { generate: async (input) => {
     request = input;
@@ -76,6 +76,23 @@ test("future provider receives bounded context and cannot emit links or long rep
   assert.ok(request.messages.slice(0, 4).every((entry) => entry.text.length <= 220));
   assert.equal(request.maxOutputTokens, 120);
   assert.ok(!answer.text.includes("evil.example"));
+  assert.match(answer.text, /Truy cập/u);
+});
+
+test("configured provider answers website questions while catalog requests remain token-free", async (t) => {
+  let calls = 0;
+  const provider = { generate: async () => {
+    calls += 1;
+    return { text: "Shop chuyên bán acc Liên Quân và hỗ trợ giao dịch tự động." };
+  } };
+  const websiteAnswer = await runShopAssistant({ message: "Shop này bán gì?", provider });
+  assert.match(websiteAnswer.text, /acc Liên Quân/u);
+  assert.equal(calls, 1);
+
+  t.mock.method(Sale, "findAll", async () => []);
+  t.mock.method(GameAccount, "findAll", async () => []);
+  await runShopAssistant({ message: "Tìm acc 200k", provider });
+  assert.equal(calls, 1);
 });
 
 test("response cards keep server-provided account links and bounded history", () => {

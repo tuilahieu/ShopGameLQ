@@ -49,6 +49,19 @@ function containsInstructionAttack(message) {
   return /ignore (all |previous |prior )?instructions|bỏ qua (mọi |tất cả |các )?(chỉ dẫn|hướng dẫn|quy tắc)|đóng vai|giả làm (system|developer|admin)|system prompt|developer message|tiết lộ (prompt|instruction)|reveal (prompt|secret)|<\/?(?:system|developer|assistant)>|\[INST\]|```/iu.test(message);
 }
 
+function sanitizeModelReply(value) {
+  if (typeof value !== "string") return "";
+  const clean = value
+    .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
+    .replace(/<[^>]*>/gu, " ")
+    .replace(/(?:https?:\/\/|www\.)\S+/giu, "")
+    .replace(/[\u0000-\u001F\u007F]/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const sentences = clean.match(/[^.!?]+[.!?]?/gu)?.slice(0, 2).join(" ").trim() || "";
+  return sentences.slice(0, 320).trim();
+}
+
 export async function runShopAssistant({ message, history = [], provider = null, profile = null }) {
   const request = parseShoppingRequest(message);
   const displayName = normalizeAssistantName(profile?.name) || DEFAULT_ASSISTANT_NAME;
@@ -71,21 +84,25 @@ export async function runShopAssistant({ message, history = [], provider = null,
 
   // Provider contract for later Gemini/VILAO integration. Only compact context
   // and a single bounded tool are exposed; keys stay entirely on the server.
-  const result = await provider.generate({
-    instructions: buildShopAssistantInstructions(displayName),
-    messages: [...compactAssistantHistory(history), { role: "user", text: request.message }],
-    tools: ASSISTANT_TOOLS,
-    maxOutputTokens: ASSISTANT_LIMITS.maxOutputTokens,
-  });
+  let result;
+  try {
+    result = await provider.generate({
+      instructions: buildShopAssistantInstructions(displayName, profile),
+      messages: [...compactAssistantHistory(history), { role: "user", text: request.message }],
+      tools: ASSISTANT_TOOLS,
+      maxOutputTokens: ASSISTANT_LIMITS.maxOutputTokens,
+    });
+  } catch {
+    return { text: "Mình chưa kết nối được với hệ thống tư vấn lúc này. Bạn thử lại hoặc liên hệ shop nhé.", accounts: [], link: { label: "Liên hệ shop", href: "/contact" } };
+  }
   const call = result?.toolCalls?.find((item) => item?.name === "search_accounts");
   if (call) {
     // Tool arguments always come from server parsing, never from model output.
     const accounts = await executeAssistantTool(call.name, request);
     return answerShoppingRequest(request, accounts);
   }
-  return {
-    // Free-form model prose is not a verified source of shop facts. It may
-    // classify intent, but only fixed copy and server-owned links reach UI.
+  const text = sanitizeModelReply(result?.text);
+  return text ? { text, accounts: [] } : {
     text: "Mình hỗ trợ tìm acc, đơn hàng, nạp tiền và liên hệ shop. Bạn cần giúp mục nào?",
     accounts: [],
   };

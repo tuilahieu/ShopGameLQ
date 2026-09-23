@@ -1426,6 +1426,37 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assistant_llm_provider": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "gemini",
+                      "vilao"
+                    ]
+                  },
+                  "assistant_llm_model": {
+                    "type": "string"
+                  },
+                  "assistant_llm_endpoint": {
+                    "type": "string"
+                  },
+                  "assistant_llm_api_key": {
+                    "type": "string",
+                    "writeOnly": true,
+                    "description": "Key tạm thời chỉ dùng cho lần kiểm tra này và không được lưu"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Lấy dữ liệu dashboard thành công"

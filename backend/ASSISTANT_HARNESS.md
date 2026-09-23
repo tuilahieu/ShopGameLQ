@@ -70,13 +70,20 @@ vào `setting`; chúng tự chạy khi backend khởi động. Key được mã 
 `ACCOUNT_CREDENTIALS_ENCRYPTION_KEY` trước khi ghi database. API admin chỉ trả
 `assistant_llm_key_saved` cùng cấu hình không bí mật; API công khai không trả key hay trạng
 thái cấu hình LLM. `getAssistantLlmConfig()` chỉ dùng ở backend để giải mã khi
-nối adapter sau này. Nút **Kiểm tra API key với model** gọi
-`POST /api/admin/assistant/test-llm` sau khi lưu: backend gửi một câu `hello`
+nối provider ở server. Nút **Kiểm tra API key với model** gọi
+`POST /api/admin/assistant/test-llm`; có thể dùng key đang nhập trước khi lưu và
+backend chỉ giữ key tạm trong một request. Backend gửi một câu `hello`
 với tối đa 32 token đầu ra, timeout 12 giây và giới hạn ba lần/phút. Gemini dùng
 `generateContent`; ViLao dùng `chat/completions` tại endpoint `/v1` của key.
 Chỉ trả câu trả lời ngắn, tên model và thời gian; không trả key hoặc lỗi thô từ
-provider. Phép thử có thể phát sinh chi phí nhỏ. Chat với khách **chưa tự gọi LLM**;
-luồng trả lời theo quy tắc vẫn hoạt động như trước.
+provider. Phép thử có thể phát sinh chi phí nhỏ.
+
+Khi cấu hình hợp lệ đã được lưu, chat khách dùng model cho các câu hỏi liên quan
+website mà bộ quy tắc chưa trả lời được. Tìm acc, chào hỏi, đơn hàng, nạp tiền,
+bảo hành và liên hệ vẫn đi qua rule/tool cố định để phản hồi nhanh và tiết kiệm
+token. Mỗi lần gọi model chỉ gửi bốn tin gần nhất, tối đa 220 ký tự mỗi tin và
+giới hạn 120 output token. Backend loại HTML và URL ngoài trước khi trả nội dung
+model cho client; key chỉ được giải mã và dùng trên server.
 
 Tham khảo: [Gemini API](https://ai.google.dev/api),
 [model Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite),
