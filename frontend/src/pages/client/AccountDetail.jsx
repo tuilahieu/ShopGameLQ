@@ -4,7 +4,7 @@ import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, ZoomIn } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, ZoomIn, MessageCircle } from "lucide-react";
 import { updateSEO } from "../../utils/seo";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
@@ -51,6 +51,13 @@ export default function AccountDetail() {
   const [discountError, setDiscountError] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [supportPhone, setSupportPhone] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("setting") || "{}").sdt_admin || "";
+    } catch {
+      return "";
+    }
+  });
   
   // Image gallery state
   const [activeImg, setActiveImg] = useState("");
@@ -101,6 +108,14 @@ export default function AccountDetail() {
       if (sequence === loadSequence.current) setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    api.get("/settings").then((res) => {
+      if (active) setSupportPhone(res.data?.data?.sdt_admin || "");
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   // Parse images helper
   const images = getAccountImages(account);
@@ -415,6 +430,9 @@ export default function AccountDetail() {
   const voucherAmount = Number(discountPreview?.discount_amount || 0);
   const finalPurchasePrice = Number(discountPreview?.final_price ?? currentPrice);
   const hasInsufficientBalance = userBalance !== null && userBalance < finalPurchasePrice;
+  const zaloPhone = supportPhone.trim();
+  const zaloDigits = zaloPhone.replace(/\D/g, "");
+  const zaloLink = zaloDigits ? `https://zalo.me/${zaloDigits}` : null;
 
   return (
     <div className="page-container account-detail-page">
@@ -521,6 +539,13 @@ export default function AccountDetail() {
             </section>
           )}
 
+          {zaloLink && (
+            <a className="detail-zalo-prompt" href={zaloLink} target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={22} aria-hidden="true" />
+              <span>Liên hệ Zalo để được tư vấn và hỗ trợ đổi thông tin acc</span>
+            </a>
+          )}
+
           {!isSold ? (
             <>
               <div className="coupon-section form-group-premium">
@@ -577,6 +602,22 @@ export default function AccountDetail() {
             <button disabled className="btn-outline detail-sold-button">
               TÀI KHOẢN NÀY ĐÃ BÁN
             </button>
+          )}
+
+          <aside className="detail-purchase-notice" aria-label="Lưu ý khi mua tài khoản">
+            <h2><Info size={20} aria-hidden="true" /> Lưu ý quan trọng</h2>
+            <p><strong>Miễn phí</strong> thay đổi thông tin khi mua acc. Liên hệ shop để được hỗ trợ.</p>
+            <p><strong>Không phát sinh thêm chi phí.</strong> Giá bán được ghi trên shop.</p>
+          </aside>
+
+          {zaloLink && (
+            <a className="detail-zalo-contact" href={zaloLink} target="_blank" rel="noopener noreferrer" aria-label={`Liên hệ Zalo ${zaloPhone} để được hỗ trợ`}>
+              <span className="detail-zalo-mark" aria-hidden="true">Zalo</span>
+              <span className="detail-zalo-contact-copy">
+                <strong>Zalo: <span>{zaloPhone}</span></strong>
+                <small>Hỗ trợ: 24/7 (T2–CN, cả ngày lễ)</small>
+              </span>
+            </a>
           )}
         </section>
       </div>
