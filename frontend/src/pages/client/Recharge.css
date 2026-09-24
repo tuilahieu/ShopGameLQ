@@ -1,0 +1,584 @@
+/* Nạp tiền — mobile first, scoped to the customer flow. */
+.recharge-page-v2 {
+  padding-top: 1rem;
+  padding-bottom: 6rem;
+}
+
+.recharge-page-v2 .recharge-heading,
+.recharge-page-v2 .recharge-card {
+  width: min(100%, 68rem);
+}
+
+.recharge-page-v2 .recharge-heading {
+  margin-bottom: 1rem;
+}
+
+.recharge-page-v2 .recharge-heading p {
+  display: block;
+  max-width: 36rem;
+  text-wrap: pretty;
+}
+
+.recharge-form-v2 {
+  padding: 0;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--color-border-strong) 65%, transparent);
+  box-shadow: 0 1rem 2.8rem rgb(52 38 21 / 0.08);
+}
+
+.recharge-form-intro {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: color-mix(in srgb, var(--color-surface-subtle) 76%, var(--color-surface));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recharge-form-eyebrow {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recharge-form-v2 .recharge-form-intro h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.15rem, 5vw, 1.45rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.recharge-form-time,
+.recharge-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.recharge-form-time {
+  padding: 0.45rem 0.65rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+}
+
+.recharge-form-grid {
+  display: grid;
+}
+
+.recharge-form-v2 .recharge-step {
+  padding: 1.1rem 1rem 1.25rem;
+  border-top: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recharge-form-v2 .recharge-step-title {
+  margin-bottom: 1rem;
+  align-items: flex-start;
+}
+
+.client-page .recharge-form-v2 .recharge-step-title > span {
+  width: 1.85rem;
+  height: 1.85rem;
+  flex: 0 0 auto;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: 0;
+  border-radius: 0.6rem;
+  box-shadow: none;
+}
+
+.recharge-form-v2 .recharge-step-title > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.recharge-form-v2 .recharge-step-title strong {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.recharge-form-v2 .recharge-step-title small {
+  color: var(--color-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.recharge-form-v2 .form-group-premium > label {
+  margin-bottom: 0.55rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.recharge-form-v2 .recharge-amount-options {
+  gap: 0.55rem;
+}
+
+.recharge-form-v2 .recharge-amount-options .btn-suggestion {
+  min-height: 2.7rem;
+  border-radius: 0.72rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.recharge-form-v2 .recharge-amount-options .btn-suggestion:active {
+  transform: scale(0.98);
+}
+
+.recharge-amount-input {
+  position: relative;
+}
+
+.recharge-amount-input input {
+  width: 100%;
+  min-height: 3rem !important;
+  padding-right: 2.5rem;
+  font-size: 1rem !important;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.recharge-amount-input > span {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  color: var(--color-text-secondary);
+  font-weight: 750;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.recharge-form-v2 .form-hint {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.76rem;
+}
+
+.recharge-form-v2 select {
+  width: 100%;
+  min-height: 3rem;
+}
+
+.recharge-form-v2 .recharge-bank-summary {
+  margin-top: 0.85rem;
+  padding: 0.25rem 0.8rem;
+  background: color-mix(in srgb, var(--color-surface-subtle) 82%, var(--color-surface));
+  border-radius: 0.85rem;
+}
+
+.recharge-form-v2 .recharge-bank-summary > div {
+  min-height: 2.5rem;
+  padding-block: 0.55rem;
+}
+
+.recharge-form-v2 .recharge-bank-summary dd {
+  max-width: 65%;
+  font-variant-numeric: tabular-nums;
+}
+
+.recharge-form-actions {
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  background: var(--color-surface);
+}
+
+.recharge-form-actions .recharge-security-note {
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+}
+
+.recharge-form-v2 .recharge-error {
+  margin: 1rem 1rem 0;
+}
+
+.recharge-form-v2 .recharge-submit {
+  min-height: 3.15rem;
+  gap: 0.55rem;
+}
+
+body:has(.client-page) .modal-backdrop:has(.recharge-payment-modal) {
+  align-items: flex-end !important;
+  padding: max(0.75rem, var(--safe-area-top)) 0 0 !important;
+}
+
+body:has(.client-page) .modal-content-wrapper.recharge-payment-modal {
+  width: 100%;
+  max-width: 100%;
+  max-height: min(94dvh, 56rem);
+  margin: auto 0 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 1.35rem 1.35rem 0 0;
+  box-shadow: 0 -1rem 3.5rem rgb(19 24 43 / 0.22);
+}
+
+body:has(.client-page) .recharge-payment-modal .modal-header {
+  min-height: 3.75rem;
+  padding: 0.75rem 1rem;
+}
+
+body:has(.client-page) .recharge-payment-modal .modal-header h3 {
+  font-size: 1.05rem;
+}
+
+body:has(.client-page) .recharge-payment-modal .modal-close-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+}
+
+body:has(.client-page) .recharge-payment-modal .modal-body {
+  padding: 1rem !important;
+}
+
+body:has(.client-page) .recharge-payment-modal .modal-footer {
+  padding: 0.75rem 1rem max(0.75rem, var(--safe-area-bottom)) !important;
+}
+
+body:has(.client-page) .recharge-payment-modal .recharge-modal-close {
+  width: 100%;
+  min-height: 3rem;
+}
+
+.recharge-payment-modal .recharge-qr-content {
+  gap: 0.85rem;
+}
+
+.recharge-payment-modal .payment-status {
+  min-height: 2.65rem;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+}
+
+.payment-status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  background: currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.3rem color-mix(in srgb, currentColor 14%, transparent);
+  animation: recharge-status-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes recharge-status-pulse {
+  50% { opacity: 0.55; transform: scale(0.82); }
+}
+
+.recharge-modal-lead {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+}
+
+.recharge-payment-modal .recharge-qr-help {
+  max-width: 38rem;
+  font-size: 0.82rem;
+  text-wrap: pretty;
+}
+
+.recharge-expiry {
+  color: var(--color-price);
+}
+
+.recharge-payment-layout {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.recharge-qr-panel {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+}
+
+.recharge-qr-panel > small {
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+}
+
+.recharge-payment-modal .recharge-qr-image {
+  position: relative;
+  width: min(14.5rem, 68vw);
+  height: min(14.5rem, 68vw);
+  margin: 0;
+  padding: 0.65rem;
+  isolation: isolate;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  box-shadow: 0 0.8rem 2rem rgb(39 32 24 / 0.08);
+}
+
+.recharge-payment-modal .recharge-qr-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.recharge-payment-modal .recharge-qr-image.is-loaded img {
+  opacity: 1;
+}
+
+.recharge-qr-skeleton,
+.recharge-qr-fallback {
+  position: absolute;
+  inset: 0.65rem;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 1rem;
+  color: #665e55;
+  background: linear-gradient(110deg, #f1eee8 20%, #faf8f3 42%, #f1eee8 64%);
+  background-size: 220% 100%;
+  border-radius: 0.65rem;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.recharge-qr-skeleton {
+  animation: recharge-qr-shimmer 1.45s linear infinite;
+}
+
+.recharge-qr-skeleton-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  color: #877d70;
+  background: rgb(255 255 255 / 0.72);
+  border-radius: 0.9rem;
+}
+
+@keyframes recharge-qr-shimmer {
+  to { background-position: -220% 0; }
+}
+
+.recharge-qr-fallback {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-subtle);
+}
+
+.recharge-qr-fallback span {
+  max-width: 14rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.recharge-qr-fallback .btn-outline {
+  min-height: 2.35rem !important;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.76rem;
+}
+
+.recharge-qr-fallback.is-static {
+  position: relative;
+  inset: auto;
+  width: min(14.5rem, 68vw);
+  min-height: 12rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 1rem;
+}
+
+.recharge-payment-modal .recharge-transfer-details {
+  margin: 0;
+  padding: 0.25rem 0.8rem;
+  background: color-mix(in srgb, var(--color-surface-subtle) 72%, var(--color-surface));
+  border-radius: 0.9rem;
+}
+
+.recharge-payment-modal .recharge-transfer-details > div {
+  min-height: 2.65rem;
+  padding-block: 0.55rem;
+}
+
+.recharge-payment-modal .recharge-transfer-details dt {
+  font-size: 0.72rem;
+}
+
+.recharge-payment-modal .recharge-transfer-details dd {
+  max-width: 68%;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.recharge-payment-modal .recharge-transfer-details .copy-badge {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  border-radius: 0.65rem;
+}
+
+.recharge-payment-modal .recharge-transfer-details .transfer-content-row {
+  margin: 0.35rem 0;
+  padding: 0.75rem;
+  gap: 0.4rem;
+}
+
+.recharge-payment-modal .transfer-content-row dd {
+  max-width: 100%;
+}
+
+.recharge-payment-modal .transfer-content-row dd strong {
+  font-size: 0.9rem;
+  letter-spacing: 0.015em;
+}
+
+.recharge-transfer-warning {
+  margin: 0.65rem 0 0;
+  padding-inline: 0.2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.recharge-transfer-warning svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: var(--color-price);
+}
+
+.recharge-payment-modal .recharge-success-mark {
+  min-height: 16rem;
+  padding: 2rem 1rem;
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-radius: 1rem;
+}
+
+.recharge-payment-modal .recharge-success-mark svg {
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0.8rem;
+  color: #fff;
+  background: var(--color-success);
+  border-radius: 1rem;
+}
+
+.recharge-payment-modal .recharge-success-mark span {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 38rem) {
+  .recharge-form-intro {
+    padding: 1.25rem 1.4rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .recharge-form-v2 .recharge-step,
+  .recharge-form-actions {
+    padding-inline: 1.4rem;
+  }
+}
+
+@media (min-width: 56rem) {
+  .recharge-page-v2 {
+    padding-top: 2rem;
+  }
+
+  .recharge-page-v2 .recharge-heading {
+    margin-bottom: 1.5rem;
+  }
+
+  .recharge-form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .recharge-form-v2 .recharge-step {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .recharge-form-v2 .recharge-step:first-child {
+    border-right: 1px solid var(--color-border);
+  }
+
+  .recharge-form-actions {
+    padding: 1.1rem 1.5rem 1.35rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .recharge-form-v2 .recharge-submit {
+    width: auto;
+    min-width: 14rem;
+  }
+
+  body:has(.client-page) .modal-backdrop:has(.recharge-payment-modal) {
+    align-items: center !important;
+    padding: 1.5rem !important;
+  }
+
+  body:has(.client-page) .modal-content-wrapper.recharge-payment-modal {
+    width: min(54rem, calc(100vw - 3rem));
+    max-width: 54rem;
+    max-height: min(90dvh, 47rem);
+    margin: auto;
+    border: 2px solid var(--color-border);
+    border-radius: 1.25rem;
+    box-shadow: 0 1.5rem 4.5rem rgb(19 24 43 / 0.25);
+  }
+
+  body:has(.client-page) .recharge-payment-modal .modal-header,
+  body:has(.client-page) .recharge-payment-modal .modal-body,
+  body:has(.client-page) .recharge-payment-modal .modal-footer {
+    padding-inline: 1.4rem !important;
+  }
+
+  .recharge-payment-layout {
+    grid-template-columns: minmax(15rem, 0.78fr) minmax(20rem, 1.22fr);
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .recharge-payment-modal .recharge-qr-image,
+  .recharge-qr-fallback.is-static {
+    width: min(16rem, 28vw);
+    height: min(16rem, 28vw);
+  }
+
+  .recharge-payment-modal .recharge-transfer-details {
+    padding-inline: 1rem;
+  }
+
+  body:has(.client-page) .recharge-payment-modal .recharge-modal-close {
+    width: auto;
+    min-width: 9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-status-dot,
+  .recharge-qr-skeleton {
+    animation: none;
+  }
+}
