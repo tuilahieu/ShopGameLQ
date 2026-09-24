@@ -3,7 +3,12 @@ import { Link } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { Key, Calendar, ShieldCheck, Copy, Check, Info } from "lucide-react";
+import { Key, Calendar, ShieldCheck, Info } from "lucide-react";
+import CustomerPageHeading from "../../components/client/CustomerPageHeading";
+import LoginCredentials from "../../components/client/LoginCredentials";
+import useClipboardFeedback from "../../hooks/useClipboardFeedback";
+import { formatDateTime, formatVnd } from "../../utils/formatters";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
@@ -15,7 +20,7 @@ export default function MyOrders() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
-  const [copiedField, setCopiedField] = useState("");
+  const { copiedField, copy } = useClipboardFeedback();
 
   async function load() {
     setLoading(true);
@@ -25,7 +30,7 @@ export default function MyOrders() {
       setOrders(res.data.data);
     } catch (err) {
       console.error(err);
-      setLoadError(err.response?.data?.message || "Không thể tải lịch sử mua hàng.");
+      setLoadError(getApiErrorMessage(err, "Không thể tải lịch sử mua hàng."));
     } finally {
       setLoading(false);
     }
@@ -40,16 +45,10 @@ export default function MyOrders() {
       setSelectedOrder(res.data.data);
     } catch (err) {
       console.error(err);
-      setDetailError(err.response?.data?.message || "Không thể tải chi tiết đơn hàng.");
+      setDetailError(getApiErrorMessage(err, "Không thể tải chi tiết đơn hàng."));
     } finally {
       setModalLoading(false);
     }
-  }
-
-  function handleCopy(text, fieldName) {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(""), 2000);
   }
 
   useEffect(() => {
@@ -62,11 +61,11 @@ export default function MyOrders() {
 
   return (
     <div className="page-container orders-page">
-      <header className="customer-page-heading">
-        <span className="storefront-section-kicker"><Key size={17} aria-hidden="true" /> Tài khoản của bạn</span>
-        <h1>Tài khoản đã mua</h1>
-        <p>Xem lại thông tin đăng nhập và bảo mật tài khoản sau khi nhận.</p>
-      </header>
+      <CustomerPageHeading
+        eyebrow={<><Key size={17} aria-hidden="true" /> Tài khoản của bạn</>}
+        title="Tài khoản đã mua"
+        description="Xem lại thông tin đăng nhập và bảo mật tài khoản sau khi nhận."
+      />
 
       {loading ? (
         <SkeletonLoading variant="orders" items={4} compact label="Đang tải tài khoản đã mua" />
@@ -86,7 +85,7 @@ export default function MyOrders() {
                 <span className="order-number">Đơn hàng #{o.id}</span>
                 <h2>Acc #{o.acc_id}</h2>
                 <p>
-                  <Calendar size={15} aria-hidden="true" /> <time dateTime={o.created_at || o.createdAt}>{new Date(o.created_at || o.createdAt).toLocaleString()}</time>
+                  <Calendar size={15} aria-hidden="true" /> <time dateTime={o.created_at || o.createdAt}>{formatDateTime(o.created_at || o.createdAt)}</time>
                 </p>
                 {o.account?.accountType?.name && (
                   <p>
@@ -96,7 +95,7 @@ export default function MyOrders() {
               </div>
 
               <div className="order-info-right">
-                <span className="order-price">{Number(o.final_price).toLocaleString()}đ</span>
+                <span className="order-price">{formatVnd(o.final_price)}</span>
                 <button onClick={() => viewOrderDetails(o.id)} className="btn-primary">
                   <Key size={16} aria-hidden="true" /> Xem thông tin acc
                 </button>
@@ -136,42 +135,13 @@ export default function MyOrders() {
             <dl className="order-detail-summary">
               <div><dt>Mã đơn hàng</dt><dd>#{selectedOrder.id}</dd></div>
               <div><dt>Mã tài khoản</dt><dd>#{selectedOrder.acc_id}</dd></div>
-              <div><dt>Đã thanh toán</dt><dd>{Number(selectedOrder.final_price).toLocaleString()}đ</dd></div>
+              <div><dt>Đã thanh toán</dt><dd>{formatVnd(selectedOrder.final_price)}</dd></div>
             </dl>
 
             <div className="order-credentials">
               <h4>Thông tin đăng nhập</h4>
               
-              <div className="login-credentials-box" style={{ marginTop: 0 }}>
-                <div className="credential-item">
-                  <span style={{ color: "var(--text-secondary)" }}>Tài khoản:</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <strong style={{ color: "var(--text-primary)" }}>{selectedOrder.account?.login?.split("|")[0]}</strong>
-                    <button 
-                      type="button"
-                      onClick={() => handleCopy(selectedOrder.account?.login?.split("|")[0], "user")} 
-                      className="copy-badge"
-                      aria-label="Sao chép tên đăng nhập tài khoản game"
-                    >
-                      {copiedField === "user" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-                    </button>
-                  </span>
-                </div>
-                <div className="credential-item">
-                  <span style={{ color: "var(--text-secondary)" }}>Mật khẩu:</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <strong style={{ color: "var(--text-primary)" }}>{selectedOrder.account?.login?.split("|")[1]}</strong>
-                    <button 
-                      type="button"
-                      onClick={() => handleCopy(selectedOrder.account?.login?.split("|")[1], "pass")} 
-                      className="copy-badge"
-                      aria-label="Sao chép mật khẩu tài khoản game"
-                    >
-                      {copiedField === "pass" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-                    </button>
-                  </span>
-                </div>
-              </div>
+              <LoginCredentials login={selectedOrder.account?.login} copiedField={copiedField} onCopy={copy} />
             </div>
 
             <p className="order-security-note">

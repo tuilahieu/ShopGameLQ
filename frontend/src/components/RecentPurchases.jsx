@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ShoppingBag } from "lucide-react";
+import { formatVnd } from "../utils/formatters";
 
 function maskUsername(username) {
   if (!username || typeof username !== "string") return "kh*****ch";
@@ -39,7 +40,7 @@ export default function RecentPurchases() {
       id: order.id,
       maskedUser: maskUsername(order.username),
       typeName: order.account_type_name || "Tài khoản game",
-      priceStr: Number(order.price || 0).toLocaleString() + "đ",
+      priceStr: formatVnd(order.price || 0),
       timeStr: formatRelativeTime(order.createdAt),
     }));
 

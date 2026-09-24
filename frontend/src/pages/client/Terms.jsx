@@ -1,45 +1,29 @@
-import { useEffect, useState } from "react";
 import { ShieldCheck, RefreshCw, AlertTriangle, FileText, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
-import api from "../../api/api";
-import { updateSEO } from "../../utils/seo";
 import { getSupportContacts } from "../../utils/supportContacts";
+import usePublicSettings from "../../hooks/usePublicSettings";
+import CustomerPageHeading from "../../components/client/CustomerPageHeading";
+import usePageSeo from "../../hooks/usePageSeo";
 
 export default function Terms() {
-  const [setting, setSetting] = useState(() => {
-    return JSON.parse(localStorage.getItem("setting") || "{}");
-  });
+  const setting = usePublicSettings();
 
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await api.get("/home");
-        if (res.data?.data?.setting) {
-          const updatedSetting = res.data.data.setting;
-          setSetting(updatedSetting);
-          localStorage.setItem("setting", JSON.stringify(updatedSetting));
-        }
-      } catch (err) {
-        console.error("Failed to sync settings:", err);
-      }
-    }
-    fetchSettings();
-    updateSEO({
-      title: "Điều Khoản Dịch Vụ & Bảo Hành",
-      description: "Đọc kỹ các quy định, điều khoản sử dụng dịch vụ và chính sách bảo hành tài khoản game trước khi thực hiện giao dịch tại shop.",
-      keywords: "dieu khoan dich vu, chinh sach bao hanh, quy dinh, ho tro shop acc"
-    });
-  }, []);
+  usePageSeo({
+    title: "Điều Khoản Dịch Vụ & Bảo Hành",
+    description: "Đọc kỹ các quy định, điều khoản sử dụng dịch vụ và chính sách bảo hành tài khoản game trước khi thực hiện giao dịch tại shop.",
+    keywords: "dieu khoan dich vu, chinh sach bao hanh, quy dinh, ho tro shop acc",
+  });
 
   const { phoneDisplay, hasAnyContact } = getSupportContacts(setting);
 
   return (
     <div className="page-container terms-page">
-      <header className="customer-page-heading">
-        <span className="customer-page-eyebrow"><FileText size={15} aria-hidden="true" /> Quy định mua hàng</span>
-        <h1>Điều khoản và bảo hành</h1>
-        <p>Những thông tin quan trọng cần biết trước và sau khi mua tài khoản.</p>
-      </header>
+      <CustomerPageHeading
+        eyebrow={<><FileText size={15} aria-hidden="true" /> Quy định mua hàng</>}
+        eyebrowClassName="customer-page-eyebrow"
+        title="Điều khoản và bảo hành"
+        description="Những thông tin quan trọng cần biết trước và sau khi mua tài khoản."
+      />
 
       <div className="terms-content">
         

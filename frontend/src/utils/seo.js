@@ -1,3 +1,5 @@
+import { readStoredJson } from "./storage";
+
 /**
  * Dynamically updates document SEO metadata in the head (Title, Meta Description, Meta Keywords, OpenGraph).
  * @param {Object} seoOptions
@@ -7,15 +9,8 @@
  */
 export function updateSEO({ title, description, keywords }) {
   // 1. Get Web Config Settings
-  let siteName = "Shopgameliqi";
-  try {
-    const setting = JSON.parse(localStorage.getItem("setting") || "{}");
-    if (setting.ten_web) {
-      siteName = setting.ten_web;
-    }
-  } catch (e) {
-    console.error("Failed to parse settings for SEO:", e);
-  }
+  const setting = readStoredJson("setting", {});
+  const siteName = setting.ten_web || "Shopgameliqi";
 
   // 2. Update Document Title
   document.title = title ? `${title} | ${siteName}` : siteName;

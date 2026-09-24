@@ -6,8 +6,10 @@ import SafeImage from "../../components/SafeImage";
 import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers, ShieldCheck } from "lucide-react";
 import { StatusMessage } from "../../components/Ui";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { updateSEO } from "../../utils/seo";
 import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
+import usePageSeo from "../../hooks/usePageSeo";
+import { getApiErrorMessage } from "../../utils/apiError";
+import useLatestRequest from "../../hooks/useLatestRequest";
 
 export default function Accounts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,7 +21,7 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const catalogueLoaded = useRef(false);
-  const loadSequence = useRef(0);
+  const { beginRequest, isLatestRequest } = useLatestRequest();
   
   // Pagination State
   const [pagination, setPagination] = useState({
@@ -42,7 +44,7 @@ export default function Accounts() {
     : types;
 
   const loadData = useCallback(async () => {
-    const sequence = ++loadSequence.current;
+    const sequence = beginRequest();
     setLoading(true);
     setLoadError("");
     try {
@@ -62,7 +64,7 @@ export default function Accounts() {
             },
           }),
         ]);
-        if (sequence !== loadSequence.current) return;
+        if (!isLatestRequest(sequence)) return;
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
           setCategories(homeRes.data?.data?.categories || []);
@@ -75,7 +77,7 @@ export default function Accounts() {
         }
       } else {
         const homeRes = homeRequest ? await homeRequest : null;
-        if (sequence !== loadSequence.current) return;
+        if (!isLatestRequest(sequence)) return;
         if (homeRes) {
           setTypes(homeRes.data?.data?.accountTypes || []);
           setCategories(homeRes.data?.data?.categories || []);
@@ -91,11 +93,11 @@ export default function Accounts() {
         });
       }
     } catch (error) {
-      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
+      if (isLatestRequest(sequence)) setLoadError(getApiErrorMessage(error, "Không thể tải kho tài khoản."));
     } finally {
-      if (sequence === loadSequence.current) setLoading(false);
+      if (isLatestRequest(sequence)) setLoading(false);
     }
-  }, [loaiId, sort, page]);
+  }, [beginRequest, isLatestRequest, loaiId, sort, page]);
 
   function updateFilter(key, value) {
     const next = new URLSearchParams(searchParams);
@@ -124,21 +126,16 @@ export default function Accounts() {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (loaiId && selectedType) {
-      updateSEO({
-        title: `${selectedType.name} - Kho Tài Khoản Game`,
-        description: selectedType.noidung || `Mua ngay tài khoản thuộc danh mục ${selectedType.name} tại shop. Cam kết: ${selectedType.camket || 'uy tín, an toàn 100%.'}`,
-        keywords: `${selectedType.name.toLowerCase()}, mua acc ${selectedType.name.toLowerCase()}, shop acc game`
-      });
-    } else if (!loaiId) {
-      updateSEO({
-        title: "Chọn Danh Mục Acc Game - Kho Tài Khoản",
-        description: "Khám phá kho tài khoản game cực chất tại hệ thống. Đa dạng thể loại, giá rẻ bất ngờ, cam kết uy tín 100%.",
-        keywords: "danh muc acc game, kho acc, acc lien quan, acc gia re"
-      });
-    }
-  }, [loaiId, selectedType]);
+  const seo = loaiId && selectedType ? {
+    title: `${selectedType.name} - Kho Tài Khoản Game`,
+    description: selectedType.noidung || `Mua ngay tài khoản thuộc danh mục ${selectedType.name} tại shop. Cam kết: ${selectedType.camket || 'uy tín, an toàn 100%.'}`,
+    keywords: `${selectedType.name.toLowerCase()}, mua acc ${selectedType.name.toLowerCase()}, shop acc game`,
+  } : !loaiId ? {
+    title: "Chọn Danh Mục Acc Game - Kho Tài Khoản",
+    description: "Khám phá kho tài khoản game cực chất tại hệ thống. Đa dạng thể loại, giá rẻ bất ngờ, cam kết uy tín 100%.",
+    keywords: "danh muc acc game, kho acc, acc lien quan, acc gia re",
+  } : null;
+  usePageSeo(seo);
 
   return (
     <div className="page-container catalogue-page">

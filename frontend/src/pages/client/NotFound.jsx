@@ -1,15 +1,12 @@
 import { Link } from "react-router-dom";
 import { Gamepad2, Home, ListFilter } from "lucide-react";
-import { useEffect } from "react";
-import { updateSEO } from "../../utils/seo";
+import usePageSeo from "../../hooks/usePageSeo";
 
 export default function NotFound() {
-  useEffect(() => {
-    updateSEO({
-      title: "Không tìm thấy trang",
-      description: "Trang bạn đang tìm không tồn tại hoặc đã được chuyển đi.",
-    });
-  }, []);
+  usePageSeo({
+    title: "Không tìm thấy trang",
+    description: "Trang bạn đang tìm không tồn tại hoặc đã được chuyển đi.",
+  });
 
   return (
     <main className="page-container not-found-page">

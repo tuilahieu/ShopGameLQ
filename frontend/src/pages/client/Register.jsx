@@ -1,20 +1,21 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../api/api";
-import { User, Lock, UserPlus, AlertCircle, Gamepad2 } from "lucide-react";
-import { updateSEO } from "../../utils/seo";
+import { User, Lock, UserPlus } from "lucide-react";
 import TurnstileCaptcha from "../../components/TurnstileCaptcha";
+import { AuthCard, AuthField } from "../../components/client/AuthUi";
+import usePageSeo from "../../hooks/usePageSeo";
+import useTurnstileCaptcha from "../../hooks/useTurnstileCaptcha";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function Register() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    updateSEO({
-      title: "Đăng Ký Tài Khoản Mới",
-      description: "Đăng ký tài khoản mới nhanh chóng trong 10 giây để mua nick game tự động, bảo hành uy tín.",
-      keywords: "dang ky, register shop acc, mua acc game"
-    });
-  }, []);
+  usePageSeo({
+    title: "Đăng Ký Tài Khoản Mới",
+    description: "Đăng ký tài khoản mới nhanh chóng trong 10 giây để mua nick game tự động, bảo hành uy tín.",
+    keywords: "dang ky, register shop acc, mua acc game",
+  });
 
   const [form, setForm] = useState({
     username: "",
@@ -23,10 +24,7 @@ export default function Register() {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
-  const captchaResetRef = useRef(null);
-  const captchaEnabled = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
-  const onCaptchaToken = useCallback((token) => setCaptchaToken(token), []);
+  const { captchaToken, captchaResetRef, captchaEnabled, onCaptchaToken, resetCaptcha } = useTurnstileCaptcha();
 
   async function submit(e) {
     e.preventDefault();
@@ -51,36 +49,25 @@ export default function Register() {
       alert("Đăng ký thành công! Hãy đăng nhập để tiếp tục mua acc.");
       navigate("/login");
     } catch (error) {
-      captchaResetRef.current?.();
-      setErrorMsg(error.response?.data?.message || "Đăng ký thất bại. Tên đăng nhập có thể đã tồn tại.");
+      resetCaptcha();
+      setErrorMsg(getApiErrorMessage(error, "Đăng ký thất bại. Tên đăng nhập có thể đã tồn tại."));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page-wrapper">
-      <div className="auth-card">
-        <div className="auth-header-logo">
-          <div className="auth-game-mark"><Gamepad2 size={27} aria-hidden="true" /></div>
-          <h1>Tạo tài khoản</h1>
-          <p>Đăng ký miễn phí để mua acc và nhận thông tin tự động.</p>
-        </div>
-
-        {errorMsg && (
-          <div className="alert-error auth-alert" role="alert">
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={submit} className="auth-form">
-          <div className="form-group-premium">
-            <label htmlFor="register-username" className="auth-field-label">
-              <User size={15} aria-hidden="true" /> Tên đăng nhập
-            </label>
-            <input
+    <AuthCard
+      title="Tạo tài khoản"
+      description="Đăng ký miễn phí để mua acc và nhận thông tin tự động."
+      error={errorMsg}
+      footer={<>Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link></>}
+    >
+      <form onSubmit={submit} className="auth-form">
+          <AuthField
               id="register-username"
+              icon={User}
+              label="Tên đăng nhập"
               name="username"
               autoComplete="username"
               autoCapitalize="none"
@@ -92,14 +79,10 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
             />
-          </div>
-
-          <div className="form-group-premium">
-            <label htmlFor="register-password" className="auth-field-label">
-              <Lock size={15} aria-hidden="true" /> Mật khẩu
-            </label>
-            <input
+          <AuthField
               id="register-password"
+              icon={Lock}
+              label="Mật khẩu"
               name="password"
               type="password"
               autoComplete="new-password"
@@ -110,14 +93,10 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
             />
-          </div>
-
-          <div className="form-group-premium">
-            <label htmlFor="register-password-confirm" className="auth-field-label">
-              <Lock size={15} aria-hidden="true" /> Xác nhận mật khẩu
-            </label>
-            <input
+          <AuthField
               id="register-password-confirm"
+              icon={Lock}
+              label="Xác nhận mật khẩu"
               name="confirmPassword"
               type="password"
               autoComplete="new-password"
@@ -128,19 +107,13 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
               required
             />
-          </div>
 
           <TurnstileCaptcha onToken={onCaptchaToken} resetRef={captchaResetRef} />
 
           <button disabled={loading || (captchaEnabled && !captchaToken)} aria-busy={loading} className="btn-primary auth-submit">
             <UserPlus size={18} aria-hidden="true" /> {loading ? "Đang xử lý…" : "Tạo tài khoản"}
           </button>
-        </form>
-
-        <div className="auth-footer-text">
-          Đã có tài khoản? <Link to="/login">Đăng nhập ngay</Link>
-        </div>
-      </div>
-    </div>
+      </form>
+    </AuthCard>
   );
 }

@@ -4,6 +4,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLoader from "./components/AppLoader";
 import NetworkActivity from "./components/NetworkActivity";
+import { readStoredJson } from "./utils/storage";
 
 // Keep the first bundle limited to routing, theme and the loading shell. Each
 // page is fetched only when its route is needed, especially admin screens that
@@ -43,7 +44,7 @@ const CtvOrders = lazy(() => import("./pages/ctv/CtvOrders"));
 
 function AdminProtected({ children }) {
   const token = localStorage.getItem("accessToken");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = readStoredJson("user", {});
 
   if (!token) return <Navigate to="/login" replace />;
   if (Number(user.level) !== 99) return <Navigate to="/" replace />;
@@ -53,7 +54,7 @@ function AdminProtected({ children }) {
 
 function CtvProtected({ children }) {
   const token = localStorage.getItem("accessToken");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = readStoredJson("user", {});
 
   if (!token) return <Navigate to="/login" replace />;
   if (Number(user.level) !== 1 && Number(user.level) !== 99) return <Navigate to="/" replace />;

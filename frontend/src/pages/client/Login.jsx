@@ -1,21 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../../api/api";
-import { User, Lock, LogIn, AlertCircle, Gamepad2 } from "lucide-react";
-import { updateSEO } from "../../utils/seo";
+import { User, Lock, LogIn } from "lucide-react";
 import TurnstileCaptcha from "../../components/TurnstileCaptcha";
+import { AuthCard, AuthField } from "../../components/client/AuthUi";
+import usePageSeo from "../../hooks/usePageSeo";
+import useTurnstileCaptcha from "../../hooks/useTurnstileCaptcha";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    updateSEO({
-      title: "Đăng Nhập Tài Khoản",
-      description: "Đăng nhập hệ thống để thực hiện mua acc game Liên Quân Mobile tự động, an toàn và bảo mật.",
-      keywords: "dang nhap, login shop acc, mua acc game"
-    });
-  }, []);
+  usePageSeo({
+    title: "Đăng Nhập Tài Khoản",
+    description: "Đăng nhập hệ thống để thực hiện mua acc game Liên Quân Mobile tự động, an toàn và bảo mật.",
+    keywords: "dang nhap, login shop acc, mua acc game",
+  });
 
   const [form, setForm] = useState({
     username: "",
@@ -23,10 +24,7 @@ export default function Login() {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
-  const captchaResetRef = useRef(null);
-  const captchaEnabled = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
-  const onCaptchaToken = useCallback((token) => setCaptchaToken(token), []);
+  const { captchaToken, captchaResetRef, captchaEnabled, onCaptchaToken, resetCaptcha } = useTurnstileCaptcha();
 
   async function submit(e) {
     e.preventDefault();
@@ -57,36 +55,25 @@ export default function Login() {
       }
       window.location.reload(); // Reload to refresh layout wallet context
     } catch (error) {
-      captchaResetRef.current?.();
-      setErrorMsg(error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.");
+      resetCaptcha();
+      setErrorMsg(getApiErrorMessage(error, "Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu."));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page-wrapper">
-      <div className="auth-card">
-        <div className="auth-header-logo">
-          <div className="auth-game-mark"><Gamepad2 size={27} aria-hidden="true" /></div>
-          <h1>Đăng nhập</h1>
-          <p>Vào tài khoản để mua acc và xem đơn hàng.</p>
-        </div>
-
-        {errorMsg && (
-          <div className="alert-error auth-alert" role="alert">
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={submit} className="auth-form">
-          <div className="form-group-premium">
-            <label htmlFor="login-username" className="auth-field-label">
-              <User size={15} aria-hidden="true" /> Tên đăng nhập
-            </label>
-            <input
+    <AuthCard
+      title="Đăng nhập"
+      description="Vào tài khoản để mua acc và xem đơn hàng."
+      error={errorMsg}
+      footer={<>Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link></>}
+    >
+      <form onSubmit={submit} className="auth-form">
+          <AuthField
               id="login-username"
+              icon={User}
+              label="Tên đăng nhập"
               name="username"
               autoComplete="username"
               autoCapitalize="none"
@@ -97,14 +84,10 @@ export default function Login() {
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
             />
-          </div>
-
-          <div className="form-group-premium">
-            <label htmlFor="login-password" className="auth-field-label">
-              <Lock size={15} aria-hidden="true" /> Mật khẩu
-            </label>
-            <input
+          <AuthField
               id="login-password"
+              icon={Lock}
+              label="Mật khẩu"
               name="password"
               type="password"
               autoComplete="current-password"
@@ -114,19 +97,13 @@ export default function Login() {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
             />
-          </div>
 
           <TurnstileCaptcha onToken={onCaptchaToken} resetRef={captchaResetRef} />
 
           <button disabled={loading || (captchaEnabled && !captchaToken)} aria-busy={loading} className="btn-primary auth-submit">
             <LogIn size={18} aria-hidden="true" /> {loading ? "Đang xử lý…" : "Đăng nhập"}
           </button>
-        </form>
-
-        <div className="auth-footer-text">
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
-        </div>
-      </div>
-    </div>
+      </form>
+    </AuthCard>
   );
 }

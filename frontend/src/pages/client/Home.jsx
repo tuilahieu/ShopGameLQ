@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
 import { ArrowRight, Bell, Clock, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
-import { updateSEO } from "../../utils/seo";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import Modal from "../../components/Modal";
 import RecentPurchases from "../../components/RecentPurchases";
 import SkeletonLoading from "../../components/SkeletonLoading";
 import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/storefrontAssets";
+import usePageSeo from "../../hooks/usePageSeo";
+import { formatNumber } from "../../utils/formatters";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 function SaleCountdown({ endTimes, onExpired }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -74,7 +76,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error(error);
-      setLoadError(error.response?.data?.message || "Không thể tải dữ liệu cửa hàng.");
+      setLoadError(getApiErrorMessage(error, "Không thể tải dữ liệu cửa hàng."));
     } finally {
       setLoading(false);
     }
@@ -91,12 +93,13 @@ export default function Home() {
 
   useEffect(() => {
     loadHome();
-    updateSEO({
-      title: "Trang chủ - Mua Bán Acc Game Uy Tín, Giá Rẻ",
-      description: "Hệ thống cung cấp nick Liên Quân Mobile chất lượng cao, an toàn, giao thông tin tự động ngay lập tức sau 2 giây giao dịch.",
-      keywords: "shop acc, mua acc game, shop lien quan, acc lien quan tu chon, shop acc gia re"
-    });
   }, []);
+
+  usePageSeo({
+    title: "Trang chủ - Mua Bán Acc Game Uy Tín, Giá Rẻ",
+    description: "Hệ thống cung cấp nick Liên Quân Mobile chất lượng cao, an toàn, giao thông tin tự động ngay lập tức sau 2 giây giao dịch.",
+    keywords: "shop acc, mua acc game, shop lien quan, acc lien quan tu chon, shop acc gia re",
+  });
 
   const saleEndTimes = (data.flashSaleAccounts || [])
       .map((account) => new Date(account.sale_detail?.ketthuc).getTime())
@@ -170,7 +173,7 @@ export default function Home() {
                 <span className="storefront-banner-buttons"><i /><i /></span>
               </div>
             </div>
-            <span className="storefront-banner-count"><Gamepad2 size={17} aria-hidden="true" /> {Number(data.totalAccounts || 0).toLocaleString()} acc đang bán</span>
+            <span className="storefront-banner-count"><Gamepad2 size={17} aria-hidden="true" /> {formatNumber(data.totalAccounts || 0)} acc đang bán</span>
           </div>
         </section>
 

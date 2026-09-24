@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import SafeImage from "./SafeImage";
 import { getAccountPricing } from "../utils/accountPricing";
+import { formatVnd } from "../utils/formatters";
 
 export default function AccountCard({ acc, priority = false, className = "" }) {
   const isSold = Number(acc.status) === 1;
@@ -24,7 +25,7 @@ export default function AccountCard({ acc, priority = false, className = "" }) {
   })();
 
   const formatPrice = (price) => {
-    return Number(price || 0).toLocaleString() + "đ";
+    return formatVnd(price || 0);
   };
 
   return (

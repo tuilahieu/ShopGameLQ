@@ -1,17 +1,23 @@
 import { useCallback, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Check, Copy, Info, Landmark, QrCode, RefreshCw, Wallet } from "lucide-react";
+import { AlertCircle, Check, Info, Landmark, QrCode, RefreshCw, Wallet } from "lucide-react";
 import api from "../../api/api";
-import { updateSEO } from "../../utils/seo";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
 import SkeletonLoading from "../../components/SkeletonLoading";
+import useClipboardFeedback from "../../hooks/useClipboardFeedback";
+import usePageSeo from "../../hooks/usePageSeo";
+import { formatVnd } from "../../utils/formatters";
+import CopyButton from "../../components/client/CopyButton";
+import AccessState from "../../components/client/AccessState";
+import { getApiErrorMessage } from "../../utils/apiError";
+import FormField from "../../components/client/FormField";
 
 export default function Recharge() {
   const token = localStorage.getItem("accessToken");
 
-  const [copiedField, setCopiedField] = useState("");
+  const { copiedField, copy } = useClipboardFeedback();
   
   // Bank state loaded dynamically from list_bank API
   const [banks, setBanks] = useState([]);
@@ -36,7 +42,7 @@ export default function Recharge() {
       }
     } catch (err) {
       console.error("Failed to fetch banks:", err);
-      setBankLoadError(err.response?.data?.message || "Không thể tải tài khoản nhận tiền.");
+      setBankLoadError(getApiErrorMessage(err, "Không thể tải tài khoản nhận tiền."));
     } finally {
       setBanksLoading(false);
     }
@@ -48,13 +54,11 @@ export default function Recharge() {
     }
   }, [fetchBanks, token]);
 
-  useEffect(() => {
-    updateSEO({
-      title: "Nạp Tiền Vào Tài Khoản - Tự Động Siêu Tốc",
-      description: "Hướng dẫn nạp tiền vào ví qua ngân hàng hoặc ví điện tử với nội dung chuyển khoản chính xác.",
-      keywords: "nap tien shop acc, nap ATM, nap momo, nap tu dong"
-    });
-  }, []);
+  usePageSeo({
+    title: "Nạp Tiền Vào Tài Khoản - Tự Động Siêu Tốc",
+    description: "Hướng dẫn nạp tiền vào ví qua ngân hàng hoặc ví điện tử với nội dung chuyển khoản chính xác.",
+    keywords: "nap tien shop acc, nap ATM, nap momo, nap tu dong",
+  });
 
   const selectedBank = banks.find((b) => b.id.toString() === selectedBankId);
   const activeBank = paymentIntent?.bank || selectedBank;
@@ -104,12 +108,6 @@ export default function Recharge() {
     };
   }, [isQrModalOpen, paymentIntentId, paymentIntentStatus]);
 
-  function handleCopy(text, fieldName) {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(""), 2000);
-  }
-
   async function handleCreateIntent() {
     if (depositAmount < 10000) {
       setIntentError("Số tiền nạp tối thiểu là 10.000đ");
@@ -129,7 +127,7 @@ export default function Recharge() {
       setPaymentIntent(response.data.data);
       setIsQrModalOpen(true);
     } catch (error) {
-      setIntentError(error.response?.data?.message || "Không thể tạo mã nạp tiền, vui lòng thử lại");
+      setIntentError(getApiErrorMessage(error, "Không thể tạo mã nạp tiền, vui lòng thử lại"));
     } finally {
       setCreatingIntent(false);
     }
@@ -137,52 +135,33 @@ export default function Recharge() {
 
   if (!token) {
     return (
-      <div className="page-container recharge-page">
-        <section className="recharge-access-state">
-          <Wallet size={32} aria-hidden="true" />
-          <h1>Đăng nhập để nạp tiền</h1>
-          <p>
-            Vui lòng đăng nhập để nhận đúng nội dung chuyển khoản của tài khoản bạn.
-          </p>
-          <div className="recharge-access-actions">
-            <Link to="/login" className="btn-primary">Đăng nhập</Link>
-            <Link to="/register" className="btn-outline">Đăng ký</Link>
-          </div>
-        </section>
-      </div>
+      <AccessState pageClassName="recharge-page" icon={<Wallet size={32} aria-hidden="true" />} title="Đăng nhập để nạp tiền" description="Vui lòng đăng nhập để nhận đúng nội dung chuyển khoản của tài khoản bạn.">
+        <div className="recharge-access-actions">
+          <Link to="/login" className="btn-primary">Đăng nhập</Link>
+          <Link to="/register" className="btn-outline">Đăng ký</Link>
+        </div>
+      </AccessState>
     );
   }
 
   if (!banksLoading && bankLoadError) {
     return (
-      <div className="page-container recharge-page">
-        <section className="recharge-access-state error-state">
-          <AlertCircle size={32} aria-hidden="true" />
-          <h1>Chưa tải được cổng nạp</h1>
-          <p>{bankLoadError}</p>
-          <button type="button" className="btn-primary" onClick={fetchBanks}>
-            <RefreshCw size={18} aria-hidden="true" /> Thử lại
-          </button>
-        </section>
-      </div>
+      <AccessState pageClassName="recharge-page" className="error-state" icon={<AlertCircle size={32} aria-hidden="true" />} title="Chưa tải được cổng nạp" description={bankLoadError}>
+        <button type="button" className="btn-primary" onClick={fetchBanks}>
+          <RefreshCw size={18} aria-hidden="true" /> Thử lại
+        </button>
+      </AccessState>
     );
   }
 
   if (!banksLoading && banks.length === 0) {
     return (
-      <div className="page-container recharge-page">
-        <section className="recharge-access-state">
-          <Landmark size={32} aria-hidden="true" />
-          <h1>Cổng nạp đang bảo trì</h1>
-          <p>
-            Hiện chưa có tài khoản ngân hàng đang hoạt động. Vui lòng quay lại sau hoặc liên hệ hỗ trợ để được hướng dẫn.
-          </p>
-          <div className="recharge-access-actions">
-            <Link to="/contact" className="btn-primary">Xem kênh hỗ trợ</Link>
-            <Link to="/" className="btn-outline">Về trang chủ</Link>
-          </div>
-        </section>
-      </div>
+      <AccessState pageClassName="recharge-page" icon={<Landmark size={32} aria-hidden="true" />} title="Cổng nạp đang bảo trì" description="Hiện chưa có tài khoản ngân hàng đang hoạt động. Vui lòng quay lại sau hoặc liên hệ hỗ trợ để được hướng dẫn.">
+        <div className="recharge-access-actions">
+          <Link to="/contact" className="btn-primary">Xem kênh hỗ trợ</Link>
+          <Link to="/" className="btn-outline">Về trang chủ</Link>
+        </div>
+      </AccessState>
     );
   }
 
@@ -199,8 +178,7 @@ export default function Recharge() {
 
         <div className="recharge-step">
           <div className="recharge-step-title"><span>1</span><strong>Chọn số tiền</strong></div>
-          <div className="form-group-premium">
-            <label htmlFor="recharge-amount">Số tiền muốn nạp</label>
+          <FormField id="recharge-amount" label="Số tiền muốn nạp">
             <div className="recharge-amount-options">
               {[20000, 50000, 100000, 500000].map((val) => (
                 <button
@@ -210,7 +188,7 @@ export default function Recharge() {
                   className={`btn-suggestion ${depositAmount === val ? "active" : ""}`}
                   aria-pressed={depositAmount === val}
                 >
-                  {val.toLocaleString()}đ
+                  {formatVnd(val)}
                 </button>
               ))}
             </div>
@@ -223,9 +201,9 @@ export default function Recharge() {
               aria-describedby="recharge-amount-hint"
             />
             <small id="recharge-amount-hint" className={Number(depositAmount || 0) < 10000 ? "form-hint error" : "form-hint"}>
-              {Number(depositAmount || 0) < 10000 ? "Số tiền nạp tối thiểu là 10.000đ" : `Bạn sẽ tạo lệnh nạp ${Number(depositAmount || 0).toLocaleString()}đ`}
+              {Number(depositAmount || 0) < 10000 ? "Số tiền nạp tối thiểu là 10.000đ" : `Bạn sẽ tạo lệnh nạp ${formatVnd(depositAmount || 0)}`}
             </small>
-          </div>
+          </FormField>
         </div>
 
         <div className="recharge-step recharge-bank-step">
@@ -233,8 +211,7 @@ export default function Recharge() {
           {banksLoading ? (
             <SkeletonLoading variant="form" items={1} compact label="Đang tải danh sách ngân hàng" />
           ) : (
-            <div className="form-group-premium">
-              <label htmlFor="payment-bank">Ngân hàng</label>
+            <FormField id="payment-bank" label="Ngân hàng">
               <select
                 id="payment-bank"
                 name="bankId"
@@ -246,7 +223,7 @@ export default function Recharge() {
                   <option key={bank.id} value={bank.id.toString()}>{bank.name}</option>
                 ))}
               </select>
-            </div>
+            </FormField>
           )}
 
           {selectedBank && (
@@ -256,9 +233,7 @@ export default function Recharge() {
                 <dt>Số tài khoản</dt>
                 <dd>
                   <strong>{selectedBank.account_no}</strong>
-                  <button type="button" onClick={() => handleCopy(selectedBank.account_no, "accno")} className="copy-badge" aria-label="Sao chép số tài khoản">
-                    {copiedField === "accno" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
-                  </button>
+                  <CopyButton value={selectedBank.account_no} field="accno" copiedField={copiedField} onCopy={copy} label="Sao chép số tài khoản" />
                 </dd>
               </div>
               <div><dt>Chủ tài khoản</dt><dd>{selectedBank.account_name}</dd></div>
@@ -331,16 +306,16 @@ export default function Recharge() {
             <div><dt>Ngân hàng</dt><dd>{activeBank?.name}</dd></div>
             <div>
               <dt>Số tài khoản</dt>
-              <dd><strong>{activeBank?.account_no}</strong><button type="button" onClick={() => handleCopy(activeBank?.account_no, "modal_accno")} className="copy-badge" aria-label="Sao chép số tài khoản">{copiedField === "modal_accno" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}</button></dd>
+              <dd><strong>{activeBank?.account_no}</strong><CopyButton value={activeBank?.account_no} field="modal_accno" copiedField={copiedField} onCopy={copy} label="Sao chép số tài khoản" /></dd>
             </div>
             <div><dt>Chủ tài khoản</dt><dd>{activeBank?.account_name}</dd></div>
             <div>
               <dt>Số tiền</dt>
-              <dd><strong>{Number(paymentIntent?.amount || depositAmount).toLocaleString()}đ</strong><button type="button" onClick={() => handleCopy(String(paymentIntent?.amount || depositAmount), "modal_amount")} className="copy-badge" aria-label="Sao chép số tiền">{copiedField === "modal_amount" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}</button></dd>
+              <dd><strong>{formatVnd(paymentIntent?.amount || depositAmount)}</strong><CopyButton value={String(paymentIntent?.amount || depositAmount)} field="modal_amount" copiedField={copiedField} onCopy={copy} label="Sao chép số tiền" /></dd>
             </div>
             <div className="transfer-content-row">
               <dt>Nội dung chuyển khoản</dt>
-              <dd><strong>{paymentIntent?.code || ""}</strong><button type="button" onClick={() => handleCopy(paymentIntent?.code || "", "modal_syntax")} className="copy-badge" aria-label="Sao chép nội dung chuyển khoản">{copiedField === "modal_syntax" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}</button></dd>
+              <dd><strong>{paymentIntent?.code || ""}</strong><CopyButton value={paymentIntent?.code || ""} field="modal_syntax" copiedField={copiedField} onCopy={copy} label="Sao chép nội dung chuyển khoản" /></dd>
             </div>
           </dl>
         </div>

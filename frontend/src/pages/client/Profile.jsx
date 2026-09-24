@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { Key, CreditCard, History, Check, AlertCircle, ChevronDown } from "lucide-react";
-import { updateSEO } from "../../utils/seo";
 import SkeletonLoading from "../../components/SkeletonLoading";
+import CustomerPageHeading from "../../components/client/CustomerPageHeading";
+import usePageSeo from "../../hooks/usePageSeo";
+import { formatDateTime, formatVnd } from "../../utils/formatters";
+import AccessState from "../../components/client/AccessState";
+import { getApiErrorMessage } from "../../utils/apiError";
+import FormField from "../../components/client/FormField";
 
 export default function Profile() {
   const token = localStorage.getItem("accessToken");
@@ -36,7 +41,7 @@ export default function Profile() {
       setTransactions(list);
     } catch (err) {
       console.error("Failed to load profile data:", err);
-      setLoadError(err.response?.data?.message || "Không thể tải thông tin cá nhân.");
+      setLoadError(getApiErrorMessage(err, "Không thể tải thông tin cá nhân."));
     } finally {
       setLoading(false);
     }
@@ -74,7 +79,7 @@ export default function Profile() {
     } catch (err) {
       setPwStatus({ 
         type: "error", 
-        msg: err.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ." 
+        msg: getApiErrorMessage(err, "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.")
       });
     } finally {
       setPwLoading(false);
@@ -87,25 +92,17 @@ export default function Profile() {
     }
   }, [token]);
 
-  useEffect(() => {
-    updateSEO({
-      title: "Thông Tin Cá Nhân & Lịch Sử Giao Dịch",
-      description: "Xem thông tin tài khoản cá nhân, lịch sử giao dịch nạp ví và lịch sử đơn hàng acc game đã mua.",
-      keywords: "thong tin ca nhan, lich su giao dich, don hang da mua, ho so"
-    });
-  }, []);
+  usePageSeo({
+    title: "Thông Tin Cá Nhân & Lịch Sử Giao Dịch",
+    description: "Xem thông tin tài khoản cá nhân, lịch sử giao dịch nạp ví và lịch sử đơn hàng acc game đã mua.",
+    keywords: "thong tin ca nhan, lich su giao dich, don hang da mua, ho so",
+  });
 
   if (!token) {
     return (
-      <div className="page-container profile-page">
-        <section className="recharge-access-state">
-          <h1>Đăng nhập để xem hồ sơ</h1>
-          <p>
-            Vui lòng đăng nhập để truy cập trang cá nhân của bạn.
-          </p>
-          <Link to="/login" className="btn-primary">Đăng nhập</Link>
-        </section>
-      </div>
+      <AccessState pageClassName="profile-page" title="Đăng nhập để xem hồ sơ" description="Vui lòng đăng nhập để truy cập trang cá nhân của bạn.">
+        <Link to="/login" className="btn-primary">Đăng nhập</Link>
+      </AccessState>
     );
   }
 
@@ -119,11 +116,11 @@ export default function Profile() {
 
   return (
     <div className="page-container profile-page">
-      <header className="customer-page-heading">
-        <span className="storefront-section-kicker">Hồ sơ & bảo mật</span>
-        <h1>Tài khoản cá nhân</h1>
-        <p>Kiểm tra số dư, lịch sử giao dịch và bảo vệ tài khoản của bạn.</p>
-      </header>
+      <CustomerPageHeading
+        eyebrow="Hồ sơ & bảo mật"
+        title="Tài khoản cá nhân"
+        description="Kiểm tra số dư, lịch sử giao dịch và bảo vệ tài khoản của bạn."
+      />
 
       {loading ? (
         <SkeletonLoading variant="profile" compact label="Đang tải thông tin cá nhân" />
@@ -144,7 +141,7 @@ export default function Profile() {
 
             <dl className="profile-summary">
               <div><dt>Tên tài khoản</dt><dd>{profile?.username}</dd></div>
-              <div><dt>Số dư ví</dt><dd className="profile-balance">{Number(profile?.money || 0).toLocaleString()}đ</dd></div>
+              <div><dt>Số dư ví</dt><dd className="profile-balance">{formatVnd(profile?.money || 0)}</dd></div>
               <div><dt>Trạng thái</dt><dd className={Number(profile?.banned) === 1 ? "is-banned" : "is-active"}>{Number(profile?.banned) === 1 ? "Bị khóa" : "Hoạt động"}</dd></div>
             </dl>
 
@@ -186,8 +183,7 @@ export default function Profile() {
                 )}
 
                 <form onSubmit={handlePasswordChange} className="profile-password-form">
-                  <div className="form-group-premium profile-current-password">
-                    <label htmlFor="current-password">Mật khẩu hiện tại</label>
+                  <FormField id="current-password" label="Mật khẩu hiện tại" className="profile-current-password">
                     <input
                       id="current-password"
                       name="currentPassword"
@@ -198,10 +194,9 @@ export default function Profile() {
                       onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
                       required
                     />
-                  </div>
+                  </FormField>
 
-                  <div className="form-group-premium">
-                    <label htmlFor="new-password">Mật khẩu mới</label>
+                  <FormField id="new-password" label="Mật khẩu mới">
                     <input
                       id="new-password"
                       name="newPassword"
@@ -214,10 +209,9 @@ export default function Profile() {
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                       required
                     />
-                  </div>
+                  </FormField>
 
-                  <div className="form-group-premium">
-                    <label htmlFor="confirm-new-password">Nhập lại mật khẩu mới</label>
+                  <FormField id="confirm-new-password" label="Nhập lại mật khẩu mới">
                     <input
                       id="confirm-new-password"
                       name="confirmNewPassword"
@@ -230,7 +224,7 @@ export default function Profile() {
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
                       required
                     />
-                  </div>
+                  </FormField>
 
                   <button disabled={pwLoading} aria-busy={pwLoading} className="btn-primary profile-submit-btn">
                     {pwLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
@@ -255,11 +249,11 @@ export default function Profile() {
                       <article className="transaction-mobile-card" key={tx.id}>
                         <div>
                           <strong>{tx.description || tx.type}</strong>
-                          <span>#{tx.id} · {new Date(tx.created_at || tx.createdAt).toLocaleString()}</span>
+                          <span>#{tx.id} · {formatDateTime(tx.created_at || tx.createdAt)}</span>
                         </div>
                         <div>
-                          <strong className={isAdd ? "amount-add" : "amount-sub"}>{isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ</strong>
-                          <span>Sau GD: {Number(tx.balance_after).toLocaleString()}đ</span>
+                          <strong className={isAdd ? "amount-add" : "amount-sub"}>{isAdd ? "+" : "-"}{formatVnd(Math.abs(amount))}</strong>
+                          <span>Sau GD: {formatVnd(tx.balance_after)}</span>
                         </div>
                       </article>
                     );
@@ -285,11 +279,11 @@ export default function Profile() {
                             <td style={{ fontWeight: "500", color: "var(--text-primary)" }}>#{tx.id}</td>
                             <td>{tx.description || tx.type}</td>
                             <td className={isAdd ? "amount-add" : "amount-sub"}>
-                              {isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ
+                              {isAdd ? "+" : "-"}{formatVnd(Math.abs(amount))}
                             </td>
-                            <td>{Number(tx.balance_after).toLocaleString()}đ</td>
+                            <td>{formatVnd(tx.balance_after)}</td>
                             <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                              {new Date(tx.created_at || tx.createdAt).toLocaleString()}
+                              {formatDateTime(tx.created_at || tx.createdAt)}
                             </td>
                           </tr>
                         );

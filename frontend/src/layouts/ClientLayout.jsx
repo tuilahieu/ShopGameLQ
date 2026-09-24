@@ -7,6 +7,8 @@ import SafeImage from "../components/SafeImage";
 import AppLoader from "../components/AppLoader";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { getSupportContacts } from "../utils/supportContacts";
+import { readStoredJson } from "../utils/storage";
+import { formatNumber, formatVnd } from "../utils/formatters";
 import useMotionReveal from "../hooks/useMotionReveal";
 import ShopAssistant from "../components/ShopAssistant";
 
@@ -15,12 +17,8 @@ export default function ClientLayout() {
   const location = useLocation();
 
   const token = localStorage.getItem("accessToken");
-  const [user, setUser] = useState(() => {
-    return JSON.parse(localStorage.getItem("user") || "{}");
-  });
-  const [setting, setSetting] = useState(() => {
-    return JSON.parse(localStorage.getItem("setting") || "{}");
-  });
+  const [user, setUser] = useState(() => readStoredJson("user", {}));
+  const [setting, setSetting] = useState(() => readStoredJson("setting", {}));
   const [gameCategories, setGameCategories] = useState([]);
   const [flashSaleCount, setFlashSaleCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -287,11 +285,11 @@ export default function ClientLayout() {
                 to="/profile"
                 className="wallet-display"
                 title="Mở hồ sơ cá nhân"
-                aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+                aria-label={`Mở hồ sơ cá nhân, số dư ${formatNumber(user.money || 0)} đồng`}
               >
                 <Wallet size={14} style={{ color: "var(--gold-color)", flexShrink: 0 }} />
                 <span>Hồ sơ · Số dư:</span>
-                <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
+                <strong>{formatVnd(user.money || 0)}</strong>
               </Link>
 
               <div className="client-profile-menu" ref={profileMenuRef}>
@@ -363,12 +361,12 @@ export default function ClientLayout() {
             <Link
               to="/profile"
               className="mobile-topbar-account"
-              aria-label={`Mở hồ sơ cá nhân, số dư ${Number(user.money || 0).toLocaleString()} đồng`}
+              aria-label={`Mở hồ sơ cá nhân, số dư ${formatNumber(user.money || 0)} đồng`}
             >
               <User size={18} aria-hidden="true" />
               <span className="mobile-topbar-account-copy">
                 <small>Hồ sơ của tôi</small>
-                <strong>{Number(user.money || 0).toLocaleString()}đ</strong>
+                <strong>{formatVnd(user.money || 0)}</strong>
               </span>
               <ChevronRight size={16} aria-hidden="true" />
             </Link>
@@ -438,7 +436,7 @@ export default function ClientLayout() {
                   <h4>{user.username || "Tài khoản"}</h4>
                   <div className="mobile-drawer-balance">
                     <Wallet size={13} style={{ color: "var(--gold-color)" }} />
-                    <span>Số dư: <strong>{Number(user.money || 0).toLocaleString()}đ</strong></span>
+                    <span>Số dư: <strong>{formatVnd(user.money || 0)}</strong></span>
                   </div>
                 </div>
                 {Number(user.level) === 99 && <span className="badge-role admin">Admin</span>}

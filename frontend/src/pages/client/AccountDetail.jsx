@@ -4,10 +4,16 @@ import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { ChevronLeft, ShoppingCart, Copy, Check, Info, ShieldAlert, ZoomIn, MessageCircle } from "lucide-react";
-import { updateSEO } from "../../utils/seo";
+import { ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, MessageCircle } from "lucide-react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
+import LoginCredentials from "../../components/client/LoginCredentials";
+import useClipboardFeedback from "../../hooks/useClipboardFeedback";
+import { readStoredJson } from "../../utils/storage";
+import usePageSeo from "../../hooks/usePageSeo";
+import { formatVnd } from "../../utils/formatters";
+import { getApiErrorMessage } from "../../utils/apiError";
+import useLatestRequest from "../../hooks/useLatestRequest";
 
 function getAccountImages(account) {
   if (!account) return [];
@@ -51,13 +57,7 @@ export default function AccountDetail() {
   const [discountError, setDiscountError] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [supportPhone, setSupportPhone] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("setting") || "{}").sdt_admin || "";
-    } catch {
-      return "";
-    }
-  });
+  const [supportPhone, setSupportPhone] = useState(() => readStoredJson("setting", {}).sdt_admin || "");
   
   // Image gallery state
   const [activeImg, setActiveImg] = useState("");
@@ -79,35 +79,31 @@ export default function AccountDetail() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isBuying, setIsBuying] = useState(false);
   const [userBalance, setUserBalance] = useState(() => {
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-      return storedUser?.money == null ? null : Number(storedUser.money);
-    } catch {
-      return null;
-    }
+    const storedUser = readStoredJson("user", null);
+    return storedUser?.money == null ? null : Number(storedUser.money);
   });
   const purchaseKeyRef = useRef(null);
-  const loadSequence = useRef(0);
+  const { beginRequest, isLatestRequest } = useLatestRequest();
 
   // Clipboard copy feedback
-  const [copiedField, setCopiedField] = useState("");
+  const { copiedField, copy } = useClipboardFeedback();
 
   const loadData = useCallback(async () => {
-    const sequence = ++loadSequence.current;
+    const sequence = beginRequest();
     setLoading(true);
     setLoadError("");
     try {
       const res = await api.get(`/accounts/${id}`);
-      if (sequence !== loadSequence.current) return;
+      if (!isLatestRequest(sequence)) return;
       const nextAccount = res.data.data;
       setAccount(nextAccount);
       setActiveImg(getAccountImages(nextAccount)[0] || "");
     } catch (error) {
-      if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải thông tin tài khoản. Vui lòng thử lại.");
+      if (isLatestRequest(sequence)) setLoadError(getApiErrorMessage(error, "Không thể tải thông tin tài khoản. Vui lòng thử lại."));
     } finally {
-      if (sequence === loadSequence.current) setLoading(false);
+      if (isLatestRequest(sequence)) setLoading(false);
     }
-  }, [id]);
+  }, [beginRequest, id, isLatestRequest]);
 
   useEffect(() => {
     let active = true;
@@ -166,7 +162,7 @@ export default function AccountDetail() {
       // Update account status local
       setAccount(prev => prev ? { ...prev, status: 1 } : null);
     } catch (error) {
-      setErrorMsg(error.response?.data?.message || "Mua tài khoản thất bại. Vui lòng kiểm tra lại số dư hoặc mã giảm giá.");
+      setErrorMsg(getApiErrorMessage(error, "Mua tài khoản thất bại. Vui lòng kiểm tra lại số dư hoặc mã giảm giá."));
     } finally {
       setIsBuying(false);
     }
@@ -182,7 +178,7 @@ export default function AccountDetail() {
       setDiscountPreview(res.data.data);
     } catch (error) {
       setDiscountPreview(null);
-      setDiscountError(error.response?.data?.message || "Mã giảm giá không hợp lệ.");
+      setDiscountError(getApiErrorMessage(error, "Mã giảm giá không hợp lệ."));
     } finally {
       setDiscountLoading(false);
     }
@@ -193,20 +189,10 @@ export default function AccountDetail() {
       navigate(`/login?redirect=${encodeURIComponent(`/account/${id}`)}`);
       return;
     }
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-      setUserBalance(storedUser?.money == null ? null : Number(storedUser.money));
-    } catch {
-      setUserBalance(null);
-    }
+    const storedUser = readStoredJson("user", null);
+    setUserBalance(storedUser?.money == null ? null : Number(storedUser.money));
     setErrorMsg("");
     setIsConfirmOpen(true);
-  }
-
-  function handleCopy(text, fieldName) {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(""), 2000);
   }
 
   function resetImageViewer() {
@@ -363,16 +349,12 @@ export default function AccountDetail() {
     return () => document.body.classList.remove("has-mobile-purchase-bar");
   }, [account]);
 
-  useEffect(() => {
-    if (account) {
-      const { currentPrice: seoPrice } = getAccountPricing(account);
-      updateSEO({
-        title: `Mã Số #${account.id} - Chi Tiết Acc Liên Quân`,
-        description: `Xem chi tiết tài khoản game Liên Quân Mobile mã số #${account.id}. Giá bán: ${seoPrice.toLocaleString()}đ. Nhận tài khoản lập tức sau khi thanh toán.`,
-        keywords: `acc game #${account.id}, mua nick game #${account.id}, tai khoan lien quan #${account.id}`
-      });
-    }
-  }, [account]);
+  const seoPrice = account ? getAccountPricing(account).currentPrice : 0;
+  usePageSeo(account ? {
+    title: `Mã Số #${account.id} - Chi Tiết Acc Liên Quân`,
+    description: `Xem chi tiết tài khoản game Liên Quân Mobile mã số #${account.id}. Giá bán: ${formatVnd(seoPrice)}. Nhận tài khoản lập tức sau khi thanh toán.`,
+    keywords: `acc game #${account.id}, mua nick game #${account.id}, tai khoan lien quan #${account.id}`,
+  } : null);
 
   useEffect(() => {
     function handleKeyDown(e) {
@@ -403,17 +385,6 @@ export default function AccountDetail() {
           <button onClick={loadData} className="btn-primary">Thử lại</button>
           <Link to="/accounts" className="btn-outline">Về kho tài khoản</Link>
         </div>
-      </div>
-    );
-  }
-
-  if (!account) {
-    return (
-      <div className="page-container" style={{ textAlign: "center", padding: "80px 24px" }}>
-        <h2>Không tìm thấy tài khoản game này hoặc tài khoản đã bị xóa.</h2>
-        <Link to="/accounts" className="btn-primary" style={{ marginTop: "24px" }}>
-          Quay lại kho acc
-        </Link>
       </div>
     );
   }
@@ -504,9 +475,9 @@ export default function AccountDetail() {
             </div>
             <div className="detail-price-values">
               {(hasVoucher || hasSale) && (
-                <del>{(hasVoucher ? currentPrice : originalPrice).toLocaleString()}đ</del>
+                <del>{formatVnd(hasVoucher ? currentPrice : originalPrice)}</del>
               )}
-              <strong>{finalPurchasePrice.toLocaleString()}đ</strong>
+              <strong>{formatVnd(finalPurchasePrice)}</strong>
             </div>
           </div>
 
@@ -588,7 +559,7 @@ export default function AccountDetail() {
                 </div>
                 {hasVoucher && (
                   <p className="form-hint success">
-                    ✓ Đã áp dụng: giảm {voucherAmount.toLocaleString()}đ
+                    ✓ Đã áp dụng: giảm {formatVnd(voucherAmount)}
                   </p>
                 )}
                 {discountError && <p className="form-hint error">{discountError}</p>}
@@ -628,7 +599,7 @@ export default function AccountDetail() {
             <span className="mobile-purchase-label">
               {hasVoucher ? "Giá sau voucher" : (hasSale ? "Giá sale" : "Giá")}
               {hasVoucher ? (
-                <b className="mobile-voucher-tag">-{voucherAmount.toLocaleString()}đ</b>
+                <b className="mobile-voucher-tag">-{formatVnd(voucherAmount)}</b>
               ) : hasSale ? (
                 <b>GIẢM {saleDiscountLabel}</b>
               ) : null}
@@ -636,16 +607,16 @@ export default function AccountDetail() {
             <span className="mobile-purchase-values">
               {hasVoucher ? (
                 <>
-                  <del>{currentPrice.toLocaleString()}đ</del>
-                  <strong>{finalPurchasePrice.toLocaleString()}đ</strong>
+                  <del>{formatVnd(currentPrice)}</del>
+                  <strong>{formatVnd(finalPurchasePrice)}</strong>
                 </>
               ) : hasSale ? (
                 <>
-                  <del>{originalPrice.toLocaleString()}đ</del>
-                  <strong>{currentPrice.toLocaleString()}đ</strong>
+                  <del>{formatVnd(originalPrice)}</del>
+                  <strong>{formatVnd(currentPrice)}</strong>
                 </>
               ) : (
-                <strong>{currentPrice.toLocaleString()}đ</strong>
+                <strong>{formatVnd(currentPrice)}</strong>
               )}
             </span>
           </div>
@@ -687,39 +658,39 @@ export default function AccountDetail() {
             {hasSale && (
               <div>
                 <dt>Giá gốc</dt>
-                <dd><del>{originalPrice.toLocaleString()}đ</del></dd>
+                <dd><del>{formatVnd(originalPrice)}</del></dd>
               </div>
             )}
             {hasSale && (
               <div className="sale-row">
                 <dt>Giảm giá sale ({saleDiscountLabel})</dt>
-                <dd>-{savingAmount.toLocaleString()}đ</dd>
+                <dd>-{formatVnd(savingAmount)}</dd>
               </div>
             )}
             <div>
               <dt>{hasSale ? "Giá sau sale" : "Giá sản phẩm"}</dt>
-              <dd>{currentPrice.toLocaleString()}đ</dd>
+              <dd>{formatVnd(currentPrice)}</dd>
             </div>
             {discountPreview && (
               <div className="discount-row">
                 <dt>Voucher {discountCode && `(${discountCode})`}</dt>
-                <dd>-{Number(discountPreview.discount_amount || 0).toLocaleString()}đ</dd>
+                <dd>-{formatVnd(discountPreview.discount_amount || 0)}</dd>
               </div>
             )}
             <div>
               <dt>Số dư hiện tại</dt>
-              <dd>{userBalance === null ? "Chưa đồng bộ" : `${userBalance.toLocaleString()}đ`}</dd>
+              <dd>{userBalance === null ? "Chưa đồng bộ" : formatVnd(userBalance)}</dd>
             </div>
             <div className="total-row">
               <dt>Thanh toán</dt>
-              <dd>{finalPurchasePrice.toLocaleString()}đ</dd>
+              <dd>{formatVnd(finalPurchasePrice)}</dd>
             </div>
           </dl>
           {!discountPreview && discountCode && <p className="form-hint">Mã giảm giá sẽ được kiểm tra khi thanh toán. Chọn “Áp dụng” để xem số tiền dự kiến.</p>}
           {hasInsufficientBalance && (
             <div className="purchase-balance-warning" role="status">
               <ShieldAlert size={18} aria-hidden="true" />
-              <span><strong>Số dư chưa đủ.</strong> Bạn cần nạp thêm {(finalPurchasePrice - userBalance).toLocaleString()}đ để mua tài khoản này.</span>
+              <span><strong>Số dư chưa đủ.</strong> Bạn cần nạp thêm {formatVnd(finalPurchasePrice - userBalance)} để mua tài khoản này.</span>
             </div>
           )}
           <p className="purchase-confirm-note">
@@ -754,42 +725,13 @@ export default function AccountDetail() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "16px", textAlign: "left" }}>
           <p style={{ color: "var(--green-color)", fontWeight: "600" }}>
-            Giao dịch hoàn tất! Cảm ơn bạn đã tin tưởng ủng hộ {JSON.parse(localStorage.getItem("setting") || "{}").ten_web || "Shopgameliqi"}.
+            Giao dịch hoàn tất! Cảm ơn bạn đã tin tưởng ủng hộ {readStoredJson("setting", {}).ten_web || "Shopgameliqi"}.
           </p>
           
           <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "16px", borderRadius: "12px" }}>
             <h4 style={{ color: "var(--text-primary)", marginBottom: "8px", fontWeight: "700" }}>Thông tin đăng nhập của bạn:</h4>
             
-            <div className="login-credentials-box" style={{ marginTop: 0 }}>
-              <div className="credential-item">
-                <span style={{ color: "var(--text-secondary)" }}>Tài khoản:</span>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <strong style={{ color: "var(--text-primary)" }}>{purchaseData?.login?.split("|")[0]}</strong>
-                  <button 
-                    type="button"
-                    onClick={() => handleCopy(purchaseData?.login?.split("|")[0], "user")} 
-                    className="copy-badge"
-                    aria-label="Sao chép tên đăng nhập tài khoản game"
-                  >
-                    {copiedField === "user" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-                  </button>
-                </span>
-              </div>
-              <div className="credential-item">
-                <span style={{ color: "var(--text-secondary)" }}>Mật khẩu:</span>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <strong style={{ color: "var(--text-primary)" }}>{purchaseData?.login?.split("|")[1]}</strong>
-                  <button 
-                    type="button"
-                    onClick={() => handleCopy(purchaseData?.login?.split("|")[1], "pass")} 
-                    className="copy-badge"
-                    aria-label="Sao chép mật khẩu tài khoản game"
-                  >
-                    {copiedField === "pass" ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-                  </button>
-                </span>
-              </div>
-            </div>
+            <LoginCredentials login={purchaseData?.login} copiedField={copiedField} onCopy={copy} />
           </div>
 
           <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: "6px" }}>
@@ -821,7 +763,7 @@ export default function AccountDetail() {
             </div>
             {!isSold && (
               <button type="button" className="btn-primary zoom-purchase-action" onClick={() => { closeImageViewer(); openPurchase(); }}>
-                <ShoppingCart size={18} aria-hidden="true" /> MUA NGAY · {currentPrice.toLocaleString()}đ
+                <ShoppingCart size={18} aria-hidden="true" /> MUA NGAY · {formatVnd(currentPrice)}
               </button>
             )}
           </>

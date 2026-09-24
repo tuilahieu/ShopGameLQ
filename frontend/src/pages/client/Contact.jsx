@@ -1,45 +1,29 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Headphones, MessageCircle, Phone } from "lucide-react";
-import api from "../../api/api";
-import { updateSEO } from "../../utils/seo";
 import { getSupportContacts } from "../../utils/supportContacts";
+import usePublicSettings from "../../hooks/usePublicSettings";
+import CustomerPageHeading from "../../components/client/CustomerPageHeading";
+import usePageSeo from "../../hooks/usePageSeo";
 
 export default function Contact() {
-  const [setting, setSetting] = useState(() => {
-    return JSON.parse(localStorage.getItem("setting") || "{}");
-  });
+  const setting = usePublicSettings();
 
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await api.get("/home");
-        if (res.data?.data?.setting) {
-          const updatedSetting = res.data.data.setting;
-          setSetting(updatedSetting);
-          localStorage.setItem("setting", JSON.stringify(updatedSetting));
-        }
-      } catch (err) {
-        console.error("Failed to sync settings:", err);
-      }
-    }
-    fetchSettings();
-    updateSEO({
-      title: "Liên Hệ Hỗ Trợ Khách Hàng 24/7",
-      description: "Liên hệ ngay với ban quản trị website qua Hotline, Zalo, Facebook Messenger để được hỗ trợ giải quyết thắc mắc về đơn hàng, nạp tiền ví.",
-      keywords: "lien he cskh, hotline ho tro, zalo ho tro, facebook admin, shop acc lien quan"
-    });
-  }, []);
+  usePageSeo({
+    title: "Liên Hệ Hỗ Trợ Khách Hàng 24/7",
+    description: "Liên hệ ngay với ban quản trị website qua Hotline, Zalo, Facebook Messenger để được hỗ trợ giải quyết thắc mắc về đơn hàng, nạp tiền ví.",
+    keywords: "lien he cskh, hotline ho tro, zalo ho tro, facebook admin, shop acc lien quan",
+  });
 
   const { zaloLink, phoneDisplay, facebookLink, hasAnyContact } = getSupportContacts(setting);
 
   return (
     <div className="page-container support-page">
-      <header className="customer-page-heading">
-        <span className="customer-page-eyebrow"><Headphones size={15} aria-hidden="true" /> Hỗ trợ khách hàng</span>
-        <h1>Liên hệ với shop</h1>
-        <p>Cần hỗ trợ đơn hàng, nạp tiền hoặc bảo hành? Chọn kênh thuận tiện nhất bên dưới.</p>
-      </header>
+      <CustomerPageHeading
+        eyebrow={<><Headphones size={15} aria-hidden="true" /> Hỗ trợ khách hàng</>}
+        eyebrowClassName="customer-page-eyebrow"
+        title="Liên hệ với shop"
+        description="Cần hỗ trợ đơn hàng, nạp tiền hoặc bảo hành? Chọn kênh thuận tiện nhất bên dưới."
+      />
 
       <section className="support-card" aria-labelledby="support-channels-title">
         <h2 id="support-channels-title">Kênh hỗ trợ trực tuyến</h2>
