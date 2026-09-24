@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { History, RefreshCw, Search, X } from "lucide-react";
 import api from "../../api/api";
-import TableLoadingRows from "../../components/TableLoadingRows";
+import { AdminError, AdminField, AdminPageHeader } from "../../components/admin/AdminUi";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { DataTable, DataTablePagination } from "../../components/ui/data-table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty";
+import { Input } from "../../components/ui/input";
 
 export default function AdminTransactions() {
   const [items, setItems] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPage: 1
-  });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPage: 1 });
   const loadSequence = useRef(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -22,18 +24,10 @@ export default function AdminTransactions() {
     setLoading(true);
     setLoadError("");
     try {
-      const res = await api.get("/admin/transactions", {
-        params: {
-          page,
-          limit: 20,
-          search: search || undefined
-        }
-      });
+      const res = await api.get("/admin/transactions", { params: { page, limit: 20, search: search || undefined } });
       if (sequence !== loadSequence.current) return;
       setItems(res.data.data.transactions || []);
-      if (res.data.data.pagination) {
-        setPagination(res.data.data.pagination);
-      }
+      if (res.data.data.pagination) setPagination(res.data.data.pagination);
     } catch (err) {
       if (sequence === loadSequence.current) setLoadError(err.response?.data?.message || "Không thể tải giao dịch.");
     } finally {
@@ -41,10 +35,10 @@ export default function AdminTransactions() {
     }
   }, [page, search]);
 
-  function handleSearch(e) {
-    e.preventDefault();
+  function handleSearch(event) {
+    event.preventDefault();
     setPage(1);
-    setSearch(searchInput);
+    setSearch(searchInput.trim());
   }
 
   function handleReset() {
@@ -53,124 +47,24 @@ export default function AdminTransactions() {
     setPage(1);
   }
 
-  function handlePageChange(newPage) {
-    if (newPage < 1 || newPage > pagination.totalPage) return;
-    setPage(newPage);
-  }
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const columns = [
+    { id: "id", header: "ID", accessor: (item) => item.id, sortable: true, cell: (item) => <span className="ui-table-code">#{item.id}</span> },
+    { id: "user", header: "Người dùng", accessor: (item) => item.user?.username || item.user_id, sortable: true, cell: (item) => <span className="ui-table-primary">{item.user?.username || `User #${item.user_id}`}</span> },
+    { id: "type", header: "Loại giao dịch", accessor: (item) => item.type || "", sortable: true, cell: (item) => <Badge variant={Number(item.amount || 0) >= 0 ? "success" : "destructive"}>{item.type || "—"}</Badge> },
+    { id: "amount", header: "Số tiền", accessor: (item) => Number(item.amount || 0), sortable: true, cell: (item) => { const amount = Number(item.amount || 0); return <strong className={amount >= 0 ? "ui-table-success" : "ui-table-danger"}>{amount >= 0 ? "+" : "−"}{Math.abs(amount).toLocaleString()}đ</strong>; } },
+    { id: "before", header: "Số dư trước", accessor: (item) => Number(item.balance_before || 0), sortable: true, cell: (item) => `${Number(item.balance_before || 0).toLocaleString()}đ` },
+    { id: "after", header: "Số dư sau", accessor: (item) => Number(item.balance_after || 0), sortable: true, cell: (item) => `${Number(item.balance_after || 0).toLocaleString()}đ` },
+    { id: "description", header: "Mô tả", accessor: (item) => item.description || "", cell: (item) => <span className="ui-table-detail">{item.description || "—"}</span> },
+  ];
 
   return (
-    <div>
-      <h1 className="page-title">Lịch sử giao dịch</h1>
-
-      {/* Search and Filters */}
-      <div className="filter-wrapper" style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", gap: "10px", alignItems: "center", flexGrow: 1 }}>
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo username hoặc User ID..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="filter-input"
-            style={{ maxWidth: "320px", margin: 0 }}
-          />
-          <button type="submit" className="small-btn">
-            Tìm kiếm
-          </button>
-          {search && (
-            <button type="button" className="btn-outline" onClick={handleReset} style={{ padding: "8px 16px" }}>
-              Reset
-            </button>
-          )}
-        </form>
-        <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-          Tổng số giao dịch: <strong>{pagination.total}</strong>
-        </div>
-      </div>
-
-      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
-      <div className="table-box" aria-busy={loading}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Người dùng</th>
-              <th>Loại giao dịch</th>
-              <th>Số tiền</th>
-              <th>Số dư trước</th>
-              <th>Số dư sau</th>
-              <th>Mô tả chi tiết</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading && items.length === 0 && <TableLoadingRows columns={7} />}
-            {items.map((t) => {
-              const amount = Number(t.amount || 0);
-              const isAdd = amount > 0;
-              return <tr key={t.id}>
-                <td>{t.id}</td>
-                <td>
-                  <span style={{ fontWeight: "600", color: "var(--cyan-color)" }}>
-                    {t.user?.username || `ID: ${t.user_id}`}
-                  </span>
-                </td>
-                <td>
-                  <span style={{
-                    color: isAdd ? "var(--green-color)" : "var(--danger-color)",
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                    fontSize: "0.8rem"
-                  }}>
-                    {t.type}
-                  </span>
-                </td>
-                <td style={{ fontWeight: "bold" }}>
-                  {isAdd ? "+" : "-"}{Math.abs(amount).toLocaleString()}đ
-                </td>
-                <td style={{ color: "var(--text-secondary)" }}>{Number(t.balance_before).toLocaleString()}đ</td>
-                <td style={{ color: "var(--text-secondary)" }}>{Number(t.balance_after).toLocaleString()}đ</td>
-                <td style={{ fontSize: "0.9rem" }}>{t.description}</td>
-              </tr>;
-            })}
-            {!loading && !loadError && items.length === 0 && (
-              <tr>
-                <td colSpan="7" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
-                  Không tìm thấy lịch sử giao dịch nào phù hợp.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination Controls */}
-      {pagination.totalPage > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "24px" }}>
-          <button
-            onClick={() => handlePageChange(pagination.page - 1)}
-            disabled={pagination.page === 1}
-            className="btn-outline"
-            style={{ padding: "6px 12px", opacity: pagination.page === 1 ? 0.5 : 1, cursor: pagination.page === 1 ? "not-allowed" : "pointer" }}
-          >
-            Trước
-          </button>
-          <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-            Trang <strong>{pagination.page}</strong> / {pagination.totalPage}
-          </span>
-          <button
-            onClick={() => handlePageChange(pagination.page + 1)}
-            disabled={pagination.page === pagination.totalPage}
-            className="btn-outline"
-            style={{ padding: "6px 12px", opacity: pagination.page === pagination.totalPage ? 0.5 : 1, cursor: pagination.page === pagination.totalPage ? "not-allowed" : "pointer" }}
-          >
-            Sau
-          </button>
-        </div>
-      )}
+    <div className="admin-transactions-page admin-accounts-page">
+      <AdminPageHeader eyebrow="Kinh doanh · Admin" title="Lịch sử giao dịch" description="Tra cứu biến động số dư và nguồn tiền theo người dùng hoặc User ID." actions={<Button variant="outline" onClick={load} disabled={loading}><RefreshCw size={15} aria-hidden="true" /> Làm mới</Button>} />
+      <Card className="ui-filter-card"><CardContent><form className="ui-filter-grid" onSubmit={handleSearch}><AdminField id="admin-transaction-search" label="Tìm kiếm giao dịch" className="ui-field-full" helper="Nhập username hoặc User ID."><Input id="admin-transaction-search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Ví dụ: hieu hoặc 123" /></AdminField><div className="ui-filter-summary"><Button type="submit"><Search size={15} aria-hidden="true" /> Tìm kiếm</Button>{search && <Button type="button" variant="ghost" onClick={handleReset}><X size={15} aria-hidden="true" /> Xóa lọc</Button>}</div><div className="ui-filter-summary"><span>Tổng giao dịch</span><strong>{pagination.total}</strong></div></form></CardContent></Card>
+      <AdminError message={loadError} onRetry={load} />
+      <Card className="ui-data-table-card"><CardHeader><CardTitle>Transaction table</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `Trang ${pagination.page || page} · ${items.length} bản ghi.`}</CardDescription></CardHeader><CardContent><DataTable data={items} loading={loading} columns={columns} caption="Bảng lịch sử giao dịch" empty={<Empty><EmptyMedia><History size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Không tìm thấy giao dịch</EmptyTitle><EmptyDescription>Thử tìm kiếm với username hoặc User ID khác.</EmptyDescription></EmptyHeader></Empty>} /><DataTablePagination page={pagination.page || page} totalPages={pagination.totalPage} total={pagination.total} pageSize={pagination.limit || 20} onPageChange={setPage} /></CardContent></Card>
     </div>
   );
 }

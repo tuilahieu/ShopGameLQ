@@ -178,9 +178,7 @@ export default function Recharge() {
             Hiện chưa có tài khoản ngân hàng đang hoạt động. Vui lòng quay lại sau hoặc liên hệ hỗ trợ để được hướng dẫn.
           </p>
           <div className="recharge-access-actions">
-            <a href="https://zalo.me/0999999999" target="_blank" rel="noreferrer" className="btn-primary">
-              Liên hệ Admin
-            </a>
+            <Link to="/contact" className="btn-primary">Xem kênh hỗ trợ</Link>
             <Link to="/" className="btn-outline">Về trang chủ</Link>
           </div>
         </section>

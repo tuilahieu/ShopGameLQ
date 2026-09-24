@@ -6,6 +6,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import SafeImage from "../components/SafeImage";
 import AppLoader from "../components/AppLoader";
 import { resolveMediaUrl } from "../utils/mediaUrl";
+import { getSupportContacts } from "../utils/supportContacts";
 import useMotionReveal from "../hooks/useMotionReveal";
 import ShopAssistant from "../components/ShopAssistant";
 
@@ -226,9 +227,7 @@ export default function ClientLayout() {
     window.location.reload();
   }
 
-  const zaloLink = setting.sdt_admin ? `https://zalo.me/${setting.sdt_admin.replace(/\D/g, "")}` : "https://zalo.me/0999999999";
-  const phoneDisplay = setting.sdt_admin || "099.999.9999";
-  const fbLink = setting.fb_admin || "https://m.me/shopgameliqi";
+  const { zaloLink, phoneDisplay, facebookLink, hasAnyContact } = getSupportContacts(setting);
 
   return (
     <div className="client-page">
@@ -561,14 +560,16 @@ export default function ClientLayout() {
             <p>Nhắn shop khi cần tư vấn hoặc hỗ trợ đơn hàng.</p>
           </div>
 
-          <div className="footer-mobile-actions">
-            <a className="footer-mobile-action is-primary" href={zaloLink} target="_blank" rel="noreferrer">
-              <MessageCircle size={19} aria-hidden="true" />
-              <span>
-                <strong>Chat Zalo</strong>
-                <small>{phoneDisplay}</small>
-              </span>
-            </a>
+          <div className={`footer-mobile-actions${hasAnyContact ? "" : " is-single"}`}>
+            {hasAnyContact && (
+              <a className="footer-mobile-action is-primary" href={zaloLink || facebookLink} target="_blank" rel="noreferrer">
+                <MessageCircle size={19} aria-hidden="true" />
+                <span>
+                  <strong>{zaloLink ? "Chat Zalo" : "Messenger"}</strong>
+                  <small>{zaloLink ? phoneDisplay : "Facebook CSKH"}</small>
+                </span>
+              </a>
+            )}
             <Link className="footer-mobile-action" to="/contact">
               <Phone size={19} aria-hidden="true" />
               <span>
@@ -608,21 +609,9 @@ export default function ClientLayout() {
           <div className="footer-links">
             <h4>HỖ TRỢ CHĂM SÓC KHÁCH HÀNG</h4>
             <ul>
-              <li>
-                <a href={zaloLink} target="_blank" rel="noreferrer">
-                  Hotline/Zalo: {phoneDisplay}
-                </a>
-              </li>
-              <li>
-                <a href={fbLink} target="_blank" rel="noreferrer">
-                  Facebook Messenger
-                </a>
-              </li>
-              <li>
-                <a href={zaloLink} target="_blank" rel="noreferrer">
-                  Zalo Chat Hỗ Trợ
-                </a>
-              </li>
+              {zaloLink && <li><a href={zaloLink} target="_blank" rel="noreferrer">Hotline/Zalo: {phoneDisplay}</a></li>}
+              {facebookLink && <li><a href={facebookLink} target="_blank" rel="noreferrer">Facebook Messenger</a></li>}
+              {!hasAnyContact && <li><Link to="/contact">Thông tin liên hệ đang được cập nhật</Link></li>}
             </ul>
           </div>
           <div className="footer-links footer-assurance">

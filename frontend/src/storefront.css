@@ -3221,6 +3221,7 @@ body.has-form-focus .mobile-purchase-bar { display: none; }
 .support-channel-copy strong { color: var(--color-text); font-size: var(--font-size-label); overflow-wrap: anywhere; }
 .support-channel-copy .support-phone { color: var(--color-price); font-size: var(--font-size-body); }
 .support-channel-action { min-height: 2.75rem; padding-inline: var(--space-3); white-space: nowrap; font-size: var(--font-size-label); }
+.support-channel--unavailable { grid-template-columns: 2.75rem minmax(0, 1fr); }
 .support-home-link { min-height: 2.75rem; justify-self: center; padding-inline: var(--space-4); }
 
 .terms-content { display: grid; gap: var(--space-5); }
@@ -3353,6 +3354,8 @@ body.has-form-focus .mobile-purchase-bar { display: none; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
+
+.footer-mobile-actions.is-single { grid-template-columns: minmax(0, 1fr); }
 
 .footer-mobile-action {
   min-width: 0;

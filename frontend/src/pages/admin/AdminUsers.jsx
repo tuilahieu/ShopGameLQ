@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Ban, CircleDollarSign, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import CurrencyInput from "../../components/CurrencyInput";
-import TableLoadingRows from "../../components/TableLoadingRows";
+import { AdminError, AdminField, AdminPageHeader } from "../../components/admin/AdminUi";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { DataTable, DataTablePagination } from "../../components/ui/data-table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
+import { notifyAdmin } from "../../utils/adminFeedback";
+
+const roleName = (level) => Number(level) === 99 ? "Admin" : Number(level) === 1 ? "CTV" : "Thành viên";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPage: 1
-  });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPage: 1 });
   const [adjustment, setAdjustment] = useState(null);
   const [adjustmentForm, setAdjustmentForm] = useState({ amount: "", description: "" });
   const [adjustmentError, setAdjustmentError] = useState("");
@@ -29,18 +35,10 @@ export default function AdminUsers() {
     setLoading(true);
     setLoadError("");
     try {
-      const res = await api.get("/admin/users", {
-        params: {
-          page,
-          limit: 20,
-          search: search || undefined
-        }
-      });
+      const res = await api.get("/admin/users", { params: { page, limit: 20, search: search || undefined } });
       if (sequence !== loadSequence.current) return;
       setUsers(res.data.data.users || []);
-      if (res.data.data.pagination) {
-        setPagination(res.data.data.pagination);
-      }
+      if (res.data.data.pagination) setPagination(res.data.data.pagination);
     } catch (err) {
       if (sequence === loadSequence.current) setLoadError(err.response?.data?.message || "Không thể tải người dùng.");
     } finally {
@@ -51,10 +49,10 @@ export default function AdminUsers() {
   async function updateUser(id, body) {
     try {
       await api.put(`/admin/users/${id}`, body);
+      notifyAdmin("Đã cập nhật người dùng");
       load();
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Lỗi cập nhật người dùng");
+      notifyAdmin(err.response?.data?.message || "Lỗi cập nhật người dùng");
     }
   }
 
@@ -68,19 +66,13 @@ export default function AdminUsers() {
     setAdjustmentError("");
     try {
       adjustmentKeyRef.current ||= crypto.randomUUID();
-      await api.post(`/admin/users/${adjustment.id}/money`, {
-        type: adjustment.type,
-        amount,
-        description: adjustmentForm.description.trim() || (adjustment.type === "add" ? "Admin cộng tiền" : "Admin trừ tiền"),
-      }, {
-        headers: { "Idempotency-Key": adjustmentKeyRef.current },
-      });
+      await api.post(`/admin/users/${adjustment.id}/money`, { type: adjustment.type, amount, description: adjustmentForm.description.trim() || (adjustment.type === "add" ? "Admin cộng tiền" : "Admin trừ tiền") }, { headers: { "Idempotency-Key": adjustmentKeyRef.current } });
       adjustmentKeyRef.current = null;
       setAdjustment(null);
       setAdjustmentForm({ amount: "", description: "" });
+      notifyAdmin("Đã điều chỉnh số dư");
       load();
     } catch (err) {
-      console.error(err);
       setAdjustmentError(err.response?.data?.message || "Không thể thực hiện điều chỉnh số dư.");
     } finally {
       setAdjusting(false);
@@ -94,10 +86,10 @@ export default function AdminUsers() {
     setAdjustmentError("");
   }
 
-  function handleSearch(e) {
-    e.preventDefault();
+  function handleSearch(event) {
+    event.preventDefault();
     setPage(1);
-    setSearch(searchInput);
+    setSearch(searchInput.trim());
   }
 
   function handleReset() {
@@ -106,188 +98,30 @@ export default function AdminUsers() {
     setPage(1);
   }
 
-  function handlePageChange(newPage) {
-    if (newPage < 1 || newPage > pagination.totalPage) return;
-    setPage(newPage);
-  }
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const columns = [
+    { id: "id", header: "ID", accessor: (user) => user.id, sortable: true, cell: (user) => <span className="ui-table-code">#{user.id}</span> },
+    { id: "username", header: "Tên đăng nhập", accessor: (user) => user.username || "", sortable: true, cell: (user) => <span className="ui-table-primary">{user.username}</span> },
+    { id: "role", header: "Quyền", accessor: (user) => roleName(user.level), sortable: true, cell: (user) => <Badge variant={Number(user.level) === 99 ? "default" : Number(user.level) === 1 ? "success" : "secondary"}>{roleName(user.level)}</Badge> },
+    { id: "money", header: "Số dư", accessor: (user) => Number(user.money || 0), sortable: true, cell: (user) => <strong className="ui-table-price">{Number(user.money || 0).toLocaleString()}đ</strong> },
+    { id: "status", header: "Trạng thái", accessor: (user) => Number(user.banned) === 1 ? "Đang khóa" : "Hoạt động", sortable: true, cell: (user) => <Badge variant={Number(user.banned) === 1 ? "destructive" : "success"}>{Number(user.banned) === 1 ? "Đang khóa" : "Hoạt động"}</Badge> },
+    {
+      id: "actions",
+      header: "Thao tác",
+      cell: (user) => <div className="ui-table-actions"><Button size="sm" variant="outline" onClick={() => openAdjustment(user, "add")}><CircleDollarSign size={14} aria-hidden="true" /> + Tiền</Button><Button size="sm" variant="secondary" onClick={() => openAdjustment(user, "sub")}>− Tiền</Button><Button size="sm" variant="ghost" onClick={() => updateUser(user.id, { level: 0 })} disabled={Number(user.level) === 0}>User</Button><Button size="sm" variant="ghost" onClick={() => updateUser(user.id, { level: 1 })} disabled={Number(user.level) === 1}>CTV</Button><Button size="sm" variant="ghost" onClick={() => updateUser(user.id, { level: 99 })} disabled={Number(user.level) === 99}><ShieldCheck size={14} aria-hidden="true" /> Admin</Button><Button size="sm" variant="destructive" onClick={() => updateUser(user.id, { banned: Number(user.banned) === 1 ? 0 : 1 })}><Ban size={14} aria-hidden="true" /> {Number(user.banned) === 1 ? "Mở khóa" : "Khóa"}</Button></div>,
+    },
+  ];
 
   return (
-    <div>
-      <h1 className="page-title">Quản lý người dùng</h1>
+    <div className="admin-users-page admin-accounts-page">
+      <AdminPageHeader eyebrow="Hệ thống · Admin" title="Quản lý người dùng" description="Quản lý quyền, trạng thái tài khoản và điều chỉnh số dư với lịch sử rõ ràng." />
+      <Card className="ui-filter-card"><CardContent><form className="ui-filter-grid" onSubmit={handleSearch}><AdminField id="admin-user-search" label="Tìm kiếm người dùng"><Input id="admin-user-search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Tên đăng nhập hoặc User ID" /></AdminField><div className="ui-filter-summary"><Button type="submit"><Search size={15} aria-hidden="true" /> Tìm kiếm</Button>{search && <Button type="button" variant="ghost" onClick={handleReset}><X size={15} aria-hidden="true" /> Đặt lại</Button>}</div><div className="ui-filter-summary"><span>Tổng thành viên</span><strong>{pagination.total}</strong></div></form></CardContent></Card>
+      <AdminError message={loadError} onRetry={load} />
+      <Card className="ui-data-table-card"><CardHeader><CardTitle>User table</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `Trang ${pagination.page || page} · ${users.length} thành viên.`}</CardDescription></CardHeader><CardContent><DataTable data={users} loading={loading} columns={columns} caption="Bảng người dùng" empty={<Empty><EmptyMedia><UserRound size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Không tìm thấy người dùng</EmptyTitle><EmptyDescription>Thử thay đổi từ khóa tìm kiếm để xem kết quả khác.</EmptyDescription></EmptyHeader></Empty>} /><DataTablePagination page={pagination.page || page} totalPages={pagination.totalPage} total={pagination.total} pageSize={pagination.limit || 20} onPageChange={setPage} /></CardContent></Card>
 
-      {/* Search Bar */}
-      <div className="filter-wrapper" style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", gap: "10px", alignItems: "center", flexGrow: 1 }}>
-          <label className="sr-only" htmlFor="admin-user-search">Tìm kiếm người dùng</label>
-          <input
-            id="admin-user-search"
-            type="text"
-            placeholder="Tìm theo tên đăng nhập..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="filter-input"
-            style={{ maxWidth: "300px", margin: 0 }}
-          />
-          <button type="submit" className="small-btn">
-            Tìm kiếm
-          </button>
-          {search && (
-            <button type="button" className="btn-outline" onClick={handleReset} style={{ padding: "8px 16px" }}>
-              Đặt lại
-            </button>
-          )}
-        </form>
-        <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-          Tổng số: <strong>{pagination.total}</strong> thành viên
-        </div>
-      </div>
-
-      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
-      <div className="table-box" aria-busy={loading}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tên đăng nhập</th>
-              <th>Quyền</th>
-              <th>Số dư</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading && users.length === 0 && <TableLoadingRows columns={6} />}
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.username}</td>
-                <td>
-                  <span style={{ 
-                    fontWeight: "bold",
-                    color: Number(u.level) === 99 ? "var(--accent-color)" : Number(u.level) === 1 ? "var(--cyan-color)" : "var(--text-primary)"
-                  }}>
-                    {Number(u.level) === 99 ? "Admin" : Number(u.level) === 1 ? "CTV" : "Thành viên"}
-                  </span>
-                </td>
-                <td>{Number(u.money).toLocaleString()}đ</td>
-                <td>
-                  <span style={{ 
-                    fontWeight: "bold", 
-                    color: Number(u.banned) === 1 ? "var(--accent-color)" : "var(--green-color)"
-                  }}>
-                    {Number(u.banned) === 1 ? "Đang khóa" : "Hoạt động"}
-                  </span>
-                </td>
-                <td className="action-row">
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    <button
-                      className="small-btn"
-                      onClick={() => openAdjustment(u, "add")}
-                    >
-                      + Tiền
-                    </button>
-                    <button
-                      className="small-btn danger-btn"
-                      onClick={() => openAdjustment(u, "sub")}
-                    >
-                      - Tiền
-                    </button>
-                    <button
-                      className="small-btn"
-                      onClick={() => updateUser(u.id, { level: 0 })}
-                      disabled={Number(u.level) === 0}
-                    >
-                      Set User
-                    </button>
-                    <button
-                      className="small-btn"
-                      onClick={() => updateUser(u.id, { level: 1 })}
-                      disabled={Number(u.level) === 1}
-                    >
-                      Set CTV
-                    </button>
-                    <button
-                      className="small-btn"
-                      onClick={() => updateUser(u.id, { level: 99 })}
-                      disabled={Number(u.level) === 99}
-                    >
-                      Set Admin
-                    </button>
-                    <button
-                      className="small-btn danger-btn"
-                      onClick={() =>
-                        updateUser(u.id, { banned: Number(u.banned) === 1 ? 0 : 1 })
-                      }
-                    >
-                      {Number(u.banned) === 1 ? "Mở khóa" : "Khóa"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && !loadError && users.length === 0 && (
-              <tr>
-                <td colSpan="6" style={{ textAlign: "center", padding: "20px", color: "var(--text-secondary)" }}>
-                  Không tìm thấy người dùng nào phù hợp.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {pagination.totalPage > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "24px" }}>
-          <button
-            onClick={() => handlePageChange(pagination.page - 1)}
-            disabled={pagination.page === 1}
-            className="btn-outline"
-            style={{ padding: "6px 12px", opacity: pagination.page === 1 ? 0.5 : 1, cursor: pagination.page === 1 ? "not-allowed" : "pointer" }}
-          >
-            Trước
-          </button>
-          <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-            Trang <strong>{pagination.page}</strong> / {pagination.totalPage}
-          </span>
-          <button
-            onClick={() => handlePageChange(pagination.page + 1)}
-            disabled={pagination.page === pagination.totalPage}
-            className="btn-outline"
-            style={{ padding: "6px 12px", opacity: pagination.page === pagination.totalPage ? 0.5 : 1, cursor: pagination.page === pagination.totalPage ? "not-allowed" : "pointer" }}
-          >
-            Sau
-          </button>
-        </div>
-      )}
-
-      <Modal
-        isOpen={Boolean(adjustment)}
-        onClose={() => !adjusting && setAdjustment(null)}
-        title={adjustment?.type === "add" ? "Cộng số dư" : "Trừ số dư"}
-        footer={<><button className="btn-outline" disabled={adjusting} onClick={() => setAdjustment(null)}>Hủy</button><button className="btn-primary" disabled={adjusting} onClick={submitAdjustment}>{adjusting ? "Đang lưu..." : "Xác nhận"}</button></>}
-      >
-        <div className="admin-adjustment-form">
-          <p>Người dùng: <strong>{adjustment?.username}</strong></p>
-          <p>Số dư hiện tại: <strong>{Number(adjustment?.balance || 0).toLocaleString()}đ</strong></p>
-          <div className="form-group-premium">
-            <label>Số tiền (đ)</label>
-            <CurrencyInput
-              autoFocus
-              value={adjustmentForm.amount}
-              onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
-              placeholder="Ví dụ: 100.000"
-            />
-          </div>
-          <div className="form-group-premium"><label>Lý do điều chỉnh</label><textarea value={adjustmentForm.description} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, description: e.target.value })} placeholder="Bắt buộc ghi rõ với điều chỉnh thủ công" /></div>
-          {adjustmentError && <p className="form-hint error">{adjustmentError}</p>}
-          {adjustment?.type === "sub" && <p className="form-hint">Không thể trừ vượt quá số dư hiện tại. Thao tác sẽ được lưu vào lịch sử giao dịch.</p>}
-        </div>
+      <Modal isOpen={Boolean(adjustment)} onClose={() => !adjusting && setAdjustment(null)} title={adjustment?.type === "add" ? "Cộng số dư" : "Trừ số dư"} className="admin-form-modal" footer={<><Button variant="outline" disabled={adjusting} onClick={() => setAdjustment(null)}>Hủy</Button><Button variant={adjustment?.type === "sub" ? "destructive" : "default"} disabled={adjusting} aria-busy={adjusting} onClick={submitAdjustment}>{adjusting ? "Đang lưu…" : "Xác nhận"}</Button></>}>
+        <div className="ui-form-grid"><p className="ui-field-helper ui-field-full">Người dùng: <strong>{adjustment?.username}</strong> · Số dư hiện tại: <strong>{Number(adjustment?.balance || 0).toLocaleString()}đ</strong></p><AdminField id="admin-adjustment-amount" label="Số tiền (đ)" required><CurrencyInput id="admin-adjustment-amount" className="ui-input" autoFocus value={adjustmentForm.amount} onChange={(event) => setAdjustmentForm({ ...adjustmentForm, amount: event.target.value })} placeholder="Ví dụ: 100.000" required /></AdminField><AdminField id="admin-adjustment-description" className="ui-field-full" label="Lý do điều chỉnh" helper="Bắt buộc ghi rõ lý do với điều chỉnh thủ công."><Textarea id="admin-adjustment-description" value={adjustmentForm.description} onChange={(event) => setAdjustmentForm({ ...adjustmentForm, description: event.target.value })} placeholder="Ví dụ: hoàn tiền đơn hàng…" /></AdminField>{adjustmentError && <p className="ui-field-error ui-field-full" role="alert">{adjustmentError}</p>}</div>
       </Modal>
     </div>
   );

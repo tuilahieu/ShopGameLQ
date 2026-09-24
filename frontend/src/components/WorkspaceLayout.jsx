@@ -1,27 +1,73 @@
-import { Fragment, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Info, LogOut, Menu, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import api from "../api/api";
 import AppLoader from "./AppLoader";
 import useMotionReveal from "../hooks/useMotionReveal";
+import { notifyAdmin } from "../utils/adminFeedback";
 
 export default function WorkspaceLayout({ title, role, links }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openNavGroup, setOpenNavGroup] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const menuButtonRef = useRef(null);
   const sidebarRef = useRef(null);
   const mainRef = useRef(null);
+  const topNavRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const routeKey = `${location.pathname}${location.search}`;
+  const groupedLinks = useMemo(() => {
+    const groups = new Map();
+    links.forEach((link) => {
+      const group = link.group || "Điều hướng";
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(link);
+    });
+    return [...groups.entries()].map(([label, items]) => ({ label, items }));
+  }, [links]);
   const activeLink = [...links]
     .sort((a, b) => b.to.length - a.to.length)
     .find((link) => link.end ? location.pathname === link.to : location.pathname.startsWith(link.to));
 
   useMotionReveal(mainRef, routeKey);
 
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    // A few legacy workspace forms still call alert(). Route those messages
+    // through the non-blocking toast while keeping the pages backward compatible.
+    const nativeAlert = window.alert;
+    window.alert = (message) => notifyAdmin(message);
+    return () => { window.alert = nativeAlert; };
+  }, []);
+
+  useEffect(() => {
+    function handleToast(event) {
+      const toast = event.detail || {};
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setToasts((current) => [...current, { id, message: toast.message, tone: toast.tone || "info" }].slice(-4));
+      window.setTimeout(() => {
+        setToasts((current) => current.filter((item) => item.id !== id));
+      }, 4200);
+    }
+
+    window.addEventListener("admin-toast", handleToast);
+    return () => window.removeEventListener("admin-toast", handleToast);
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setOpenNavGroup(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    function closeMenus(event) {
+      if (!topNavRef.current?.contains(event.target)) setOpenNavGroup(null);
+    }
+    document.addEventListener("pointerdown", closeMenus);
+    return () => document.removeEventListener("pointerdown", closeMenus);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -64,6 +110,40 @@ export default function WorkspaceLayout({ title, role, links }) {
   return (
     <div className="admin-container workspace-shell">
       <a className="skip-link" href="#workspace-main">Bỏ qua điều hướng</a>
+      <header className="admin-topbar">
+        <div className="admin-topbar-inner">
+          <NavLink to="/admin" end className="admin-topbar-brand" aria-label="Về tổng quan quản trị">
+            <span className="workspace-brand-mark" aria-hidden="true">S</span>
+            <span><small>SHOP LIÊN QUÂN</small><strong>{title}</strong></span>
+          </NavLink>
+          <nav ref={topNavRef} className="admin-topnav" aria-label={`Các trang ${role}`}>
+            {groupedLinks.map(({ label, items }) => {
+              const groupActive = items.some((link) => link.end ? location.pathname === link.to : location.pathname.startsWith(link.to));
+              if (items.length === 1) {
+                const [{ to, icon: Icon, end, label: itemLabel }] = items;
+                return <NavLink key={to} to={to} end={end} className={({ isActive }) => `admin-topnav-link${isActive ? " is-active" : ""}`}><Icon size={16} aria-hidden="true" /><span>{itemLabel}</span></NavLink>;
+              }
+              return (
+                <details key={label} open={openNavGroup === label} className={`admin-topnav-menu${groupActive ? " is-active" : ""}`}>
+                  <summary className="admin-topnav-link" onClick={(event) => { event.preventDefault(); setOpenNavGroup((current) => current === label ? null : label); }}><span>{label}</span><ChevronDown size={15} aria-hidden="true" /></summary>
+                  <div className="admin-topnav-popover">
+                    <span className="admin-topnav-popover-title">{label}</span>
+                    {items.map(({ to, label: itemLabel, icon: Icon, end }) => (
+                      <NavLink key={to} to={to} end={end} className={({ isActive }) => `admin-topnav-popover-link${isActive ? " is-active" : ""}`}><Icon size={16} aria-hidden="true" /><span>{itemLabel}</span></NavLink>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
+          </nav>
+          <div className="admin-topbar-actions">
+            <span className="admin-topbar-user"><small>{role}</small><strong>{user.username || "Quản trị viên"}</strong></span>
+            <ThemeToggle compact />
+            <NavLink to="/" className="admin-topbar-store" title="Mở cửa hàng"><ArrowLeft size={15} aria-hidden="true" /><span>Về cửa hàng</span></NavLink>
+            <button type="button" className="admin-topbar-logout" onClick={logout} title="Đăng xuất" aria-label="Đăng xuất"><LogOut size={17} aria-hidden="true" /></button>
+          </div>
+        </div>
+      </header>
       <header className="admin-mobile-topbar">
         <div><small>{role}</small><strong>{activeLink?.label || title}</strong></div>
         <button ref={menuButtonRef} type="button" className="admin-mobile-menu-button" onClick={() => setMenuOpen(true)} aria-label={`Mở menu ${role}`} aria-expanded={menuOpen} aria-controls="workspace-sidebar">
@@ -82,12 +162,14 @@ export default function WorkspaceLayout({ title, role, links }) {
           <strong>{user.username || "Tài khoản"}</strong>
         </div>
         <nav className="admin-nav-links" aria-label={`Các trang ${role}`}>
-          {links.map(({ to, label, icon: Icon, end, group }, index) => (
-            <Fragment key={to}>
-              {group && group !== links[index - 1]?.group && <span className="workspace-nav-group-label">{group}</span>}
-              <NavLink to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}>
-                <Icon size={18} aria-hidden="true" /><span>{label}</span><ChevronRight className="workspace-nav-chevron" size={15} aria-hidden="true" />
-              </NavLink>
+          {groupedLinks.map(({ label, items }) => (
+            <Fragment key={label}>
+              <span className="workspace-nav-group-label">{label}</span>
+              {items.map(({ to, label: itemLabel, icon: Icon, end }) => (
+                <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? "active" : ""}>
+                  <Icon size={18} aria-hidden="true" /><span>{itemLabel}</span><ChevronRight className="workspace-nav-chevron" size={15} aria-hidden="true" />
+                </NavLink>
+              ))}
             </Fragment>
           ))}
         </nav>
@@ -104,6 +186,20 @@ export default function WorkspaceLayout({ title, role, links }) {
         </header>
         <div className="workspace-route-stage" key={routeKey}><Suspense fallback={<AppLoader inline />}><Outlet /></Suspense></div>
       </main>
+      <div className="admin-toast-region" aria-live="polite" aria-atomic="false">
+        {toasts.map((toast) => {
+          const Icon = toast.tone === "success" ? CheckCircle2 : toast.tone === "error" ? AlertCircle : Info;
+          return (
+            <div key={toast.id} className={`admin-toast is-${toast.tone}`} role={toast.tone === "error" ? "alert" : "status"}>
+              <Icon size={18} aria-hidden="true" />
+              <span>{toast.message}</span>
+              <button type="button" onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))} aria-label="Đóng thông báo">
+                <X size={15} aria-hidden="true" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

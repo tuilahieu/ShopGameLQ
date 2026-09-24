@@ -1,209 +1,105 @@
 import { useEffect, useState } from "react";
+import { FolderKanban, Pencil, Plus, Trash2, EyeOff } from "lucide-react";
 import api from "../../api/api";
-import PanelLoading from "../../components/PanelLoading";
+import { AdminConfirmDialog, AdminError, AdminField, AdminPageHeader } from "../../components/admin/AdminUi";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
+import { DataTable } from "../../components/ui/data-table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { notifyAdmin } from "../../utils/adminFeedback";
+
+const emptyForm = { name: "", noidung: "", type: "", status: 1 };
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // Form states
-  const [form, setForm] = useState({
-    name: "",
-    noidung: "",
-    type: "",
-    status: 1
-  });
+  const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [confirmation, setConfirmation] = useState(null);
+  const [confirming, setConfirming] = useState(false);
 
   async function load() {
     setLoading(true);
+    setLoadError("");
     try {
-      // Admin gets all categories (active & inactive)
       const res = await api.get("/categories?all=true");
       setCategories(res.data.data || []);
     } catch (err) {
-      console.error(err);
-      alert("Lỗi tải danh mục");
+      setLoadError(err.response?.data?.message || "Lỗi tải danh mục");
     } finally {
       setLoading(false);
     }
   }
 
-  async function save(e) {
-    e.preventDefault();
+  async function save(event) {
+    event.preventDefault();
     if (saving) return;
-    if (!form.name) return alert("Vui lòng nhập tên danh mục");
-
+    if (!form.name.trim()) return notifyAdmin("Vui lòng nhập tên danh mục");
     setSaving(true);
     try {
-      if (editingId) {
-        await api.put(`/categories/${editingId}`, form);
-        alert("Cập nhật danh mục thành công");
-      } else {
-        await api.post("/categories", form);
-        alert("Thêm danh mục thành công");
-      }
-      setForm({ name: "", noidung: "", type: "", status: 1 });
-      setEditingId(null);
+      if (editingId) await api.put(`/categories/${editingId}`, form);
+      else await api.post("/categories", form);
+      notifyAdmin(editingId ? "Cập nhật danh mục thành công" : "Thêm danh mục thành công");
+      resetForm();
       load();
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Lỗi lưu danh mục");
+      notifyAdmin(err.response?.data?.message || "Lỗi lưu danh mục");
     } finally {
       setSaving(false);
     }
   }
 
-  function startEdit(cat) {
-    setEditingId(cat.id);
-    setForm({
-      name: cat.name || "",
-      noidung: cat.noidung || "",
-      type: cat.type || "",
-      status: cat.status !== undefined ? Number(cat.status) : 1
-    });
+  function startEdit(category) {
+    setEditingId(category.id);
+    setForm({ name: category.name || "", noidung: category.noidung || "", type: category.type || "", status: category.status !== undefined ? Number(category.status) : 1 });
   }
 
-  async function hide(id) {
-    if (!window.confirm("Ẩn danh mục này khỏi phía khách hàng? Dữ liệu vẫn được giữ lại.")) return;
-    try {
-      const res = await api.patch(`/categories/${id}/hide`);
-      alert(res.data?.message || "Đã ẩn danh mục");
-      load();
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Lỗi ẩn danh mục");
-    }
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyForm);
   }
 
-  async function remove(id) {
-    if (!window.confirm("XÓA HẲN danh mục này? Chỉ xóa được khi không còn loại tài khoản.")) return;
-    try {
-      const res = await api.delete(`/categories/${id}`);
-      alert(res.data?.message || "Đã xóa hẳn danh mục");
-      load();
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Lỗi xóa hẳn danh mục");
-    }
+  function ask(action, title, description, destructive = false) {
+    setConfirmation({ action, title, description, destructive });
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  async function confirmAction() {
+    if (!confirmation || confirming) return;
+    setConfirming(true);
+    try { await confirmation.action(); setConfirmation(null); } finally { setConfirming(false); }
+  }
+
+  function hide(id) {
+    ask(async () => { try { const res = await api.patch(`/categories/${id}/hide`); notifyAdmin(res.data?.message || "Đã ẩn danh mục"); load(); } catch (err) { notifyAdmin(err.response?.data?.message || "Lỗi ẩn danh mục"); } }, "Ẩn danh mục?", "Danh mục sẽ được giữ lại nhưng không còn hiển thị với khách hàng.");
+  }
+
+  function remove(id) {
+    ask(async () => { try { const res = await api.delete(`/categories/${id}`); notifyAdmin(res.data?.message || "Đã xóa hẳn danh mục"); load(); } catch (err) { notifyAdmin(err.response?.data?.message || "Lỗi xóa hẳn danh mục"); } }, "Xóa hẳn danh mục?", "Chỉ thực hiện được khi danh mục không còn loại tài khoản.", true);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const columns = [
+    { id: "id", header: "ID", accessor: (category) => category.id, sortable: true, cell: (category) => <span className="ui-table-code">#{category.id}</span> },
+    { id: "name", header: "Tên danh mục", accessor: (category) => category.name || "", sortable: true, cell: (category) => <strong className="ui-table-primary">{category.name}</strong> },
+    { id: "type", header: "Mã", accessor: (category) => category.type || "", sortable: true, cell: (category) => <span className="ui-table-code">{category.type || "N/A"}</span> },
+    { id: "description", header: "Mô tả", accessor: (category) => category.noidung || "", cell: (category) => <span className="ui-table-detail">{category.noidung || "N/A"}</span> },
+    { id: "status", header: "Trạng thái", accessor: (category) => Number(category.status) === 1 ? "Active" : "Hidden", sortable: true, cell: (category) => <Badge variant={Number(category.status) === 1 ? "success" : "secondary"}>{Number(category.status) === 1 ? "Hiển thị" : "Đã ẩn"}</Badge> },
+    { id: "actions", header: "Thao tác", cell: (category) => <div className="ui-table-actions"><Button size="sm" variant="outline" onClick={() => startEdit(category)}><Pencil size={14} aria-hidden="true" /> Sửa</Button>{Number(category.status) === 1 && <Button size="sm" variant="secondary" onClick={() => hide(category.id)}><EyeOff size={14} aria-hidden="true" /> Ẩn</Button>}<Button size="sm" variant="destructive" onClick={() => remove(category.id)}><Trash2 size={14} aria-hidden="true" /> Xóa</Button></div> },
+  ];
 
   return (
-    <div>
-      <h1 className="page-title">Quản lý Danh mục tài khoản</h1>
-
-      {/* Editor Form */}
-      <div className="card" style={{ marginBottom: "24px" }}>
-        <h3>{editingId ? `Chỉnh sửa danh mục #${editingId}` : "Thêm danh mục mới"}</h3>
-        <form onSubmit={save} className="form-grid" style={{ marginTop: "16px" }}>
-          <input
-            placeholder="Tên danh mục (ví dụ: Acc Liên Quân VIP, Túi mù...)"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-
-          <input
-            placeholder="Mã danh mục (ví dụ: lienquan, tuimu...)"
-            value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value })}
-          />
-
-          <input
-            className="full"
-            placeholder="Mô tả chi tiết về danh mục"
-            value={form.noidung}
-            onChange={(e) => setForm({ ...form, noidung: e.target.value })}
-          />
-
-          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <label>Trạng thái hiển thị</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: Number(e.target.value) })}
-            >
-              <option value="1">Hiển thị (Active)</option>
-              <option value="0">Ẩn (Inactive)</option>
-            </select>
-          </div>
-
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
-            <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
-              {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="small-btn danger-btn"
-                disabled={saving}
-                onClick={() => {
-                  setEditingId(null);
-                  setForm({ name: "", noidung: "", type: "", status: 1 });
-                }}
-              >
-                Hủy
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* List Table */}
-      <div className="table-box">
-        {loading ? (
-          <PanelLoading label="Đang tải danh mục" />
-        ) : categories.length === 0 ? (
-          <p>Không có danh mục nào.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên danh mục</th>
-                <th>Mã</th>
-                <th>Mô tả</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => (
-                <tr key={cat.id}>
-                  <td>{cat.id}</td>
-                  <td><strong>{cat.name}</strong></td>
-                  <td><code>{cat.type || "N/A"}</code></td>
-                  <td>{cat.noidung || "N/A"}</td>
-                  <td>
-                    <span style={{ color: Number(cat.status) === 1 ? "green" : "red", fontWeight: "bold" }}>
-                      {Number(cat.status) === 1 ? "Active" : "Hidden"}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-row">
-                      <button onClick={() => startEdit(cat)} className="small-btn">
-                        Sửa
-                      </button>
-                      {Number(cat.status) === 1 && (
-                        <button onClick={() => hide(cat.id)} className="small-btn">
-                          Ẩn
-                        </button>
-                      )}
-                      <button onClick={() => remove(cat.id)} className="small-btn danger-btn">
-                        Xóa hẳn
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+    <div className="admin-categories-page admin-accounts-page">
+      <AdminPageHeader eyebrow="Sản phẩm · Admin" title="Quản lý danh mục tài khoản" description="Tổ chức các nhóm sản phẩm và kiểm soát trạng thái hiển thị trên storefront." actions={<Button onClick={resetForm}><Plus size={15} aria-hidden="true" /> Danh mục mới</Button>} />
+      <Card><CardHeader><CardTitle>{editingId ? `Chỉnh sửa danh mục #${editingId}` : "Thêm danh mục mới"}</CardTitle><CardDescription>Dùng mã danh mục ổn định để kết nối với loại tài khoản.</CardDescription></CardHeader><form onSubmit={save}><CardContent><div className="ui-form-grid"><AdminField id="admin-category-name" label="Tên danh mục" required><Input id="admin-category-name" placeholder="Ví dụ: Acc Liên Quân VIP" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></AdminField><AdminField id="admin-category-type" label="Mã danh mục" helper="Ví dụ: lienquan, tuimu…"><Input id="admin-category-type" placeholder="Mã dùng trong hệ thống" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} /></AdminField><AdminField id="admin-category-description" label="Mô tả" className="ui-field-full"><Input id="admin-category-description" placeholder="Mô tả chi tiết về danh mục" value={form.noidung} onChange={(event) => setForm({ ...form, noidung: event.target.value })} /></AdminField><AdminField id="admin-category-status" label="Trạng thái"><Select id="admin-category-status" value={form.status} onChange={(event) => setForm({ ...form, status: Number(event.target.value) })}><option value={1}>Hiển thị</option><option value={0}>Ẩn</option></Select></AdminField></div></CardContent><CardFooter><Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Đặt lại</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}</Button></CardFooter></form></Card>
+      <AdminError message={loadError} onRetry={load} />
+      <Card className="ui-data-table-card"><CardHeader><CardTitle>Category table</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `${categories.length} danh mục.`}</CardDescription></CardHeader><CardContent><DataTable data={categories} loading={loading} columns={columns} caption="Bảng danh mục tài khoản" empty={<Empty><EmptyMedia><FolderKanban size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Chưa có danh mục</EmptyTitle><EmptyDescription>Tạo danh mục đầu tiên để bắt đầu xây dựng kho sản phẩm.</EmptyDescription></EmptyHeader><Button size="sm" onClick={resetForm}><Plus size={14} aria-hidden="true" /> Thêm danh mục</Button></Empty>} /></CardContent></Card>
+      <AdminConfirmDialog open={Boolean(confirmation)} title={confirmation?.title} description={confirmation?.description} destructive={confirmation?.destructive} pending={confirming} onClose={() => setConfirmation(null)} onConfirm={confirmAction} confirmLabel={confirmation?.destructive ? "Xóa hẳn" : "Xác nhận"} />
     </div>
   );
 }

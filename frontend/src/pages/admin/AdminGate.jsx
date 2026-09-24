@@ -1,7 +1,37 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import SkeletonLoading from "../../components/SkeletonLoading";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { AdminField } from "../../components/admin/AdminUi";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
+
+function AdminGateFrame({ children }) {
+  return (
+    <div className="auth-page-wrapper admin-gate-page">
+      <div className="admin-gate-shell">
+        <section className="admin-gate-intro" aria-label="Thông tin khu quản trị">
+          <div className="admin-gate-brand">
+            <span className="admin-gate-brand-mark" aria-hidden="true">S</span>
+            <span><small>SHOP LIÊN QUÂN</small><strong>Admin console</strong></span>
+          </div>
+          <div className="admin-gate-intro-copy">
+            <span className="admin-gate-eyebrow"><ShieldCheck size={15} aria-hidden="true" /> Khu vực bảo mật</span>
+            <h1>Vận hành cửa hàng<br />tập trung và an toàn.</h1>
+            <p>Lớp xác minh thứ hai giúp bảo vệ kho tài khoản, giao dịch và cấu hình vận hành của shop.</p>
+          </div>
+          <div className="admin-gate-trust-list">
+            <div><span className="admin-gate-trust-dot" aria-hidden="true" /><span><strong>Phiên quản trị riêng</strong><small>Tự hết hạn sau 30 phút</small></span></div>
+            <div><span className="admin-gate-trust-dot" aria-hidden="true" /><span><strong>Bảo vệ thao tác nhạy cảm</strong><small>Kiểm tra lại trước khi truy cập</small></span></div>
+          </div>
+        </section>
+        <section className="admin-gate-card-area">{children}</section>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminGate({ children }) {
   const [mode, setMode] = useState("loading");
@@ -97,11 +127,12 @@ export default function AdminGate({ children }) {
   }
 
   if (mode === "ready") return children;
-  if (mode === "loading") return <div className="auth-page-wrapper"><div className="auth-card"><SkeletonLoading variant="form" items={2} compact label="Đang kiểm tra quyền quản trị" /></div></div>;
-  if (mode === "error") return <div className="auth-page-wrapper"><div className="auth-card" role="alert">{error}<p><Link to="/">Về trang chủ</Link></p></div></div>;
+  if (mode === "loading") return <AdminGateFrame><Card className="auth-card"><CardHeader><CardTitle>Đang kiểm tra quyền quản trị</CardTitle></CardHeader><CardContent className="ui-dashboard-loading"><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /></CardContent></Card></AdminGateFrame>;
+  if (mode === "error") return <AdminGateFrame><Card className="auth-card" role="alert"><CardContent><div className="admin-gate-error-mark"><ShieldCheck size={22} aria-hidden="true" /></div><p className="admin-gate-error-copy">{error}</p><Link className="admin-gate-home-link" to="/">Về trang chủ <ArrowRight size={15} aria-hidden="true" /></Link></CardContent></Card></AdminGateFrame>;
   return (
-    <div className="auth-page-wrapper">
-      <div className="auth-card">
+    <AdminGateFrame>
+      <Card className="auth-card">
+        <div className="admin-gate-card-icon" aria-hidden="true"><ShieldCheck size={22} /></div>
         <div className="auth-header-logo">
           <h1>{mode === "setup" ? "Thiết lập mật khẩu cấp 2" : "Xác minh quản trị viên"}</h1>
           <p>{mode === "setup"
@@ -110,28 +141,25 @@ export default function AdminGate({ children }) {
         </div>
         {error && <div className="alert-error auth-alert" role="alert">{error}</div>}
         <form className="auth-form" onSubmit={submit}>
-          {mode === "setup" && <div className="form-group-premium">
-            <label htmlFor="admin-current-password">Mật khẩu đăng nhập hiện tại</label>
-            <input id="admin-current-password" type="password" autoComplete="current-password" required
+          {mode === "setup" && <AdminField id="admin-current-password" label="Mật khẩu đăng nhập hiện tại" required>
+            <Input id="admin-current-password" type="password" autoComplete="current-password" required
               value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} />
-          </div>}
-          <div className="form-group-premium">
-            <label htmlFor="admin-second-password">Mật khẩu cấp 2</label>
-            <input id="admin-second-password" type="password" autoComplete={mode === "setup" ? "new-password" : "off"}
+          </AdminField>}
+          <AdminField id="admin-second-password" label="Mật khẩu cấp 2" required>
+            <Input id="admin-second-password" type="password" autoComplete={mode === "setup" ? "new-password" : "off"}
               required minLength={mode === "setup" ? 12 : undefined} maxLength={72}
               value={form.secondPassword} onChange={(e) => setForm({ ...form, secondPassword: e.target.value })} />
-          </div>
-          {mode === "setup" && <div className="form-group-premium">
-            <label htmlFor="admin-confirm-password">Nhập lại mật khẩu cấp 2</label>
-            <input id="admin-confirm-password" type="password" autoComplete="new-password" required minLength={12} maxLength={72}
+          </AdminField>
+          {mode === "setup" && <AdminField id="admin-confirm-password" label="Nhập lại mật khẩu cấp 2" required>
+            <Input id="admin-confirm-password" type="password" autoComplete="new-password" required minLength={12} maxLength={72}
               value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} />
-          </div>}
-          <button className="btn-primary auth-submit" type="submit" disabled={busy}>
+          </AdminField>}
+          <Button className="auth-submit" type="submit" disabled={busy}>
             {busy ? "Đang xử lý…" : mode === "setup" ? "Lưu mật khẩu cấp 2" : "Xác minh và vào quản trị"}
-          </button>
+          </Button>
         </form>
         <p className="auth-footer-text"><Link to="/">Về trang chủ</Link></p>
-      </div>
-    </div>
+      </Card>
+    </AdminGateFrame>
   );
 }

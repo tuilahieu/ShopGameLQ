@@ -1,19 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
-import { Upload, Pencil, Trash2, Plus, X, ShoppingBag, EyeOff } from "lucide-react";
+import { EyeOff, Pencil, Plus, RefreshCw, ShoppingBag, Trash2, Upload, X } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
-import TableLoadingRows from "../../components/TableLoadingRows";
-import { SkeletonBlock } from "../../components/SkeletonLoading";
+import Modal from "../../components/Modal";
+import { notifyAdmin } from "../../utils/adminFeedback";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
+import { DataTable, DataTablePagination } from "../../components/ui/data-table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select } from "../../components/ui/select";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Switch } from "../../components/ui/switch";
+import { Textarea } from "../../components/ui/textarea";
 
 const STATUS_MAP = {
-  0: { label: "Đang bán", color: "var(--green-color)" },
-  1: { label: "Đã bán", color: "var(--text-muted)" },
-  2: { label: "Đã ẩn", color: "var(--accent-color)" },
+  0: { label: "Đang bán", variant: "success" },
+  1: { label: "Đã bán", variant: "secondary" },
+  2: { label: "Đã ẩn", variant: "warning" },
 };
 
 function buildDefaultThongTin() {
-  return `Đổi được thông tin\nHỗ trợ bảo hành`;
+  return "Đổi được thông tin\nHỗ trợ bảo hành";
 }
 
 function buildDefaultLogin(zalo) {
@@ -29,6 +40,19 @@ function validImageUrl(value) {
   }
 }
 
+function Field({ id, label, required = false, helper, className = "", children }) {
+  return (
+    <div className={`ui-field ${className}`.trim()}>
+      <Label htmlFor={id}>
+        {label}
+        {required && <span className="is-required" aria-hidden="true">*</span>}
+      </Label>
+      {children}
+      {helper && <p className="ui-field-helper">{helper}</p>}
+    </div>
+  );
+}
+
 export default function AdminAccounts() {
   const [accounts, setAccounts] = useState([]);
   const [types, setTypes] = useState([]);
@@ -38,6 +62,8 @@ export default function AdminAccounts() {
   const [filters, setFilters] = useState({ loai_id: "", status: "", page: 1 });
   const [pagination, setPagination] = useState({ total: 0, totalPage: 1 });
   const [selected, setSelected] = useState(new Set());
+  const [confirmation, setConfirmation] = useState(null);
+  const [confirming, setConfirming] = useState(false);
   const imgRef = useRef();
   const loadSequence = useRef(0);
   const [loading, setLoading] = useState(true);
@@ -65,8 +91,8 @@ export default function AdminAccounts() {
 
   const [form, setForm] = useState(makeEmpty(""));
 
-  function set(key, val) {
-    setForm((prev) => ({ ...prev, [key]: val }));
+  function set(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   const loadData = useCallback(async () => {
@@ -74,18 +100,16 @@ export default function AdminAccounts() {
     setLoading(true);
     setLoadError("");
     try {
-      const params = {};
+      const params = { page: filters.page, limit: 20 };
       if (filters.loai_id) params.loai_id = filters.loai_id;
       if (filters.status !== "") params.status = filters.status;
-      params.page = filters.page;
-      params.limit = 20;
 
       const accRes = await api.get("/admin/accounts", { params });
       if (sequence !== loadSequence.current) return;
 
       setAccounts(accRes.data?.data?.accounts || accRes.data?.data || []);
       if (accRes.data?.data?.pagination) setPagination(accRes.data.data.pagination);
-      setSelected(new Set()); // clear selection on reload
+      setSelected(new Set());
     } catch (error) {
       if (sequence === loadSequence.current) setLoadError(error.response?.data?.message || "Không thể tải kho tài khoản.");
     } finally {
@@ -104,11 +128,11 @@ export default function AdminAccounts() {
       setTypes(typeRes.data?.data || []);
       const nextSetting = settingRes.data?.data?.setting || {};
       setSetting(nextSetting);
-      setForm((prev) =>
+      setForm((prev) => (
         prev.login === buildDefaultLogin("") || prev.login === buildDefaultLogin("admin")
           ? { ...prev, login: buildDefaultLogin(nextSetting.sdt_admin) }
           : prev
-      );
+      ));
     }).catch((error) => {
       if (active) setMetadataError(error.response?.data?.message || "Không thể tải loại tài khoản và cài đặt.");
     }).finally(() => {
@@ -124,24 +148,29 @@ export default function AdminAccounts() {
     return res.data.data.url;
   }
 
-  async function handleMainImage(e) {
-    const file = e.target.files[0];
+  async function handleMainImage(event) {
+    const file = event.target.files[0];
     if (!file) return;
     try {
       const url = await uploadImage(file);
       set("img", url);
-    } catch { alert("Upload ảnh thất bại"); }
+      notifyAdmin("Đã tải ảnh lên");
+    } catch {
+      notifyAdmin("Upload ảnh thất bại");
+    }
   }
 
-  async function saveAccount() {
+  async function saveAccount(event) {
+    event.preventDefault();
     if (saving) return;
-    if (!form.loai_id) return alert("Vui lòng chọn loại tài khoản!");
-    if (!form.gia) return alert("Vui lòng nhập giá bán!");
+    if (!form.loai_id) return notifyAdmin("Vui lòng chọn loại tài khoản!");
+    if (!form.gia) return notifyAdmin("Vui lòng nhập giá bán!");
     const imageUrl = form.img.trim();
-    if (!validImageUrl(imageUrl)) return alert("URL ảnh phải bắt đầu bằng http:// hoặc https://.");
+    if (!validImageUrl(imageUrl)) return notifyAdmin("URL ảnh phải bắt đầu bằng http:// hoặc https://.");
     if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
-      return alert("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
+      return notifyAdmin("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
     }
+
     const payload = { ...form, img: imageUrl, sale_price: form.is_sale ? form.sale_price : null };
     delete payload.is_sale;
     delete payload.status;
@@ -150,20 +179,14 @@ export default function AdminAccounts() {
     setSaveProgress("Đang lưu tài khoản…");
     try {
       if (editingId) {
-        // Update mode — single account
         await api.put(`/accounts/${editingId}`, payload);
-        alert("Cập nhật thành công!");
+        notifyAdmin("Cập nhật tài khoản thành công");
         closeForm();
         loadData();
         return;
       }
 
-      // Add mode — split login by newline → create one account per line
-      const lines = form.login
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-
+      const lines = form.login.split("\n").map((line) => line.trim()).filter(Boolean);
       if (lines.length === 0) lines.push(form.login.trim() || buildDefaultLogin(setting.sdt_admin));
 
       let success = 0;
@@ -178,86 +201,115 @@ export default function AdminAccounts() {
         }
       }
 
-      if (failed > 0) {
-        alert(`Đã thêm ${success}/${lines.length} tài khoản. ${failed} dòng bị lỗi.`);
-      } else {
-        alert(`Đã thêm thành công ${success} tài khoản.`);
-      }
-
+      notifyAdmin(failed > 0 ? `Đã thêm ${success}/${lines.length} tài khoản. ${failed} dòng bị lỗi.` : `Đã thêm thành công ${success} tài khoản.`);
       closeForm();
       loadData();
     } catch (error) {
-      alert(error?.response?.data?.message || "Có lỗi xảy ra");
+      notifyAdmin(error?.response?.data?.message || "Có lỗi xảy ra");
     } finally {
       setSaving(false);
       setSaveProgress("");
     }
   }
 
-  async function hideAccount(id) {
-    if (!window.confirm("Ẩn tài khoản #" + id + " khỏi danh sách bán? Dữ liệu vẫn được giữ lại.")) return;
+  function askConfirmation(config) {
+    setConfirmation(config);
+  }
+
+  async function confirmAction() {
+    if (!confirmation || confirming) return;
+    setConfirming(true);
     try {
-      await api.patch(`/accounts/${id}/hide`);
-      loadData();
-    } catch (error) {
-      alert(error.response?.data?.message || "Lỗi ẩn tài khoản");
+      await confirmation.action();
+      setConfirmation(null);
+    } finally {
+      setConfirming(false);
     }
   }
 
-  async function deleteAccount(id) {
-    if (!window.confirm("XÓA HẲN tài khoản #" + id + "? Không thể hoàn tác và account đã có order sẽ bị từ chối.")) return;
-    try {
-      await api.delete(`/accounts/${id}`);
-      loadData();
-    } catch (error) {
-      alert(error.response?.data?.message || "Lỗi xóa hẳn tài khoản");
-    }
-  }
-
-  async function deleteSelected() {
-    if (selected.size === 0) return;
-    if (!window.confirm(`XÓA HẲN ${selected.size} tài khoản đã chọn? Tài khoản đã có order sẽ không bị xóa.`)) return;
-    let ok = 0, fail = 0;
-    for (const id of selected) {
-      try { await api.delete(`/accounts/${id}`); ok++; }
-      catch { fail++; }
-    }
-    alert(fail > 0 ? `Đã xóa hẳn ${ok}/${selected.size}, ${fail} lỗi.` : `Đã xóa hẳn ${ok} tài khoản.`);
-    loadData();
-  }
-
-  function toggleSelect(id) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  function hideAccount(id) {
+    askConfirmation({
+      title: `Ẩn tài khoản #${id}?`,
+      description: "Tài khoản sẽ được giữ lại trong kho nhưng không còn hiển thị ở danh sách bán.",
+      confirmLabel: "Ẩn tài khoản",
+      variant: "default",
+      action: async () => {
+        try {
+          await api.patch(`/accounts/${id}/hide`);
+          notifyAdmin(`Đã ẩn tài khoản #${id}`);
+          loadData();
+        } catch (error) {
+          notifyAdmin(error.response?.data?.message || "Lỗi ẩn tài khoản");
+        }
+      },
     });
   }
 
-  function toggleAll() {
-    if (selected.size === accounts.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(accounts.map((a) => a.id)));
-    }
+  function deleteAccount(id) {
+    askConfirmation({
+      title: `Xóa hẳn tài khoản #${id}?`,
+      description: "Không thể hoàn tác. Tài khoản đã có đơn hàng sẽ được hệ thống từ chối xóa.",
+      confirmLabel: "Xóa hẳn",
+      variant: "destructive",
+      action: async () => {
+        try {
+          await api.delete(`/accounts/${id}`);
+          notifyAdmin(`Đã xóa tài khoản #${id}`);
+          loadData();
+        } catch (error) {
+          notifyAdmin(error.response?.data?.message || "Lỗi xóa hẳn tài khoản");
+        }
+      },
+    });
   }
 
-  function openEdit(acc) {
-    setEditingId(acc.id);
+  function deleteSelected() {
+    if (selected.size === 0) return;
+    const ids = [...selected];
+    askConfirmation({
+      title: `Xóa ${ids.length} tài khoản đã chọn?`,
+      description: "Không thể hoàn tác. Các tài khoản đã có đơn hàng sẽ không bị xóa.",
+      confirmLabel: `Xóa ${ids.length} mục`,
+      variant: "destructive",
+      action: async () => {
+        let ok = 0;
+        let fail = 0;
+        for (const id of ids) {
+          try {
+            await api.delete(`/accounts/${id}`);
+            ok++;
+          } catch {
+            fail++;
+          }
+        }
+        notifyAdmin(fail > 0 ? `Đã xóa ${ok}/${ids.length}, ${fail} lỗi.` : `Đã xóa ${ok} tài khoản.`);
+        loadData();
+      },
+    });
+  }
+
+  function openEdit(account) {
+    setEditingId(account.id);
     setForm({
-      loai_id: acc.loai_id || "",
-      thong_tin: acc.thong_tin || buildDefaultThongTin(),
-      list_thong_tin: acc.list_thong_tin ?? "0",
-      img: acc.img || "",
-      list_img: acc.list_img ?? "0",
-      login: acc.login || "",
-      gia: acc.gia || "",
-      is_sale: Number(acc.sale_price) > 0,
-      sale_price: acc.sale_price || "",
-      status: acc.status ?? 0,
+      loai_id: account.loai_id || "",
+      thong_tin: account.thong_tin || buildDefaultThongTin(),
+      list_thong_tin: account.list_thong_tin ?? "0",
+      img: account.img || "",
+      list_img: account.list_img ?? "0",
+      login: account.login || "",
+      gia: account.gia || "",
+      is_sale: Number(account.sale_price) > 0,
+      sale_price: account.sale_price || "",
+      status: account.status ?? 0,
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openCreate() {
+    setEditingId(null);
+    setForm(makeEmpty(setting.sdt_admin));
+    setShowForm(true);
   }
 
   function closeForm() {
@@ -266,420 +318,88 @@ export default function AdminAccounts() {
     setShowForm(false);
   }
 
-  const typeName = (id) => types.find((t) => t.id == id)?.name || id;
+  const typeName = (id) => types.find((type) => type.id == id)?.name || id || "Chưa phân loại";
+  const pageCount = accounts.length;
+  const sellingCount = accounts.filter((account) => Number(account.status) === 0).length;
+  const soldCount = accounts.filter((account) => Number(account.status) === 1).length;
+  const hiddenCount = accounts.filter((account) => Number(account.status) === 2).length;
+  const summaryRows = [
+    { id: "selling", label: "Đang bán", value: sellingCount },
+    { id: "sold", label: "Đã bán", value: soldCount },
+    { id: "hidden", label: "Đã ẩn", value: hiddenCount },
+    { id: "total", label: "Tổng kho", value: pagination.total ?? accounts.length },
+  ];
+
+  const columns = [
+    { id: "id", header: "ID", accessor: (account) => account.id, sortable: true, cell: (account) => <span className="ui-table-code">#{account.id}</span> },
+    { id: "image", header: "Ảnh", cell: (account) => <div className="ui-table-media"><SafeImage src={account.img} alt={`Ảnh tài khoản mã số ${account.id}`} width={60} height={44} fallbackLabel="Chưa có ảnh" /></div> },
+    { id: "type", header: "Loại tài khoản", accessor: (account) => typeName(account.loai_id), sortable: true, cell: (account) => <span className="ui-table-primary">{typeName(account.loai_id)}</span> },
+    {
+      id: "price",
+      header: "Giá bán",
+      accessor: (account) => Number(account.sale_price) > 0 && Number(account.sale_price) < Number(account.gia) ? Number(account.sale_price) : Number(account.gia || 0),
+      sortable: true,
+      cell: (account) => Number(account.sale_price) > 0 && Number(account.sale_price) < Number(account.gia) ? <span className="ui-table-price-sale"><del>{Number(account.gia).toLocaleString()}đ</del><strong>{Number(account.sale_price).toLocaleString()}đ</strong></span> : <span className="ui-table-price">{Number(account.gia || 0).toLocaleString()}đ</span>,
+    },
+    { id: "details", header: "Thông tin", accessor: (account) => account.thong_tin || "", cell: (account) => <span className="ui-table-detail">{account.thong_tin || "—"}</span> },
+    { id: "status", header: "Trạng thái", accessor: (account) => STATUS_MAP[account.status]?.label || account.status, sortable: true, cell: (account) => <Badge variant={STATUS_MAP[account.status]?.variant || "outline"}>{STATUS_MAP[account.status]?.label || account.status}</Badge> },
+    {
+      id: "buyer",
+      header: "Người mua",
+      accessor: (account) => account.buyer?.username || account.buyer_id || "",
+      sortable: true,
+      cell: (account) => account.buyer ? <span><strong className="ui-table-primary">{account.buyer.username}</strong><br /><small className="ui-table-secondary">{Number(account.buyer.level) === 99 ? "Admin" : Number(account.buyer.level) === 1 ? "CTV" : "Thành viên"}</small></span> : account.buyer_id ? <span className="ui-table-secondary">User #{account.buyer_id}</span> : <span className="ui-table-secondary">—</span>,
+    },
+    {
+      id: "actions",
+      header: "Thao tác",
+      cell: (account) => <div className="ui-table-actions"><Button size="sm" variant="outline" onClick={() => openEdit(account)} aria-label={`Sửa tài khoản #${account.id}`}><Pencil size={14} aria-hidden="true" /> Sửa</Button><Button size="sm" variant="destructive" onClick={() => deleteAccount(account.id)} aria-label={`Xóa tài khoản #${account.id}`}><Trash2 size={14} aria-hidden="true" /> Xóa</Button>{Number(account.status) !== 1 && <Button size="sm" variant="secondary" onClick={() => hideAccount(account.id)} aria-label={`Ẩn tài khoản #${account.id}`}><EyeOff size={14} aria-hidden="true" /> Ẩn</Button>}</div>,
+    },
+  ];
+  const summaryColumns = [
+    { id: "label", header: "Chỉ số", accessor: (row) => row.label, sortable: true, cell: (row) => <span className="ui-table-primary">{row.label}</span> },
+    { id: "value", header: "Số lượng", accessor: (row) => row.value, sortable: true, cell: (row) => <strong className="ui-table-price">{row.value}</strong> },
+  ];
 
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Quản lý Tài khoản Game</h1>
-        <button
-          className="small-btn"
-          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-          onClick={() => { setShowForm(true); setEditingId(null); setForm(makeEmpty(setting.sdt_admin)); }}
-        >
-          <Plus size={15} /> Thêm account mới
-        </button>
-      </div>
+    <div className="admin-accounts-page">
+      <header className="ui-admin-page-header">
+        <div className="ui-admin-page-header-copy"><p className="ui-admin-page-header-eyebrow">Kho sản phẩm · Admin</p><h1>Quản lý Tài khoản Game</h1><p>Quản lý kho, giá bán, trạng thái và thông tin bàn giao tài khoản trên cùng một workspace.</p></div>
+        <Button size="lg" onClick={openCreate}><Plus size={17} aria-hidden="true" /> Thêm account mới</Button>
+      </header>
 
-      {/* ── Form ── */}
-      {showForm && (
-        <div className="card" style={{ marginBottom: "28px", position: "relative" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h3 style={{ margin: 0 }}>{editingId ? `Sửa account #${editingId}` : "Thêm account mới"}</h3>
-            <button onClick={closeForm} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
-              <X size={20} />
-            </button>
-          </div>
+      {showForm && <Card>
+        <CardHeader><div className="ui-admin-page-header"><div><CardTitle>{editingId ? `Sửa account #${editingId}` : "Thêm account mới"}</CardTitle><CardDescription>{editingId ? "Cập nhật thông tin sản phẩm và trạng thái hiển thị." : "Nhập nhiều dòng đăng nhập để tạo nhiều account cùng lúc."}</CardDescription></div><Button type="button" variant="ghost" size="icon" onClick={closeForm} aria-label="Đóng biểu mẫu tài khoản"><X size={18} aria-hidden="true" /></Button></div></CardHeader>
+        <form onSubmit={saveAccount}>
+          <CardContent><div className="ui-form-grid">
+            <Field id="admin-account-type" label="Loại tài khoản" required><Select id="admin-account-type" value={form.loai_id} onChange={(event) => set("loai_id", event.target.value)} required><option value="">-- Chọn loại --</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></Field>
+            <Field id="admin-account-price" label="Giá bán (đ)" required><CurrencyInput id="admin-account-price" placeholder="Ví dụ: 50.000" value={form.gia} onChange={(event) => set("gia", event.target.value)} required /></Field>
+            <Field id="admin-account-status" label="Trạng thái"><Select id="admin-account-status" value={form.status} onChange={(event) => set("status", Number(event.target.value))}><option value={0}>Đang bán</option><option value={1}>Đã bán</option><option value={2}>Ẩn</option></Select></Field>
+            <div className="ui-field"><Label htmlFor="listing-sale-enabled">Giá sale riêng account</Label><div className="ui-switch-card"><Switch id="listing-sale-enabled" checked={form.is_sale} onChange={(event) => setForm((prev) => ({ ...prev, is_sale: event.target.checked, sale_price: event.target.checked ? prev.sale_price : "" }))} /><span><strong>Bật giá giảm</strong><small>Hiện giá sale trên thẻ và trang chi tiết.</small></span></div></div>
+            {form.is_sale && <Field id="listing-sale-price" label="Giá sale" helper={`Giá gốc hiện tại: ${Number(form.gia || 0).toLocaleString()}đ`}><CurrencyInput id="listing-sale-price" name="sale_price" placeholder="Ví dụ: 100.000" value={form.sale_price} onChange={(event) => set("sale_price", event.target.value)} /></Field>}
+            <div className="ui-field ui-field-full"><Label htmlFor="admin-account-image">Ảnh đại diện</Label><div className="ui-upload-row"><label className="ui-upload-trigger" htmlFor="admin-account-image-upload"><Upload size={15} aria-hidden="true" /> Tải ảnh lên<input ref={imgRef} id="admin-account-image-upload" type="file" accept="image/*" onChange={handleMainImage} /></label>{form.img && <Button type="button" variant="outline" size="sm" onClick={() => { set("img", ""); if (imgRef.current) imgRef.current.value = ""; }}>Xóa ảnh</Button>}</div><Input id="admin-account-image" type="url" inputMode="url" placeholder="Hoặc dán URL ảnh, ví dụ https://example.com/anh.jpg" value={form.img} onChange={(event) => set("img", event.target.value)} />{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</div>
+            <Field id="admin-account-details" className="ui-field-full" label="Thông tin hiển thị (thong_tin)" helper="Mỗi dòng là một tag thông tin. Dùng dấu phẩy hoặc | để phân tách."><Textarea id="admin-account-details" rows={4} value={form.thong_tin} onChange={(event) => set("thong_tin", event.target.value)} /></Field>
+            <Field id="admin-account-login" className="ui-field-full" label="Thông tin đăng nhập (login) — chỉ hiện sau khi mua" helper={!editingId ? "Mỗi dòng tạo một tài khoản riêng — cùng loại, giá và thông tin." : undefined}><Textarea id="admin-account-login" rows={editingId ? 3 : 8} placeholder={editingId ? "username:password hoặc link drive..." : "Mỗi dòng = 1 tài khoản được tạo\n\nVí dụ:\nuser1:pass1\nuser2:pass2"} value={form.login} onChange={(event) => set("login", event.target.value)} /></Field>
+            <Field id="admin-account-list-details" label="list_thong_tin" helper={'Để "0" nếu không dùng.'}><Input id="admin-account-list-details" placeholder="0 hoặc JSON array" value={form.list_thong_tin} onChange={(event) => set("list_thong_tin", event.target.value)} /></Field>
+            <Field id="admin-account-list-images" label="list_img" helper={'Để "0" nếu không dùng.'}><Input id="admin-account-list-images" placeholder="0 hoặc JSON array URL ảnh" value={form.list_img} onChange={(event) => set("list_img", event.target.value)} /></Field>
+          </div></CardContent>
+          <CardFooter className="ui-form-actions">{saveProgress && <span className="ui-save-progress" role="status">{saveProgress}</span>}<Button type="button" variant="outline" onClick={closeForm} disabled={saving}>Hủy</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? "Đang lưu…" : editingId ? "Cập nhật tài khoản" : "Thêm tài khoản"}</Button></CardFooter>
+        </form>
+      </Card>}
 
-          <div className="form-grid">
-            {/* Loại acc */}
-            <div className="form-group-premium">
-              <label>Loại tài khoản *</label>
-              <select value={form.loai_id} onChange={(e) => set("loai_id", e.target.value)}>
-                <option value="">-- Chọn loại --</option>
-                {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
+      {metadataLoading && <Card><CardContent><Skeleton className="ui-skeleton-line" /></CardContent></Card>}
+      {metadataError && <Card><CardContent className="ui-inline-error" role="alert"><span>{metadataError}</span><Button size="sm" variant="outline" onClick={() => setMetadataRetry((count) => count + 1)}><RefreshCw size={14} aria-hidden="true" /> Thử lại</Button></CardContent></Card>}
 
-            {/* Giá */}
-            <div className="form-group-premium">
-              <label>Giá bán (đ) *</label>
-              <CurrencyInput
-                placeholder="VD: 50.000"
-                value={form.gia}
-                onChange={(e) => set("gia", e.target.value)}
-              />
-            </div>
+      <Card className="ui-filter-card"><CardHeader><CardTitle>Bộ lọc kho tài khoản</CardTitle><CardDescription>Lọc theo loại và trạng thái; dữ liệu được tải theo từng trang.</CardDescription></CardHeader><CardContent><div className="ui-filter-grid"><Field id="admin-account-filter-type" label="Loại tài khoản"><Select id="admin-account-filter-type" value={filters.loai_id} onChange={(event) => setFilters({ ...filters, loai_id: event.target.value, page: 1 })}><option value="">Tất cả loại</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></Field><Field id="admin-account-filter-status" label="Trạng thái"><Select id="admin-account-filter-status" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value, page: 1 })}><option value="">Tất cả</option><option value="0">Đang bán</option><option value="1">Đã bán</option><option value="2">Đã ẩn</option></Select></Field><div className="ui-filter-summary"><span>Toàn bộ kho</span><strong>{pagination.total ?? accounts.length} account</strong></div></div></CardContent></Card>
 
-            {/* Trạng thái */}
-            <div className="form-group-premium">
-              <label>Trạng thái</label>
-              <select value={form.status} onChange={(e) => set("status", Number(e.target.value))}>
-                <option value={0}>Đang bán</option>
-                <option value={1}>Đã bán</option>
-                <option value={2}>Ẩn</option>
-              </select>
-            </div>
+      <Card><CardHeader><CardTitle>Thống kê kho</CardTitle><CardDescription>Trang hiện tại có {pageCount} bản ghi đang hiển thị.</CardDescription></CardHeader><CardContent><DataTable data={summaryRows} columns={summaryColumns} caption="Bảng thống kê kho tài khoản" /></CardContent></Card>
 
-            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-              <label htmlFor="listing-sale-enabled">Sale giá cho riêng account này</label>
-              <label className="admin-listing-sale-toggle" htmlFor="listing-sale-enabled">
-                <input
-                  id="listing-sale-enabled"
-                  type="checkbox"
-                  checked={form.is_sale}
-                  onChange={(e) => setForm((prev) => ({ ...prev, is_sale: e.target.checked, sale_price: e.target.checked ? prev.sale_price : "" }))}
-                />
-                <span>Hiện giá giảm trực tiếp trên thẻ acc và trang chi tiết</span>
-              </label>
-              {form.is_sale && (
-                <>
-                  <CurrencyInput
-                    id="listing-sale-price"
-                    name="sale_price"
-                    placeholder="Ví dụ: 100.000"
-                    value={form.sale_price}
-                    onChange={(e) => set("sale_price", e.target.value)}
-                    aria-describedby="listing-sale-price-help"
-                  />
-                  <small id="listing-sale-price-help" className="form-hint">
-                    Giá gốc {Number(form.gia || 0).toLocaleString()}đ · Nhập giá sale thấp hơn giá gốc.
-                  </small>
-                </>
-              )}
-            </div>
+      {selected.size > 0 && <div className="ui-selection-bar" role="region" aria-label="Thao tác tài khoản đã chọn"><span><ShoppingBag size={16} aria-hidden="true" /> Đã chọn {selected.size} tài khoản</span><div className="ui-selection-bar-actions"><Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Bỏ chọn</Button><Button size="sm" variant="destructive" onClick={deleteSelected}><Trash2 size={14} aria-hidden="true" /> Xóa đã chọn</Button></div></div>}
+      {loadError && <Card><CardContent className="ui-inline-error" role="alert"><span>{loadError}</span><Button size="sm" variant="outline" onClick={loadData}><RefreshCw size={14} aria-hidden="true" /> Thử lại</Button></CardContent></Card>}
 
-            {/* Ảnh đại diện */}
-            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-              <label>Ảnh đại diện</label>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-                <label style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  padding: "10px 18px",
-                  background: "var(--bg-tertiary)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: "8px",
-                  color: "var(--text-primary)",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  transition: "var(--transition-smooth)"
-                }}>
-                  <Upload size={15} /> Tải ảnh lên
-                  <input ref={imgRef} type="file" accept="image/*" onChange={handleMainImage} style={{ display: "none" }} />
-                </label>
-                {form.img && (
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    style={{ padding: "8px 16px", fontSize: "0.85rem" }}
-                    onClick={() => {
-                      set("img", "");
-                      if (imgRef.current) imgRef.current.value = "";
-                    }}
-                  >
-                    Xóa ảnh
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                inputMode="url"
-                aria-label="URL ảnh đại diện"
-                placeholder="Hoặc dán URL ảnh, ví dụ https://example.com/anh.jpg"
-                value={form.img}
-                onChange={(e) => set("img", e.target.value)}
-                style={{ marginTop: "12px" }}
-              />
-              {form.img && (
-                <div style={{ marginTop: "12px" }}>
-                  <SafeImage
-                    src={form.img}
-                    alt="Xem trước ảnh tài khoản"
-                    width={214}
-                    height={120}
-                    fallbackLabel="Ảnh không tải được"
-                    style={{
-                      maxHeight: "120px",
-                      borderRadius: "8px",
-                      border: "1px solid var(--border-color)",
-                      objectFit: "cover"
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+      <Card className="ui-data-table-card"><CardHeader><div className="ui-data-table-toolbar-title"><span>Inventory table</span><strong>Danh sách tài khoản</strong></div><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `Hiển thị ${accounts.length} bản ghi trên trang ${filters.page}.`}</CardDescription></CardHeader><CardContent><DataTable selectable selectedIds={selected} onSelectionChange={setSelected} data={accounts} loading={loading} columns={columns} caption="Bảng kho tài khoản game" empty={<Empty><EmptyMedia><ShoppingBag size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Không có tài khoản nào</EmptyTitle><EmptyDescription>Thử đổi bộ lọc hoặc thêm account mới vào kho.</EmptyDescription></EmptyHeader><Button size="sm" onClick={openCreate}><Plus size={14} aria-hidden="true" /> Thêm account</Button></Empty>} /><DataTablePagination page={filters.page} totalPages={pagination.totalPage} total={pagination.total ?? accounts.length} pageSize={20} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} /></CardContent></Card>
 
-            {/* Thông tin hiển thị */}
-            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-              <label>Thông tin hiển thị (thong_tin)</label>
-              <textarea
-                rows={4}
-                style={{ resize: "vertical" }}
-                value={form.thong_tin}
-                onChange={(e) => set("thong_tin", e.target.value)}
-              />
-              <small style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: "4px", display: "block" }}>
-                Mỗi dòng = 1 tag thông tin. Dùng dấu phẩy hoặc | để phân tách.
-              </small>
-            </div>
-
-            {/* Thông tin đăng nhập */}
-            <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>Thông tin đăng nhập (login) — chỉ hiện sau khi mua</span>
-                {!editingId && (
-                  <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--accent-color)", background: "rgba(239,68,68,0.1)", padding: "2px 8px", borderRadius: "20px" }}>
-                    💡 Nhiều dòng = nhiều tài khoản
-                  </span>
-                )}
-              </label>
-              <textarea
-                rows={editingId ? 3 : 8}
-                placeholder={editingId
-                  ? "username:password hoặc link drive..."
-                  : "Mỗi dòng = 1 tài khoản được tạo\n\nVí dụ:\nuser1:pass1\nuser2:pass2\nuser3:pass3\n\nHoặc để mặc định: liên hệ zalo để hỗ trợ"}
-                style={{ resize: "vertical", fontFamily: "monospace", fontSize: "0.88rem" }}
-                value={form.login}
-                onChange={(e) => set("login", e.target.value)}
-              />
-              {!editingId && (
-                <small style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: "4px", display: "block" }}>
-                  Nhập nhiều dòng để tạo nhiều acc cùng lúc — cùng loại, cùng giá, cùng thông tin. Mỗi dòng sẽ là 1 tài khoản riêng.
-                </small>
-              )}
-            </div>
-
-            {/* list_thong_tin & list_img */}
-            <div className="form-group-premium">
-              <label>list_thong_tin</label>
-              <input
-                placeholder="0 hoặc JSON array"
-                value={form.list_thong_tin}
-                onChange={(e) => set("list_thong_tin", e.target.value)}
-              />
-              <small style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: "4px", display: "block" }}>Để "0" nếu không dùng</small>
-            </div>
-
-            <div className="form-group-premium">
-              <label>list_img</label>
-              <input
-                placeholder="0 hoặc JSON array URL ảnh"
-                value={form.list_img}
-                onChange={(e) => set("list_img", e.target.value)}
-              />
-              <small style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: "4px", display: "block" }}>Để "0" nếu không dùng</small>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-            <button className="small-btn" onClick={saveAccount} disabled={saving} aria-busy={saving}>
-              {saving ? saveProgress : editingId ? "Cập nhật" : "Thêm mới"}
-            </button>
-            <button className="btn-outline" onClick={closeForm} disabled={saving} style={{ padding: "8px 16px" }}>Hủy</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Filters ── */}
-      {metadataLoading && <div role="status" aria-label="Đang tải loại tài khoản và cài đặt" className="workspace-inline-skeleton"><SkeletonBlock className="is-line is-45" /></div>}
-      {metadataError && <div className="table-load-error" role="alert">{metadataError} <button type="button" className="btn-outline" onClick={() => setMetadataRetry((count) => count + 1)}>Thử lại</button></div>}
-      <div className="card" style={{ marginBottom: "20px", padding: "16px 20px" }}>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div className="form-group-premium" style={{ margin: 0, minWidth: "180px" }}>
-            <label style={{ marginBottom: "4px", display: "block", fontSize: "0.8rem" }}>Lọc loại acc</label>
-            <select value={filters.loai_id} onChange={(e) => setFilters({ ...filters, loai_id: e.target.value, page: 1 })}>
-              <option value="">Tất cả loại</option>
-              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group-premium" style={{ margin: 0, minWidth: "140px" }}>
-            <label style={{ marginBottom: "4px", display: "block", fontSize: "0.8rem" }}>Trạng thái</label>
-            <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}>
-              <option value="">Tất cả</option>
-              <option value="0">Đang bán</option>
-              <option value="1">Đã bán</option>
-              <option value="2">Đã ẩn</option>
-            </select>
-          </div>
-          <span style={{ color: "var(--text-secondary)", fontSize: "0.88rem", paddingBottom: "2px" }}>
-            Tổng: <strong style={{ color: "var(--text-primary)" }}>{pagination.total ?? accounts.length}</strong> acc
-          </span>
-        </div>
-      </div>
-
-      {/* ── Bulk action bar ── */}
-      {selected.size > 0 && (
-        <div style={{
-          position: "sticky", top: "70px", zIndex: 40,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: "12px", padding: "12px 20px",
-          background: "rgba(239, 68, 68, 0.15)",
-          border: "1px solid rgba(239, 68, 68, 0.3)",
-          borderRadius: "12px", marginBottom: "16px",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
-        }}>
-          <span style={{ fontWeight: 700, color: "var(--accent-color)", fontSize: "0.9rem" }}>
-            ✓ Đã chọn {selected.size} tài khoản
-          </span>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              className="btn-outline"
-              style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-              onClick={() => setSelected(new Set())}
-            >
-              Bỏ chọn
-            </button>
-            <button
-              className="danger-btn"
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 16px", fontSize: "0.85rem" }}
-              onClick={deleteSelected}
-            >
-              <Trash2 size={14} /> Xóa hẳn {selected.size} mục
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Table ── */}
-      {loadError && <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={loadData}>Thử lại</button></div>}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table className="table-premium" aria-busy={loading} style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ width: "40px", textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={accounts.length > 0 && selected.size === accounts.length}
-                    ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < accounts.length; }}
-                    onChange={toggleAll}
-                    style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "var(--accent-color)" }}
-                  />
-                </th>
-                <th>ID</th>
-                <th>Ảnh</th>
-                <th>Loại</th>
-                <th>Giá</th>
-                <th>Thông tin</th>
-                <th>Trạng thái</th>
-                <th>Người mua</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && accounts.length === 0 ? <TableLoadingRows columns={9} /> : !loadError && accounts.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>
-                    <ShoppingBag size={32} style={{ opacity: 0.3, marginBottom: "8px", display: "block", margin: "0 auto 8px" }} />
-                    Không có tài khoản nào
-                  </td>
-                </tr>
-              ) : accounts.map((acc) => (
-                <tr
-                  key={acc.id}
-                  style={{
-                    background: selected.has(acc.id) ? "rgba(239,68,68,0.06)" : undefined,
-                    transition: "background 0.15s",
-                  }}
-                >
-                  <td style={{ textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(acc.id)}
-                      onChange={() => toggleSelect(acc.id)}
-                      style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "var(--accent-color)" }}
-                    />
-                  </td>
-                  <td style={{ fontWeight: 700, color: "var(--text-secondary)", fontSize: "0.85rem" }}>#{acc.id}</td>
-
-                  <td>
-                    <SafeImage
-                      src={acc.img}
-                      alt={`Ảnh tài khoản mã số ${acc.id}`}
-                      width={60}
-                      height={44}
-                      fallbackClassName="table-image-fallback"
-                      style={{ width: "60px", height: "44px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }}
-                      fallbackLabel="Chưa có ảnh"
-                    />
-                  </td>
-
-                  <td>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>{typeName(acc.loai_id)}</span>
-                  </td>
-
-                  <td>
-                    {Number(acc.sale_price) > 0 && Number(acc.sale_price) < Number(acc.gia) ? (
-                      <div>
-                        <del style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>{Number(acc.gia).toLocaleString()}đ</del>
-                        <div style={{ color: "var(--accent-color)", fontWeight: 700, fontSize: "0.95rem" }}>{Number(acc.sale_price).toLocaleString()}đ</div>
-                      </div>
-                    ) : <strong style={{ color: "var(--gold-color)" }}>{Number(acc.gia || 0).toLocaleString()}đ</strong>}
-                  </td>
-
-                  <td style={{ maxWidth: "220px" }}>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.5, whiteSpace: "pre-wrap", maxHeight: "60px", overflow: "hidden" }}>
-                      {acc.thong_tin || <span style={{ opacity: 0.4 }}>—</span>}
-                    </div>
-                  </td>
-
-                  <td>
-                    <span style={{ color: STATUS_MAP[acc.status]?.color, fontWeight: 700, fontSize: "0.85rem" }}>
-                      {STATUS_MAP[acc.status]?.label || acc.status}
-                    </span>
-                  </td>
-
-                  <td style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
-                    {acc.buyer ? (
-                      <div>
-                        <div style={{ color: "var(--cyan-color)", fontWeight: 600 }}>{acc.buyer.username}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                          {Number(acc.buyer.level) === 99 ? "Admin" : Number(acc.buyer.level) === 1 ? "CTV" : "Thành viên"}
-                        </div>
-                      </div>
-                    ) : acc.buyer_id ? (
-                      <span style={{ color: "var(--text-muted)" }}>User #{acc.buyer_id}</span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button className="small-btn" onClick={() => openEdit(acc)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px" }}>
-                        <Pencil size={12} /> Sửa
-                      </button>
-                      <button className="danger-btn" onClick={() => deleteAccount(acc.id)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px" }}>
-                        <Trash2 size={12} /> Xóa
-                      </button>
-                      {Number(acc.status) !== 1 && (
-                        <button className="small-btn" onClick={() => hideAccount(acc.id)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 10px" }}>
-                          <EyeOff size={12} /> Ẩn
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pagination.totalPage > 1 && (
-          <div style={{ display: "flex", justifyContent: "center", gap: "8px", padding: "16px", borderTop: "1px solid var(--border-color)" }}>
-            <button className="btn-outline" style={{ padding: "6px 14px" }} disabled={filters.page <= 1} onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}>← Trước</button>
-            <span style={{ padding: "6px 12px", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-              {filters.page} / {pagination.totalPage}
-            </span>
-            <button className="btn-outline" style={{ padding: "6px 14px" }} disabled={filters.page >= pagination.totalPage} onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}>Sau →</button>
-          </div>
-        )}
-      </div>
-    </>
+      <Modal isOpen={Boolean(confirmation)} onClose={() => !confirming && setConfirmation(null)} title={confirmation?.title || "Xác nhận thao tác"} className="admin-confirm-modal" footer={<><Button variant="outline" onClick={() => setConfirmation(null)} disabled={confirming}>Hủy</Button><Button variant={confirmation?.variant === "destructive" ? "destructive" : "default"} onClick={confirmAction} disabled={confirming} aria-busy={confirming}>{confirming ? "Đang xử lý…" : confirmation?.confirmLabel || "Xác nhận"}</Button></>}><p className="modal-description">{confirmation?.description}</p></Modal>
+    </div>
   );
 }

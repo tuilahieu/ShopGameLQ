@@ -1,13 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ClipboardList, RefreshCw } from "lucide-react";
 import api from "../../api/api";
-import TableLoadingRows from "../../components/TableLoadingRows";
+import { AdminError, AdminPageHeader } from "../../components/admin/AdminUi";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { DataTable } from "../../components/ui/data-table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../components/ui/empty";
+import { Button } from "../../components/ui/button";
+
+const statusVariant = (status) => {
+  const value = String(status || "").toLowerCase();
+  if (["completed", "success", "đã giao", "hoàn thành"].some((item) => value.includes(item))) return "success";
+  if (["cancel", "failed", "hủy", "thất bại"].some((item) => value.includes(item))) return "destructive";
+  return "warning";
+};
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -18,54 +31,26 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    load();
   }, []);
 
+  useEffect(() => { load(); }, [load]);
+
+  const columns = [
+    { id: "id", header: "ID", accessor: (order) => order.id, sortable: true, cell: (order) => <span className="ui-table-code">#{order.id}</span> },
+    { id: "user", header: "Thành viên", accessor: (order) => order.user?.username || order.user_id, sortable: true, cell: (order) => <span className="ui-table-primary">{order.user?.username || `User #${order.user_id}`}</span> },
+    { id: "account", header: "Tài khoản", accessor: (order) => order.acc_id, sortable: true, cell: (order) => <span className="ui-table-code">#{order.acc_id}</span> },
+    { id: "original", header: "Giá gốc", accessor: (order) => Number(order.original_price || 0), sortable: true, cell: (order) => `${Number(order.original_price || 0).toLocaleString()}đ` },
+    { id: "sale", header: "Giá sale", accessor: (order) => Number(order.sale_price || 0), sortable: true, cell: (order) => order.sale_price ? `${Number(order.sale_price).toLocaleString()}đ` : "—" },
+    { id: "discount", header: "Giảm giá", accessor: (order) => Number(order.discount_amount || 0), sortable: true, cell: (order) => `${Number(order.discount_amount || 0).toLocaleString()}đ` },
+    { id: "total", header: "Thành tiền", accessor: (order) => Number(order.final_price || 0), sortable: true, cell: (order) => <strong className="ui-table-price">{Number(order.final_price || 0).toLocaleString()}đ</strong> },
+    { id: "status", header: "Trạng thái", accessor: (order) => order.status || "—", sortable: true, cell: (order) => <Badge variant={statusVariant(order.status)}>{order.status || "Chưa cập nhật"}</Badge> },
+  ];
+
   return (
-    <div>
-      <h1 className="page-title">Đơn hàng</h1>
-
-      {error && <div className="table-load-error" role="alert">{error} <button type="button" className="btn-outline" onClick={load}>Thử lại</button></div>}
-      <div className="table-box" aria-busy={loading}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Thành viên</th>
-              <th>Tài khoản</th>
-              <th>Giá gốc</th>
-              <th>Giá sale</th>
-              <th>Giảm giá</th>
-              <th>Thành tiền</th>
-              <th>Trạng thái</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading && orders.length === 0 && <TableLoadingRows columns={8} />}
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td>{o.id}</td>
-                <td>{o.user?.username || o.user_id}</td>
-                <td>{o.acc_id}</td>
-                <td>{Number(o.original_price).toLocaleString()}đ</td>
-                <td>
-                  {o.sale_price
-                    ? Number(o.sale_price).toLocaleString() + "đ"
-                    : "-"}
-                </td>
-                <td>{Number(o.discount_amount).toLocaleString()}đ</td>
-                <td>{Number(o.final_price).toLocaleString()}đ</td>
-                <td>{o.status}</td>
-              </tr>
-            ))}
-            {!loading && !error && orders.length === 0 && <tr><td colSpan="8" className="table-empty-cell">Chưa có đơn hàng nào.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+    <div className="admin-orders-page admin-accounts-page">
+      <AdminPageHeader eyebrow="Kinh doanh · Admin" title="Đơn hàng" description="Theo dõi toàn bộ đơn hàng và giá trị thanh toán trong một bảng dữ liệu có thể sắp xếp." actions={<Button variant="outline" onClick={load} disabled={loading}><RefreshCw size={15} aria-hidden="true" /> Làm mới</Button>} />
+      <AdminError message={error} onRetry={load} />
+      <Card className="ui-data-table-card"><CardHeader><CardTitle>Danh sách đơn hàng</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `${orders.length} đơn hàng được tải.`}</CardDescription></CardHeader><CardContent><DataTable data={orders} loading={loading} columns={columns} caption="Bảng đơn hàng" empty={<Empty><EmptyMedia><ClipboardList size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Chưa có đơn hàng</EmptyTitle><EmptyDescription>Đơn hàng mới sẽ xuất hiện ở đây sau khi khách hoàn tất mua.</EmptyDescription></EmptyHeader></Empty>} /></CardContent></Card>
     </div>
   );
 }

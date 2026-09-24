@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, RefreshCw, AlertTriangle, FileText, Phone } from "lucide-react";
+import { Link } from "react-router-dom";
 import api from "../../api/api";
 import { updateSEO } from "../../utils/seo";
+import { getSupportContacts } from "../../utils/supportContacts";
 
 export default function Terms() {
   const [setting, setSetting] = useState(() => {
@@ -29,7 +31,7 @@ export default function Terms() {
     });
   }, []);
 
-  const phoneDisplay = setting.sdt_admin || "099.999.9999";
+  const { phoneDisplay, hasAnyContact } = getSupportContacts(setting);
 
   return (
     <div className="page-container terms-page">
@@ -88,7 +90,13 @@ export default function Terms() {
             <ul>
               <li>Mọi tranh chấp phát sinh liên quan đến giao dịch mua tài khoản phải được báo cáo cho ban quản trị trong vòng 24 giờ kể từ thời điểm mua hàng.</li>
               <li>Sau 24 giờ nếu khách hàng không phản hồi, giao dịch được coi là thành công tốt đẹp và shop sẽ từ chối giải quyết các khiếu nại phát sinh sau đó.</li>
-              <li>Liên hệ hỗ trợ nhanh qua Zalo CSKH: <strong>{phoneDisplay}</strong> hoặc các kênh mạng xã hội đính kèm ở góc màn hình.</li>
+              <li>
+                {phoneDisplay
+                  ? <>Liên hệ hỗ trợ nhanh qua Zalo CSKH: <strong>{phoneDisplay}</strong> hoặc các kênh đang hiển thị trên trang <Link to="/contact">Liên hệ</Link>.</>
+                  : hasAnyContact
+                    ? <>Liên hệ hỗ trợ qua các kênh đang hiển thị tại trang <Link to="/contact">Liên hệ</Link>.</>
+                    : <>Thông tin liên hệ đang được cập nhật. Vui lòng kiểm tra lại trang <Link to="/contact">Liên hệ</Link> sau.</>}
+              </li>
             </ul>
           </section>
 
