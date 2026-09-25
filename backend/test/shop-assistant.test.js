@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { compactAssistantHistory, runShopAssistant } from "../src/assistant/harness.js";
-import { buildShopAssistantInstructions } from "../src/assistant/instructions.js";
-import { normalizeAssistantAvatar, normalizeAssistantName, publicAssistantProfile } from "../src/assistant/profile.js";
-import { getAssistantSkillResponse, matchAssistantSkill } from "../src/assistant/skills.js";
-import { parseAgentQuery } from "../src/assistant/tools.js";
-import { getAssistantRuntimeStatus, observeAssistantProvider } from "../src/assistant/runtime-status.js";
-import { validateAssistantAnswer } from "../src/assistant/output-validator.js";
-import { GameAccount, Sale } from "../src/models/index.js";
-import { answerShoppingRequest, parseShoppingRequest, recommendAccounts } from "../src/services/shop-assistant.service.js";
+import { compactAssistantHistory, runShopAssistant } from "../src/modules/assistant/core/harness.js";
+import { buildShopAssistantInstructions } from "../src/modules/assistant/core/instructions.js";
+import { normalizeAssistantAvatar, normalizeAssistantName, publicAssistantProfile } from "../src/modules/assistant/core/profile.js";
+import { getAssistantSkillResponse, matchAssistantSkill } from "../src/modules/assistant/core/skills.js";
+import { parseAgentQuery } from "../src/modules/assistant/core/tools.js";
+import { getAssistantRuntimeStatus, observeAssistantProvider } from "../src/modules/assistant/core/runtime-status.js";
+import { validateAssistantAnswer } from "../src/modules/assistant/core/output-validator.js";
+import { GameAccount, Sale } from "../src/database/models.js";
+import { answerShoppingRequest, parseShoppingRequest, recommendAccounts } from "../src/modules/assistant/shop-assistant.service.js";
 
 test("reads common Vietnamese price requests without inventing a product", () => {
   assert.equal(parseShoppingRequest("Tôi muốn tìm acc 200k").budget, 200_000);

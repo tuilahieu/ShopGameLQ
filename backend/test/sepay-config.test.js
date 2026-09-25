@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { serializeAdminSetting } from "../src/controllers/admin.controller.js";
-import { Setting } from "../src/models/setting.model.js";
-import { getSePayConfig, resolveSePayConfig } from "../src/services/sepay-config.service.js";
-import { encryptCredential } from "../src/utils/credential.util.js";
+import { serializeAdminSetting } from "../src/modules/admin/admin.controller.js";
+import { Setting } from "../src/modules/settings/setting.model.js";
+import { getSePayConfig, resolveSePayConfig } from "../src/modules/payments/sepay-config.service.js";
+import { encryptCredential } from "../src/shared/utils/credential.util.js";
 
 test("admin SePay secret overrides the legacy environment secret and is encrypted for storage", () => {
   const encrypted = encryptCredential("admin-hmac-secret-1234567890");

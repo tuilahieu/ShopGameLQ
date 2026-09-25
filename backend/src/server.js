@@ -2,7 +2,7 @@ import { createApp } from "./app.js";
 import { sequelize } from "./config/database.js";
 import { env } from "./config/env.js";
 import { runMigrations } from "./database/run-migrations.js";
-import "./models/index.js";
+import "./database/models.js";
 
 const app = createApp();
 let server;

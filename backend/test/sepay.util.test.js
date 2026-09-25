@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 
-import { verifySePaySignature } from "../src/utils/sepay.util.js";
+import { verifySePaySignature } from "../src/shared/utils/sepay.util.js";
 
 function signature(secret, timestamp, body) {
   return `sha256=${crypto.createHmac("sha256", secret).update(`${timestamp}.`).update(body).digest("hex")}`;

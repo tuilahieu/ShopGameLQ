@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePagination } from "../src/utils/pagination.util.js";
-import { parseMoney, requirePositiveMoney } from "../src/utils/money.util.js";
+import { parsePagination } from "../src/shared/utils/pagination.util.js";
+import { parseMoney, requirePositiveMoney } from "../src/shared/utils/money.util.js";
 
 test("parsePagination clamps untrusted values", () => {
   assert.deepEqual(parsePagination({ page: "-2", limit: "100000" }), { page: 1, limit: 100, offset: 0 });

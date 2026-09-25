@@ -9,24 +9,24 @@ import { env } from "./config/env.js";
 import { requestContext, securityHeaders, notFoundHandler, errorHandler } from "./config/http.js";
 import { sequelize } from "./config/database.js";
 
-import authRoute from "./routes/auth.route.js";
-import adminSecurityRoute from "./routes/adminSecurity.route.js";
-import categoryRoute from "./routes/category.route.js";
-import accountTypeRoute from "./routes/accountType.route.js";
-import accountRoute from "./routes/account.route.js";
-import orderRoute from "./routes/order.route.js";
-import transactionRoute from "./routes/transaction.route.js";
-import discountRoute from "./routes/discount.route.js";
-import homeRoute from "./routes/home.route.js";
-import profileRoute from "./routes/profile.route.js";
-import bankRoute from "./routes/bank.route.js";
-import paymentRoute from "./routes/payment.route.js";
-import assistantRoute from "./routes/assistant.route.js";
-import { sepayWebhook } from "./controllers/payment.controller.js";
+import authRoute from "./modules/auth/auth.route.js";
+import adminSecurityRoute from "./modules/auth/adminSecurity.route.js";
+import categoryRoute from "./modules/catalog/category.route.js";
+import accountTypeRoute from "./modules/catalog/accountType.route.js";
+import accountRoute from "./modules/catalog/account.route.js";
+import orderRoute from "./modules/orders/order.route.js";
+import transactionRoute from "./modules/wallet/transaction.route.js";
+import discountRoute from "./modules/promotions/discount.route.js";
+import homeRoute from "./modules/storefront/home.route.js";
+import profileRoute from "./modules/users/profile.route.js";
+import bankRoute from "./modules/payments/bank.route.js";
+import paymentRoute from "./modules/payments/payment.route.js";
+import assistantRoute from "./modules/assistant/assistant.route.js";
+import { sepayWebhook } from "./modules/payments/payment.controller.js";
 
-import ctvRoute from "./routes/ctv.route.js";
-import adminRoute from "./routes/admin.route.js";
-import uploadRoute from "./routes/upload.route.js";
+import ctvRoute from "./modules/users/ctv.route.js";
+import adminRoute from "./modules/admin/admin.route.js";
+import uploadRoute from "./modules/uploads/upload.route.js";
 
 export function createApp() {
   const app = express();

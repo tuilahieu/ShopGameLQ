@@ -7,7 +7,7 @@ import {
   resolveAccountPricing,
   validateListingSalePrice,
   validateSalePrice,
-} from "../src/services/pricing.service.js";
+} from "../src/modules/commerce/pricing.service.js";
 
 test("checkout prices must stay positive safe integers", () => {
   assert.equal(validateSalePrice(100_000, 80_000), 80_000);

@@ -1,5 +1,5 @@
 import { sequelize } from "./src/config/database.js";
-import { GameAccount, User } from "./src/models/index.js";
+import { GameAccount, User } from "./src/database/models.js";
 
 async function test() {
   try {

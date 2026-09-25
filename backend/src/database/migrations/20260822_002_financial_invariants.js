@@ -1,4 +1,4 @@
-import { encryptCredential } from "../../utils/credential.util.js";
+import { encryptCredential } from "../../shared/utils/credential.util.js";
 
 export const transactional = false;
 

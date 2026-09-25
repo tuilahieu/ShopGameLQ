@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import { sequelize } from "../src/config/database.js";
-import { User } from "../src/models/user.model.js";
-import { HistoryLog } from "../src/models/historyLog.model.js";
-import { adminMiddleware, adminSessionIfAdmin } from "../src/middlewares/admin.middleware.js";
-import { ctvMiddleware } from "../src/middlewares/ctv.middleware.js";
-import { logout } from "../src/controllers/auth.controller.js";
-import { adminSecurityStatus, changeAdminSecondPassword, setupAdminSecondPassword, verifyAdminSecondPassword } from "../src/controllers/adminSecurity.controller.js";
-import { createAdminSession, validAdminSession, validSecondPassword } from "../src/services/admin-security.service.js";
+import { User } from "../src/modules/users/user.model.js";
+import { HistoryLog } from "../src/modules/users/historyLog.model.js";
+import { adminMiddleware, adminSessionIfAdmin } from "../src/shared/middlewares/admin.middleware.js";
+import { ctvMiddleware } from "../src/shared/middlewares/ctv.middleware.js";
+import { logout } from "../src/modules/auth/auth.controller.js";
+import { adminSecurityStatus, changeAdminSecondPassword, setupAdminSecondPassword, verifyAdminSecondPassword } from "../src/modules/auth/adminSecurity.controller.js";
+import { createAdminSession, validAdminSession, validSecondPassword } from "../src/modules/auth/admin-security.service.js";
 import { up as addAdminSecurityColumns } from "../src/database/migrations/20260922_005_admin_second_password.js";
 
 test("second password policy and admin-session verifier", () => {

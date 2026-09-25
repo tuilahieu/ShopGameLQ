@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Op } from "sequelize";
 
-import { buildActiveSaleWhere } from "../src/services/sale.service.js";
+import { buildActiveSaleWhere } from "../src/modules/promotions/sale.service.js";
 
 test("active sale predicate scopes account and effective time consistently", () => {
   const now = new Date("2026-08-24T12:00:00.000Z");

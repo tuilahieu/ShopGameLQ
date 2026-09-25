@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { AssistantMessage, AssistantThread } from "../src/models/index.js";
+import { AssistantMessage, AssistantThread } from "../src/database/models.js";
 import { sequelize } from "../src/config/database.js";
-import { findOwnedThread, getThreadMessages, saveExchange } from "../src/services/assistant-thread.service.js";
+import { findOwnedThread, getThreadMessages, saveExchange } from "../src/modules/assistant/assistant-thread.service.js";
 import { up as createAssistantTables } from "../src/database/migrations/20260923_006_assistant_threads.js";
 
 test("thread tables keep messages separate and cascade on deletion", async () => {

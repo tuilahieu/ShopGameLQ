@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getClientIp, normalizeIp } from "../src/utils/ip.util.js";
+import { getClientIp, normalizeIp } from "../src/shared/utils/ip.util.js";
 
 test("normalizes IPv4-mapped IPv6 addresses", () => {
   assert.equal(normalizeIp("::ffff:203.0.113.40"), "203.0.113.40");

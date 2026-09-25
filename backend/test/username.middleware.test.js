@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { blockAdminUsername } from "../src/middlewares/username.middleware.js";
+import { blockAdminUsername } from "../src/shared/middlewares/username.middleware.js";
 
 function mockResponse() {
   return {

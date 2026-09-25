@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { updateAdminSetting } from "../src/controllers/admin.controller.js";
-import { getPublicSetting } from "../src/controllers/setting.controller.js";
+import { updateAdminSetting } from "../src/modules/admin/admin.controller.js";
+import { getPublicSetting } from "../src/modules/settings/setting.controller.js";
 import { up as addAssistantLlmColumns } from "../src/database/migrations/20260923_008_assistant_llm_config.js";
 import { up as addAssistantConnectionColumns } from "../src/database/migrations/20260923_009_assistant_llm_connection.js";
-import { HistoryLog, Setting } from "../src/models/index.js";
-import { DEFAULT_VILAO_ENDPOINT, getAssistantLlmConfig, normalizeAssistantLlmProvider, normalizeVilaoEndpoint } from "../src/services/assistant-llm-config.service.js";
-import { AssistantLlmProbeError, probeAssistantLlm, resolveAssistantLlmProbeConfig } from "../src/services/assistant-llm-probe.service.js";
-import { createAssistantLlmProvider } from "../src/services/assistant-llm-provider.service.js";
+import { HistoryLog, Setting } from "../src/database/models.js";
+import { DEFAULT_VILAO_ENDPOINT, getAssistantLlmConfig, normalizeAssistantLlmProvider, normalizeVilaoEndpoint } from "../src/modules/assistant/assistant-llm-config.service.js";
+import { AssistantLlmProbeError, probeAssistantLlm, resolveAssistantLlmProbeConfig } from "../src/modules/assistant/assistant-llm-probe.service.js";
+import { createAssistantLlmProvider } from "../src/modules/assistant/assistant-llm-provider.service.js";
 
 test("LLM config migration adds both columns once", async () => {
   const added = [];
