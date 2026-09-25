@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Clock3, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { AdminField } from "../../components/admin/AdminUi";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -19,12 +19,12 @@ function AdminGateFrame({ children }) {
           </div>
           <div className="admin-gate-intro-copy">
             <span className="admin-gate-eyebrow"><ShieldCheck size={15} aria-hidden="true" /> Khu vực bảo mật</span>
-            <h1>Vận hành cửa hàng<br />tập trung và an toàn.</h1>
-            <p>Lớp xác minh thứ hai giúp bảo vệ kho tài khoản, giao dịch và cấu hình vận hành của shop.</p>
+            <h1>Xác minh trước khi vào khu quản trị</h1>
+            <p>Một bước kiểm tra ngắn giúp bảo vệ kho tài khoản, giao dịch và cấu hình quan trọng của shop.</p>
           </div>
           <div className="admin-gate-trust-list">
-            <div><span className="admin-gate-trust-dot" aria-hidden="true" /><span><strong>Phiên quản trị riêng</strong><small>Tự hết hạn sau 30 phút</small></span></div>
-            <div><span className="admin-gate-trust-dot" aria-hidden="true" /><span><strong>Bảo vệ thao tác nhạy cảm</strong><small>Kiểm tra lại trước khi truy cập</small></span></div>
+            <div><span className="admin-gate-trust-icon"><Clock3 size={17} aria-hidden="true" /></span><span><strong>Phiên riêng trong 30 phút</strong><small>Hết hạn tự động khi không còn sử dụng</small></span></div>
+            <div><span className="admin-gate-trust-icon"><KeyRound size={17} aria-hidden="true" /></span><span><strong>Tách biệt mật khẩu đăng nhập</strong><small>Giảm rủi ro với các thao tác nhạy cảm</small></span></div>
           </div>
         </section>
         <section className="admin-gate-card-area">{children}</section>
@@ -38,6 +38,7 @@ export default function AdminGate({ children }) {
   const [expiresAt, setExpiresAt] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showSecondPassword, setShowSecondPassword] = useState(false);
   const [form, setForm] = useState({ currentPassword: "", secondPassword: "", confirmPassword: "" });
 
   useEffect(() => {
@@ -145,10 +146,15 @@ export default function AdminGate({ children }) {
             <Input id="admin-current-password" type="password" autoComplete="current-password" required
               value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} />
           </AdminField>}
-          <AdminField id="admin-second-password" label="Mật khẩu cấp 2" required>
-            <Input id="admin-second-password" type="password" autoComplete={mode === "setup" ? "new-password" : "off"}
-              required minLength={mode === "setup" ? 12 : undefined} maxLength={72}
-              value={form.secondPassword} onChange={(e) => setForm({ ...form, secondPassword: e.target.value })} />
+          <AdminField id="admin-second-password" label="Mật khẩu cấp 2" required helper={mode === "setup" ? "Tối thiểu 12 ký tự, tối đa 72 byte." : "Phiên quản trị sẽ tự hết hạn sau 30 phút."}>
+            <div className="admin-gate-password-control">
+              <Input id="admin-second-password" type={showSecondPassword ? "text" : "password"} autoComplete={mode === "setup" ? "new-password" : "current-password"}
+                required minLength={mode === "setup" ? 12 : undefined} maxLength={72}
+                value={form.secondPassword} onChange={(e) => setForm({ ...form, secondPassword: e.target.value })} />
+              <button type="button" onClick={() => setShowSecondPassword((visible) => !visible)} aria-label={showSecondPassword ? "Ẩn mật khẩu cấp 2" : "Hiện mật khẩu cấp 2"} aria-pressed={showSecondPassword}>
+                {showSecondPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+              </button>
+            </div>
           </AdminField>
           {mode === "setup" && <AdminField id="admin-confirm-password" label="Nhập lại mật khẩu cấp 2" required>
             <Input id="admin-confirm-password" type="password" autoComplete="new-password" required minLength={12} maxLength={72}

@@ -29,6 +29,7 @@ export default function WorkspaceLayout({ title, role, links }) {
   const activeLink = [...links]
     .sort((a, b) => b.to.length - a.to.length)
     .find((link) => link.end ? location.pathname === link.to : location.pathname.startsWith(link.to));
+  const workspaceRoleClass = role === "Cộng tác viên" ? " workspace-ctv" : " workspace-admin";
 
   useMotionReveal(mainRef, routeKey);
 
@@ -97,7 +98,7 @@ export default function WorkspaceLayout({ title, role, links }) {
   }
 
   return (
-    <div className="admin-container workspace-shell">
+    <div className={`admin-container workspace-shell${workspaceRoleClass}`}>
       <a className="skip-link" href="#workspace-main">Bỏ qua điều hướng</a>
       <header className="admin-topbar">
         <div className="admin-topbar-inner">

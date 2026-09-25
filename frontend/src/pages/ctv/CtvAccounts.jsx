@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
-import { Edit2, EyeOff, Upload, RefreshCw } from "lucide-react";
+import { Edit2, EyeOff, Gamepad2, Upload, RefreshCw } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
 import PanelLoading from "../../components/PanelLoading";
+import { PageHeading } from "../../components/Ui";
+import { AdminConfirmDialog } from "../../components/admin/AdminUi";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
@@ -25,6 +27,8 @@ export default function CtvAccounts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hiding, setHiding] = useState(false);
+  const [hideTarget, setHideTarget] = useState(null);
   const loadSequence = useRef(0);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPage: 1 });
   const [filterStatus, setFilterStatus] = useState("");
@@ -102,10 +106,10 @@ export default function CtvAccounts() {
     try {
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
-        alert("Cập nhật tài khoản thành công!");
+        alert("Cập nhật tài khoản thành công.");
       } else {
         await api.post("/accounts", payload);
-        alert("Đăng bán tài khoản thành công!");
+        alert("Đăng bán tài khoản thành công.");
       }
       resetForm();
       loadData(pagination.page);
@@ -117,15 +121,19 @@ export default function CtvAccounts() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Bạn có chắc chắn muốn ẩn tài khoản này khỏi shop?")) return;
+  async function handleDelete() {
+    if (!hideTarget || hiding) return;
+    setHiding(true);
     try {
-      await api.patch(`/accounts/${id}/hide`);
-      alert("Ẩn tài khoản thành công!");
+      await api.patch(`/accounts/${hideTarget.id}/hide`);
+      alert("Ẩn tài khoản thành công.");
+      setHideTarget(null);
       loadData(pagination.page);
     } catch (err) {
       console.error(err);
       alert("Xóa/Ẩn tài khoản thất bại");
+    } finally {
+      setHiding(false);
     }
   }
 
@@ -150,16 +158,16 @@ export default function CtvAccounts() {
   }
 
   return (
-    <div>
-      <h1 className="page-title">Quản lý Tài Khoản Đăng Bán</h1>
+    <div className="ctv-accounts-page">
+      <PageHeading description="Đăng sản phẩm mới, chỉnh sửa giá bán và theo dõi trạng thái kho của bạn.">Kho tài khoản của tôi</PageHeading>
 
-      {/* Account Editor Form */}
-      <div className="card">
+      <section className="card ctv-editor-card">
         <h3>{editingId ? `Chỉnh sửa tài khoản #${editingId}` : "Đăng bán tài khoản mới"}</h3>
-        <form onSubmit={handleSubmit} className="form-grid" style={{ marginTop: "16px" }}>
+        <form onSubmit={handleSubmit} className="form-grid ctv-account-form">
           <div className="form-group-premium">
-            <label>Loại tài khoản</label>
+            <label htmlFor="ctv-account-type">Loại tài khoản</label>
             <select
+              id="ctv-account-type"
               value={form.loai_id}
               onChange={(e) => setForm({ ...form, loai_id: e.target.value })}
               required
@@ -174,8 +182,9 @@ export default function CtvAccounts() {
           </div>
 
           <div className="form-group-premium">
-            <label>Giá bán (VND) *</label>
+            <label htmlFor="ctv-account-price">Giá bán (VND) *</label>
             <CurrencyInput
+              id="ctv-account-price"
               placeholder="VD: 50.000"
               value={form.gia}
               onChange={(e) => setForm({ ...form, gia: e.target.value })}
@@ -209,37 +218,31 @@ export default function CtvAccounts() {
             )}
           </div>
 
-          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <Upload size={14} /> Ảnh đại diện (Thumbnail URL)
+          <div className="form-group-premium ctv-form-full">
+            <label htmlFor="ctv-account-image" className="ctv-field-label-icon">
+              <Upload size={14} aria-hidden="true" /> Ảnh đại diện
             </label>
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div className="ctv-upload-row">
               <input
+                id="ctv-account-image"
                 placeholder="Nhập link ảnh hoặc upload file"
                 value={form.img}
                 onChange={(e) => setForm({ ...form, img: e.target.value })}
-                style={{ flexGrow: 1 }}
               />
-              <label className="btn-outline" style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", margin: 0, padding: "10px 16px" }}>
-                <Upload size={16} /> Upload File
-                <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+              <label className="btn-outline ctv-upload-button">
+                <Upload size={16} aria-hidden="true" /> Chọn tệp
+                <input type="file" accept="image/*" onChange={handleUpload} />
               </label>
             </div>
             {form.img && (
-              <SafeImage
-                src={form.img}
-                alt="Xem trước ảnh tài khoản"
-                width={120}
-                height={70}
-                fallbackLabel="Ảnh không tải được"
-                style={{ width: "120px", height: "70px", objectFit: "cover", borderRadius: "8px", marginTop: "10px", border: "1px solid var(--border-color)" }}
-              />
+              <div className="ctv-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={160} height={90} fallbackLabel="Ảnh không tải được" /></div>
             )}
           </div>
 
-          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <label>Thông tin chi tiết tài khoản</label>
+          <div className="form-group-premium ctv-form-full">
+            <label htmlFor="ctv-account-description">Thông tin chi tiết tài khoản</label>
             <textarea
+              id="ctv-account-description"
               placeholder="Nhập mô tả nổi bật"
               value={form.thong_tin}
               onChange={(e) => setForm({ ...form, thong_tin: e.target.value })}
@@ -248,8 +251,9 @@ export default function CtvAccounts() {
           </div>
 
           <div className="form-group-premium">
-            <label>list_thong_tin</label>
+            <label htmlFor="ctv-account-details-list">Danh sách thông tin</label>
             <input
+              id="ctv-account-details-list"
               placeholder="0 hoặc JSON array"
               value={form.list_thong_tin}
               onChange={(e) => setForm({ ...form, list_thong_tin: e.target.value })}
@@ -257,54 +261,57 @@ export default function CtvAccounts() {
           </div>
 
           <div className="form-group-premium">
-            <label>list_img</label>
+            <label htmlFor="ctv-account-images-list">Danh sách ảnh</label>
             <input
+              id="ctv-account-images-list"
               placeholder="0 hoặc JSON array"
               value={form.list_img}
               onChange={(e) => setForm({ ...form, list_img: e.target.value })}
             />
           </div>
 
-          <div className="form-group-premium" style={{ gridColumn: "1 / -1" }}>
-            <label>Thông tin đăng nhập tài khoản (Tài khoản | Mật khẩu | 2FA) - Chỉ người mua nhìn thấy sau khi thanh toán</label>
+          <div className="form-group-premium ctv-form-full">
+            <label htmlFor="ctv-account-login">Thông tin bàn giao</label>
             <textarea
+              id="ctv-account-login"
               placeholder="Nhập thông tin đăng nhập..."
               value={form.login}
               onChange={(e) => setForm({ ...form, login: e.target.value })}
               required
               rows={2}
             />
+            <small className="form-hint">Tài khoản, mật khẩu và 2FA chỉ hiển thị cho người mua sau khi thanh toán.</small>
           </div>
 
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
+          <div className="ctv-form-actions ctv-form-full">
             <button type="submit" className="small-btn" disabled={saving} aria-busy={saving}>
               {saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}
             </button>
             {(editingId || form.thong_tin !== "Đổi được thông tin và mật khẩu\nHỗ trợ bảo hành" || form.login !== "liên hệ Zalo admin | để được nhận account #ID" || form.gia) && (
-              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving} style={{ padding: "8px 16px" }}>
-                Hủy / Reset
+              <button type="button" className="btn-outline" onClick={resetForm} disabled={saving}>
+                Hủy thay đổi
               </button>
             )}
           </div>
         </form>
-      </div>
+      </section>
 
-      {/* Filter and List Section */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <h3>Danh sách accounts bạn đã đăng</h3>
-        <div style={{ display: "flex", gap: "10px" }}>
+      <section className="ctv-list-section" aria-labelledby="ctv-account-list-title">
+      <div className="ctv-list-toolbar">
+        <div><h2 id="ctv-account-list-title">Tài khoản đã đăng</h2><p>{pagination.total.toLocaleString("vi-VN")} sản phẩm trong kho của bạn</p></div>
+        <div className="ctv-list-actions">
           <select
+            aria-label="Lọc tài khoản theo trạng thái"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ padding: "8px 14px", borderRadius: "8px", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
           >
             <option value="">Tất cả trạng thái</option>
             <option value="0">Đang bán</option>
             <option value="1">Đã bán</option>
             <option value="2">Đã ẩn</option>
           </select>
-          <button onClick={() => loadData(pagination.page)} className="btn-outline" style={{ padding: "8px" }} title="Làm mới">
-            <RefreshCw size={16} />
+          <button type="button" onClick={() => loadData(pagination.page)} className="btn-outline ctv-refresh-button" aria-label="Làm mới danh sách tài khoản" title="Làm mới">
+            <RefreshCw size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -315,7 +322,7 @@ export default function CtvAccounts() {
         ) : loadError ? (
           <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={() => loadData(pagination.page)}>Thử lại</button></div>
         ) : accounts.length === 0 ? (
-          <p style={{ color: "var(--text-secondary)" }}>Không tìm thấy tài khoản nào.</p>
+          <div className="ctv-empty-state"><Gamepad2 size={22} aria-hidden="true" /><strong>Chưa có tài khoản phù hợp</strong><span>Hãy đổi bộ lọc hoặc đăng tài khoản mới ở biểu mẫu phía trên.</span></div>
         ) : (
           <>
             <table>
@@ -343,46 +350,43 @@ export default function CtvAccounts() {
                           alt={`Ảnh tài khoản mã số ${acc.id}`}
                           width={65}
                           height={38}
+                          className="ctv-table-thumb"
                           fallbackClassName="table-image-fallback"
-                          style={{ width: "65px", height: "38px", objectFit: "cover", borderRadius: "4px" }}
                           fallbackLabel="Chưa có ảnh"
                         />
                       </td>
-                      <td><span style={{ color: "var(--cyan-color)", fontWeight: "600" }}>{accType?.name || `Loại #${acc.loai_id}`}</span></td>
-                      <td style={{ fontWeight: "600" }}>
+                      <td><span className="ctv-table-category">{accType?.name || `Loại #${acc.loai_id}`}</span></td>
+                      <td className="ctv-table-price">
                         {Number(acc.sale_price) > 0 && Number(acc.sale_price) < Number(acc.gia) ? (
-                          <><del style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginRight: "6px" }}>{Number(acc.gia).toLocaleString()}đ</del><strong style={{ color: "var(--accent-color)" }}>{Number(acc.sale_price).toLocaleString()}đ</strong></>
+                          <><del>{Number(acc.gia).toLocaleString()}đ</del><strong>{Number(acc.sale_price).toLocaleString()}đ</strong></>
                         ) : `${Number(acc.gia).toLocaleString()}đ`}
                       </td>
-                      <td style={{ fontSize: "0.9rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td className="ctv-table-description" title={acc.thong_tin || "Không có mô tả"}>
                         {acc.thong_tin || "N/A"}
                       </td>
                       <td>
-                        <span style={{ 
-                          color: acc.status === 0 ? "var(--green-color)" : acc.status === 1 ? "var(--gold-color)" : "var(--text-secondary)",
-                          fontWeight: "bold"
-                        }}>
+                        <span className={`ctv-status is-${acc.status === 0 ? "selling" : acc.status === 1 ? "sold" : "hidden"}`}>
                           {acc.status === 0 ? "Đang bán" : acc.status === 1 ? "Đã bán" : "Đã ẩn"}
                         </span>
                       </td>
                       <td>
                         {acc.buyer ? (
-                          <span style={{ color: "var(--cyan-color)", fontWeight: "600" }}>{acc.buyer.username}</span>
+                          <span className="ctv-table-buyer">{acc.buyer.username}</span>
                         ) : acc.buyer_id ? (
-                          <span style={{ color: "var(--text-muted)" }}>User #{acc.buyer_id}</span>
+                          <span className="ctv-table-muted">User #{acc.buyer_id}</span>
                         ) : (
                           "—"
                         )}
                       </td>
                       <td>
-                        <div className="action-row" style={{ display: "flex", gap: "6px" }}>
+                        <div className="action-row">
                           {acc.status === 0 && (
                             <>
-                              <button onClick={() => startEdit(acc)} className="small-btn" style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                <Edit2 size={13} /> Sửa
+                              <button onClick={() => startEdit(acc)} className="small-btn">
+                                <Edit2 size={13} aria-hidden="true" /> Sửa
                               </button>
-                              <button onClick={() => handleDelete(acc.id)} className="small-btn danger-btn" style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                <EyeOff size={13} /> Ẩn đi
+                              <button onClick={() => setHideTarget(acc)} className="small-btn danger-btn">
+                                <EyeOff size={13} aria-hidden="true" /> Ẩn đi
                               </button>
                             </>
                           )}
@@ -396,22 +400,33 @@ export default function CtvAccounts() {
             </table>
 
             {pagination.totalPage > 1 && (
-              <div className="pagination" style={{ display: "flex", gap: "8px", marginTop: "20px", justifyContent: "center" }}>
+              <nav className="pagination ctv-pagination" aria-label="Phân trang tài khoản">
                 {Array.from({ length: pagination.totalPage }, (_, i) => i + 1).map((p) => (
                   <button
                     key={p}
                     onClick={() => loadData(p)}
                     className={pagination.page === p ? "small-btn" : "btn-outline"}
-                    style={{ padding: "6px 12px", minWidth: "35px" }}
+                    aria-current={pagination.page === p ? "page" : undefined}
                   >
                     {p}
                   </button>
                 ))}
-              </div>
+              </nav>
             )}
           </>
         )}
       </div>
+      </section>
+      <AdminConfirmDialog
+        open={Boolean(hideTarget)}
+        title="Ẩn tài khoản khỏi cửa hàng?"
+        description={hideTarget ? `Tài khoản #${hideTarget.id} sẽ ngừng hiển thị với khách. Bạn vẫn có thể xem lại trong danh sách đã ẩn.` : ""}
+        confirmLabel="Ẩn tài khoản"
+        destructive
+        pending={hiding}
+        onClose={() => setHideTarget(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

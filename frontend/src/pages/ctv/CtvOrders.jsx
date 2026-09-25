@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { RefreshCw, ShoppingBag } from "lucide-react";
 import api from "../../api/api";
 import PanelLoading from "../../components/PanelLoading";
+import { PageHeading } from "../../components/Ui";
 
 export default function CtvOrders() {
   const [orders, setOrders] = useState([]);
@@ -30,8 +32,14 @@ export default function CtvOrders() {
   }, []);
 
   return (
-    <div>
-      <h1 className="page-title">Đơn hàng đã bán</h1>
+    <div className="ctv-orders-page">
+      <PageHeading description="Theo dõi người mua, giá trị đơn và số tiền được ghi nhận.">Đơn hàng đã bán</PageHeading>
+
+      <section className="ctv-list-section" aria-labelledby="ctv-order-list-title">
+        <div className="ctv-list-toolbar">
+          <div><h2 id="ctv-order-list-title">Lịch sử bán hàng</h2><p>{pagination.total.toLocaleString("vi-VN")} đơn hàng</p></div>
+          <button type="button" className="btn-outline ctv-refresh-button" onClick={() => loadOrders(pagination.page)} aria-label="Làm mới danh sách đơn hàng"><RefreshCw size={16} aria-hidden="true" /></button>
+        </div>
 
       <div className="table-box">
         {loading ? (
@@ -39,7 +47,7 @@ export default function CtvOrders() {
         ) : loadError ? (
           <div className="table-load-error" role="alert">{loadError} <button type="button" className="btn-outline" onClick={() => loadOrders(pagination.page)}>Thử lại</button></div>
         ) : orders.length === 0 ? (
-          <p style={{ color: "var(--text-secondary)" }}>Không có đơn hàng nào.</p>
+          <div className="ctv-empty-state"><ShoppingBag size={22} aria-hidden="true" /><strong>Chưa có đơn hàng</strong><span>Đơn phát sinh từ tài khoản của bạn sẽ xuất hiện tại đây.</span></div>
         ) : (
           <>
             <table>
@@ -64,12 +72,12 @@ export default function CtvOrders() {
                     <td>{Number(o.original_price).toLocaleString()}đ</td>
                     <td>{o.sale_price ? `${Number(o.sale_price).toLocaleString()}đ` : "—"}</td>
                     <td>{o.discount_amount ? `${Number(o.discount_amount).toLocaleString()}đ` : "—"}</td>
-                    <td style={{ color: "var(--gold-color)", fontWeight: "bold" }}>
+                    <td className="ctv-table-price">
                       {Number(o.final_price).toLocaleString()}đ
                     </td>
                     <td>
                       {o.user ? (
-                        <span style={{ color: "var(--cyan-color)", fontWeight: "600" }}>{o.user.username}</span>
+                        <span className="ctv-table-buyer">{o.user.username}</span>
                       ) : o.user_id ? (
                         `User #${o.user_id}`
                       ) : (
@@ -77,15 +85,12 @@ export default function CtvOrders() {
                       )}
                     </td>
                     <td>
-                      <span style={{ 
-                        color: o.status === 1 ? "var(--green-color)" : "var(--accent-color)", 
-                        fontWeight: "600" 
-                      }}>
+                      <span className={`ctv-status is-${o.status === 1 ? "sold" : "pending"}`}>
                         {o.status === 1 ? "Thành công" : `Mã ${o.status}`}
                       </span>
                     </td>
-                    <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                      {new Date(o.createdAt || o.created_at).toLocaleString()}
+                    <td className="ctv-table-muted">
+                      {new Date(o.createdAt || o.created_at).toLocaleString("vi-VN")}
                     </td>
                   </tr>
                 ))}
@@ -93,22 +98,23 @@ export default function CtvOrders() {
             </table>
 
             {pagination.totalPage > 1 && (
-              <div className="pagination" style={{ display: "flex", gap: "8px", marginTop: "20px", justifyContent: "center" }}>
+              <nav className="pagination ctv-pagination" aria-label="Phân trang đơn hàng">
                 {Array.from({ length: pagination.totalPage }, (_, i) => i + 1).map((p) => (
                   <button
                     key={p}
                     onClick={() => loadOrders(p)}
                     className={pagination.page === p ? "small-btn" : "btn-outline"}
-                    style={{ padding: "6px 12px", minWidth: "35px" }}
+                    aria-current={pagination.page === p ? "page" : undefined}
                   >
                     {p}
                   </button>
                 ))}
-              </div>
+              </nav>
             )}
           </>
         )}
       </div>
+      </section>
     </div>
   );
 }
