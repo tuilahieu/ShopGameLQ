@@ -1,11 +1,12 @@
 import { Router } from "express";
 
+import { createRateLimit } from "../../config/http.js";
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.js";
 import { ctvMiddleware } from "../../shared/middlewares/ctv.middleware.js";
 
 import { upload } from "../../shared/middlewares/upload.middleware.js";
 
-import { uploadImage } from "./upload.controller.js";
+import { importImageFromUrl, uploadImage } from "./upload.controller.js";
 
 const router = Router();
 
@@ -47,5 +48,6 @@ const router = Router();
 // Customers never need to write arbitrary files; limit this capability to the
 // staff roles that actually manage listings and site assets.
 router.post("/", authMiddleware, ctvMiddleware, upload.single("file"), uploadImage);
+router.post("/remote", authMiddleware, ctvMiddleware, createRateLimit({ windowMs: 60_000, max: 20 }), importImageFromUrl);
 
 export default router;

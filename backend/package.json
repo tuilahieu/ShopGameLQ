@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "migrate": "node src/database/migrate.js",
     "migrate:status": "node src/database/migrate.js --status",
+    "migrate:images": "node scripts/localize-remote-images.js",
     "generate-docs": "node scripts/generate-openapi.js",
     "test": "node --test"
   },

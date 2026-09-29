@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../api/api";
-import { EyeOff, Pencil, Plus, RefreshCw, ShoppingBag, Trash2, Upload, X } from "lucide-react";
+import { BookmarkPlus, EyeOff, Pencil, Plus, RefreshCw, ShoppingBag, Trash2, Upload, X } from "lucide-react";
 import SafeImage from "../../components/SafeImage";
 import CurrencyInput from "../../components/CurrencyInput";
 import Modal from "../../components/Modal";
@@ -16,6 +16,11 @@ import { Select } from "../../components/ui/select";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
+import { importImageList, importImageUrl, uploadImageFile } from "../../utils/imageUpload";
+import { readStoredJson } from "../../utils/storage";
+
+const ACCOUNT_FIELD_TEMPLATES_KEY = "admin-account-field-templates-v1";
+const MAX_FIELD_TEMPLATES = 12;
 
 const STATUS_MAP = {
   0: { label: "Đang bán", variant: "success" },
@@ -31,13 +36,73 @@ function buildDefaultLogin(zalo) {
   return `liên hệ zalo ${zalo || "admin"} | để được hỗ trợ`;
 }
 
-function validImageUrl(value) {
-  if (!value || /^\/?uploads\//i.test(value)) return true;
-  try {
-    return ["http:", "https:"].includes(new URL(value).protocol);
-  } catch {
-    return false;
+function normalizeTemplateList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item.id === "string" && typeof item.name === "string" && typeof item.value === "string")
+    .map((item) => ({ id: item.id, name: item.name.trim().slice(0, 60), value: item.value.slice(0, 10000) }))
+    .filter((item) => item.name && item.value.trim())
+    .slice(0, MAX_FIELD_TEMPLATES);
+}
+
+function readAccountFieldTemplates() {
+  const stored = readStoredJson(ACCOUNT_FIELD_TEMPLATES_KEY, {});
+  return {
+    thong_tin: normalizeTemplateList(stored?.thong_tin),
+    login: normalizeTemplateList(stored?.login),
+  };
+}
+
+function TemplateControls({ id, templates, value, sensitive = false, onApply, onSave, onDelete }) {
+  const [selectedId, setSelectedId] = useState("");
+  const [templateName, setTemplateName] = useState("");
+
+  function selectTemplate(event) {
+    const nextId = event.target.value;
+    setSelectedId(nextId);
+    const template = templates.find((item) => item.id === nextId);
+    if (template) onApply(template.value);
   }
+
+  function saveTemplate() {
+    if (!onSave(templateName, value)) return;
+    setTemplateName("");
+  }
+
+  function deleteTemplate() {
+    if (!selectedId) return;
+    onDelete(selectedId);
+    setSelectedId("");
+  }
+
+  return (
+    <div className="admin-account-template-box">
+      <div className="admin-account-template-heading">
+        <strong>Mẫu nhập nhanh</strong>
+        <span>{sensitive ? "Chỉ lưu trên trình duyệt này và không được mã hóa." : "Chỉ lưu trên trình duyệt này."}</span>
+      </div>
+      <div className="admin-account-template-controls">
+        <Select id={`${id}-template`} value={selectedId} onChange={selectTemplate} aria-label="Chọn mẫu đã lưu">
+          <option value="">{templates.length ? `Chọn trong ${templates.length} mẫu…` : "Chưa có mẫu nào"}</option>
+          {templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+        </Select>
+        <Input
+          id={`${id}-template-name`}
+          value={templateName}
+          maxLength={60}
+          placeholder="Tên mẫu, ví dụ: Acc bảo hành"
+          aria-label="Tên mẫu mới"
+          onChange={(event) => setTemplateName(event.target.value)}
+        />
+        <Button type="button" size="sm" variant="outline" disabled={!templateName.trim() || !value.trim()} onClick={saveTemplate}>
+          <BookmarkPlus size={14} aria-hidden="true" /> Lưu mẫu
+        </Button>
+        <Button type="button" size="sm" variant="ghost" disabled={!selectedId} onClick={deleteTemplate}>
+          <Trash2 size={14} aria-hidden="true" /> Xóa
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function Field({ id, label, required = false, helper, className = "", children }) {
@@ -73,6 +138,7 @@ export default function AdminAccounts() {
   const [metadataLoading, setMetadataLoading] = useState(true);
   const [metadataError, setMetadataError] = useState("");
   const [metadataRetry, setMetadataRetry] = useState(0);
+  const [fieldTemplates, setFieldTemplates] = useState(readAccountFieldTemplates);
 
   function makeEmpty(zalo) {
     return {
@@ -93,6 +159,49 @@ export default function AdminAccounts() {
 
   function set(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function persistFieldTemplates(nextTemplates) {
+    try {
+      localStorage.setItem(ACCOUNT_FIELD_TEMPLATES_KEY, JSON.stringify(nextTemplates));
+      return true;
+    } catch {
+      notifyAdmin("Không thể lưu mẫu vào trình duyệt này.");
+      return false;
+    }
+  }
+
+  function saveFieldTemplate(field, rawName, rawValue) {
+    const name = rawName.trim();
+    const value = rawValue.trim();
+    if (!name || !value) return false;
+
+    const currentList = fieldTemplates[field];
+    const existing = currentList.find((item) => item.name.toLocaleLowerCase("vi") === name.toLocaleLowerCase("vi"));
+    let nextList;
+    if (existing) {
+      nextList = currentList.map((item) => item.id === existing.id ? { ...item, name, value } : item);
+    } else {
+      if (currentList.length >= MAX_FIELD_TEMPLATES) {
+        notifyAdmin(`Mỗi loại chỉ lưu tối đa ${MAX_FIELD_TEMPLATES} mẫu.`);
+        return false;
+      }
+      const id = `${field}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      nextList = [...currentList, { id, name, value }];
+    }
+
+    const next = { ...fieldTemplates, [field]: nextList };
+    if (!persistFieldTemplates(next)) return false;
+    setFieldTemplates(next);
+    notifyAdmin(existing ? "Đã cập nhật mẫu trên trình duyệt." : "Đã lưu mẫu trên trình duyệt.");
+    return true;
+  }
+
+  function deleteFieldTemplate(field, id) {
+    const next = { ...fieldTemplates, [field]: fieldTemplates[field].filter((item) => item.id !== id) };
+    if (!persistFieldTemplates(next)) return;
+    setFieldTemplates(next);
+    notifyAdmin("Đã xóa mẫu khỏi trình duyệt.");
   }
 
   const loadData = useCallback(async () => {
@@ -141,18 +250,11 @@ export default function AdminAccounts() {
     return () => { active = false; };
   }, [metadataRetry]);
 
-  async function uploadImage(file) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-    return res.data.data.url;
-  }
-
   async function handleMainImage(event) {
     const file = event.target.files[0];
     if (!file) return;
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImageFile(api, file);
       set("img", url);
       notifyAdmin("Đã tải ảnh lên");
     } catch {
@@ -165,19 +267,20 @@ export default function AdminAccounts() {
     if (saving) return;
     if (!form.loai_id) return notifyAdmin("Vui lòng chọn loại tài khoản!");
     if (!form.gia) return notifyAdmin("Vui lòng nhập giá bán!");
-    const imageUrl = form.img.trim();
-    if (!validImageUrl(imageUrl)) return notifyAdmin("URL ảnh phải bắt đầu bằng http:// hoặc https://.");
     if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
       return notifyAdmin("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
     }
 
-    const payload = { ...form, img: imageUrl, sale_price: form.is_sale ? form.sale_price : null };
+    const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
     delete payload.is_sale;
     delete payload.status;
 
     setSaving(true);
-    setSaveProgress("Đang lưu tài khoản…");
+    setSaveProgress("Đang đưa ảnh về máy chủ…");
     try {
+      payload.img = await importImageUrl(api, form.img);
+      payload.list_img = await importImageList(api, form.list_img);
+      setSaveProgress("Đang lưu tài khoản…");
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
         notifyAdmin("Cập nhật tài khoản thành công");
@@ -205,7 +308,7 @@ export default function AdminAccounts() {
       closeForm();
       loadData();
     } catch (error) {
-      notifyAdmin(error?.response?.data?.message || "Có lỗi xảy ra");
+      notifyAdmin(error?.response?.data?.message || error.message || "Có lỗi xảy ra");
     } finally {
       setSaving(false);
       setSaveProgress("");
@@ -377,11 +480,32 @@ export default function AdminAccounts() {
             <Field id="admin-account-status" label="Trạng thái"><Select id="admin-account-status" value={form.status} onChange={(event) => set("status", Number(event.target.value))}><option value={0}>Đang bán</option><option value={1}>Đã bán</option><option value={2}>Ẩn</option></Select></Field>
             <div className="ui-field"><Label htmlFor="listing-sale-enabled">Giá sale riêng account</Label><div className="ui-switch-card"><Switch id="listing-sale-enabled" checked={form.is_sale} onChange={(event) => setForm((prev) => ({ ...prev, is_sale: event.target.checked, sale_price: event.target.checked ? prev.sale_price : "" }))} /><span><strong>Bật giá giảm</strong><small>Hiện giá sale trên thẻ và trang chi tiết.</small></span></div></div>
             {form.is_sale && <Field id="listing-sale-price" label="Giá sale" helper={`Giá gốc hiện tại: ${Number(form.gia || 0).toLocaleString()}đ`}><CurrencyInput id="listing-sale-price" name="sale_price" placeholder="Ví dụ: 100.000" value={form.sale_price} onChange={(event) => set("sale_price", event.target.value)} /></Field>}
-            <div className="ui-field ui-field-full"><Label htmlFor="admin-account-image">Ảnh đại diện</Label><div className="ui-upload-row"><label className="ui-upload-trigger" htmlFor="admin-account-image-upload"><Upload size={15} aria-hidden="true" /> Tải ảnh lên<input ref={imgRef} id="admin-account-image-upload" type="file" accept="image/*" onChange={handleMainImage} /></label>{form.img && <Button type="button" variant="outline" size="sm" onClick={() => { set("img", ""); if (imgRef.current) imgRef.current.value = ""; }}>Xóa ảnh</Button>}</div><Input id="admin-account-image" type="url" inputMode="url" placeholder="Hoặc dán URL ảnh, ví dụ https://example.com/anh.jpg" value={form.img} onChange={(event) => set("img", event.target.value)} />{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</div>
-            <Field id="admin-account-details" className="ui-field-full" label="Thông tin hiển thị (thong_tin)" helper="Mỗi dòng là một tag thông tin. Dùng dấu phẩy hoặc | để phân tách."><Textarea id="admin-account-details" rows={4} value={form.thong_tin} onChange={(event) => set("thong_tin", event.target.value)} /></Field>
-            <Field id="admin-account-login" className="ui-field-full" label="Thông tin đăng nhập (login) — chỉ hiện sau khi mua" helper={!editingId ? "Mỗi dòng tạo một tài khoản riêng — cùng loại, giá và thông tin." : undefined}><Textarea id="admin-account-login" rows={editingId ? 3 : 8} placeholder={editingId ? "username:password hoặc link drive..." : "Mỗi dòng = 1 tài khoản được tạo\n\nVí dụ:\nuser1:pass1\nuser2:pass2"} value={form.login} onChange={(event) => set("login", event.target.value)} /></Field>
+            <div className="ui-field ui-field-full"><Label htmlFor="admin-account-image">Ảnh đại diện</Label><div className="ui-upload-row"><label className="ui-upload-trigger" htmlFor="admin-account-image-upload"><Upload size={15} aria-hidden="true" /> Tải ảnh lên<input ref={imgRef} id="admin-account-image-upload" type="file" accept="image/*" onChange={handleMainImage} /></label>{form.img && <Button type="button" variant="outline" size="sm" onClick={() => { set("img", ""); if (imgRef.current) imgRef.current.value = ""; }}>Xóa ảnh</Button>}</div><Input id="admin-account-image" type="text" inputMode="url" placeholder="Dán URL ngoài — hệ thống sẽ tải về khi lưu" value={form.img} onChange={(event) => set("img", event.target.value)} /><p className="ui-field-helper">URL ngoài không được lưu trực tiếp; ảnh sẽ được sao chép vào /uploads.</p>{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</div>
+            <Field id="admin-account-details" className="ui-field-full" label="Thông tin hiển thị (thong_tin)" helper="Mỗi dòng là một tag thông tin. Dùng dấu phẩy hoặc | để phân tách.">
+              <Textarea id="admin-account-details" rows={4} value={form.thong_tin} onChange={(event) => set("thong_tin", event.target.value)} />
+              <TemplateControls
+                id="admin-account-details"
+                templates={fieldTemplates.thong_tin}
+                value={form.thong_tin}
+                onApply={(value) => set("thong_tin", value)}
+                onSave={(name, value) => saveFieldTemplate("thong_tin", name, value)}
+                onDelete={(id) => deleteFieldTemplate("thong_tin", id)}
+              />
+            </Field>
+            <Field id="admin-account-login" className="ui-field-full" label="Thông tin đăng nhập (login) — chỉ hiện sau khi mua" helper={!editingId ? "Mỗi dòng tạo một tài khoản riêng — cùng loại, giá và thông tin." : undefined}>
+              <Textarea id="admin-account-login" rows={editingId ? 3 : 8} placeholder={editingId ? "username:password hoặc link drive..." : "Mỗi dòng = 1 tài khoản được tạo\n\nVí dụ:\nuser1:pass1\nuser2:pass2"} value={form.login} onChange={(event) => set("login", event.target.value)} />
+              <TemplateControls
+                id="admin-account-login"
+                templates={fieldTemplates.login}
+                value={form.login}
+                sensitive
+                onApply={(value) => set("login", value)}
+                onSave={(name, value) => saveFieldTemplate("login", name, value)}
+                onDelete={(id) => deleteFieldTemplate("login", id)}
+              />
+            </Field>
             <Field id="admin-account-list-details" label="list_thong_tin" helper={'Để "0" nếu không dùng.'}><Input id="admin-account-list-details" placeholder="0 hoặc JSON array" value={form.list_thong_tin} onChange={(event) => set("list_thong_tin", event.target.value)} /></Field>
-            <Field id="admin-account-list-images" label="list_img" helper={'Để "0" nếu không dùng.'}><Input id="admin-account-list-images" placeholder="0 hoặc JSON array URL ảnh" value={form.list_img} onChange={(event) => set("list_img", event.target.value)} /></Field>
+            <Field id="admin-account-list-images" label="list_img" helper={'Để "0" nếu không dùng. URL ngoài trong JSON array sẽ được tải về hệ thống.'}><Input id="admin-account-list-images" placeholder="0 hoặc JSON array URL ảnh" value={form.list_img} onChange={(event) => set("list_img", event.target.value)} /></Field>
           </div></CardContent>
           <CardFooter className="ui-form-actions">{saveProgress && <span className="ui-save-progress" role="status">{saveProgress}</span>}<Button type="button" variant="outline" onClick={closeForm} disabled={saving}>Hủy</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? "Đang lưu…" : editingId ? "Cập nhật tài khoản" : "Thêm tài khoản"}</Button></CardFooter>
         </form>

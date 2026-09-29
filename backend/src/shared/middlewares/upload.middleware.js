@@ -5,6 +5,7 @@ import fs from "fs";
 import { env } from "../../config/env.js";
 
 const uploadDir = path.resolve(env.uploadDir);
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const extensionByMime = Object.freeze({
   "image/jpeg": ".jpg",
   "image/png": ".png",
@@ -44,6 +45,6 @@ export const upload = multer({
   fileFilter,
 
   limits: {
-    fileSize: 8 * 1024 * 1024,
+    fileSize: MAX_IMAGE_BYTES,
   },
 });

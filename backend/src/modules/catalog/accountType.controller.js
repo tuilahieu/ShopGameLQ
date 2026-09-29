@@ -1,6 +1,7 @@
 import { AccountType, Category, GameAccount } from "../../database/models.js";
 
 import { successResponse, errorResponse } from "../../shared/utils/response.util.js";
+import { normalizeStoredImagePath } from "../../shared/utils/image-path.util.js";
 import { parsePagination } from "../../shared/utils/pagination.util.js";
 
 export async function getAccountTypes(req, res) {
@@ -141,7 +142,7 @@ export async function createAccountType(req, res) {
     const accountType = await AccountType.create({
       danhmuc_id,
       name,
-      img,
+      img: normalizeStoredImagePath(img, "Ảnh loại tài khoản"),
       noidung,
       camket,
       status,
@@ -150,8 +151,8 @@ export async function createAccountType(req, res) {
     return successResponse(res, "Thêm loại tài khoản thành công", accountType);
   } catch (error) {
     console.error("CREATE ACCOUNT TYPE ERROR:", error);
-
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status, error.code, req);
   }
 }
 
@@ -178,7 +179,7 @@ export async function updateAccountType(req, res) {
     await accountType.update({
       ...(danhmuc_id !== undefined && { danhmuc_id }),
       ...(name !== undefined && { name }),
-      ...(img !== undefined && { img }),
+      ...(img !== undefined && { img: normalizeStoredImagePath(img, "Ảnh loại tài khoản") }),
       ...(noidung !== undefined && { noidung }),
       ...(camket !== undefined && { camket }),
       ...(status !== undefined && { status }),
@@ -191,8 +192,8 @@ export async function updateAccountType(req, res) {
     );
   } catch (error) {
     console.error("UPDATE ACCOUNT TYPE ERROR:", error);
-
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status, error.code, req);
   }
 }
 

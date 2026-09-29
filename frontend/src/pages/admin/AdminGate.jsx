@@ -1,44 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, Clock3, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
-import { AdminField } from "../../components/admin/AdminUi";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
+import { LockKeyhole, ShieldCheck } from "lucide-react";
+import { AuthCard, AuthField } from "../../components/client/AuthUi";
 import { Skeleton } from "../../components/ui/skeleton";
-
-function AdminGateFrame({ children }) {
-  return (
-    <div className="auth-page-wrapper admin-gate-page">
-      <div className="admin-gate-shell">
-        <section className="admin-gate-intro" aria-label="Thông tin khu quản trị">
-          <div className="admin-gate-brand">
-            <span className="admin-gate-brand-mark" aria-hidden="true">S</span>
-            <span><small>SHOP LIÊN QUÂN</small><strong>Admin console</strong></span>
-          </div>
-          <div className="admin-gate-intro-copy">
-            <span className="admin-gate-eyebrow"><ShieldCheck size={15} aria-hidden="true" /> Khu vực bảo mật</span>
-            <h1>Xác minh trước khi vào khu quản trị</h1>
-            <p>Một bước kiểm tra ngắn giúp bảo vệ kho tài khoản, giao dịch và cấu hình quan trọng của shop.</p>
-          </div>
-          <div className="admin-gate-trust-list">
-            <div><span className="admin-gate-trust-icon"><Clock3 size={17} aria-hidden="true" /></span><span><strong>Phiên riêng trong 30 phút</strong><small>Hết hạn tự động khi không còn sử dụng</small></span></div>
-            <div><span className="admin-gate-trust-icon"><KeyRound size={17} aria-hidden="true" /></span><span><strong>Tách biệt mật khẩu đăng nhập</strong><small>Giảm rủi ro với các thao tác nhạy cảm</small></span></div>
-          </div>
-        </section>
-        <section className="admin-gate-card-area">{children}</section>
-      </div>
-    </div>
-  );
-}
 
 export default function AdminGate({ children }) {
   const [mode, setMode] = useState("loading");
   const [expiresAt, setExpiresAt] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [showSecondPassword, setShowSecondPassword] = useState(false);
   const [form, setForm] = useState({ currentPassword: "", secondPassword: "", confirmPassword: "" });
 
   useEffect(() => {
@@ -128,44 +99,86 @@ export default function AdminGate({ children }) {
   }
 
   if (mode === "ready") return children;
-  if (mode === "loading") return <AdminGateFrame><Card className="auth-card"><CardHeader><CardTitle>Đang kiểm tra quyền quản trị</CardTitle></CardHeader><CardContent className="ui-dashboard-loading"><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /></CardContent></Card></AdminGateFrame>;
-  if (mode === "error") return <AdminGateFrame><Card className="auth-card" role="alert"><CardContent><div className="admin-gate-error-mark"><ShieldCheck size={22} aria-hidden="true" /></div><p className="admin-gate-error-copy">{error}</p><Link className="admin-gate-home-link" to="/">Về trang chủ <ArrowRight size={15} aria-hidden="true" /></Link></CardContent></Card></AdminGateFrame>;
+  if (mode === "loading") return (
+    <AuthCard
+      title="Đang kiểm tra quyền quản trị"
+      description="Vui lòng chờ trong giây lát."
+      footer={<Link to="/">Về trang chủ</Link>}
+    >
+      <div className="ui-dashboard-loading" aria-label="Đang tải">
+        <Skeleton className="ui-skeleton-line" />
+        <Skeleton className="ui-skeleton-line" />
+      </div>
+    </AuthCard>
+  );
+  if (mode === "error") return (
+    <AuthCard
+      title="Không thể xác minh"
+      description="Hệ thống chưa thể kiểm tra phiên quản trị."
+      error={error}
+      footer={<Link to="/">Về trang chủ</Link>}
+    />
+  );
+
   return (
-    <AdminGateFrame>
-      <Card className="auth-card">
-        <div className="admin-gate-card-icon" aria-hidden="true"><ShieldCheck size={22} /></div>
-        <div className="auth-header-logo">
-          <h1>{mode === "setup" ? "Thiết lập mật khẩu cấp 2" : "Xác minh quản trị viên"}</h1>
-          <p>{mode === "setup"
-            ? "Mỗi admin cần đặt một mật khẩu cấp 2 riêng trước khi truy cập khu quản trị. Mật khẩu này phải khác mật khẩu đăng nhập."
-            : "Nhập mật khẩu cấp 2 để mở khu quản trị trong 30 phút."}</p>
-        </div>
-        {error && <div className="alert-error auth-alert" role="alert">{error}</div>}
-        <form className="auth-form" onSubmit={submit}>
-          {mode === "setup" && <AdminField id="admin-current-password" label="Mật khẩu đăng nhập hiện tại" required>
-            <Input id="admin-current-password" type="password" autoComplete="current-password" required
-              value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} />
-          </AdminField>}
-          <AdminField id="admin-second-password" label="Mật khẩu cấp 2" required helper={mode === "setup" ? "Tối thiểu 12 ký tự, tối đa 72 byte." : "Phiên quản trị sẽ tự hết hạn sau 30 phút."}>
-            <div className="admin-gate-password-control">
-              <Input id="admin-second-password" type={showSecondPassword ? "text" : "password"} autoComplete={mode === "setup" ? "new-password" : "current-password"}
-                required minLength={mode === "setup" ? 12 : undefined} maxLength={72}
-                value={form.secondPassword} onChange={(e) => setForm({ ...form, secondPassword: e.target.value })} />
-              <button type="button" onClick={() => setShowSecondPassword((visible) => !visible)} aria-label={showSecondPassword ? "Ẩn mật khẩu cấp 2" : "Hiện mật khẩu cấp 2"} aria-pressed={showSecondPassword}>
-                {showSecondPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
-              </button>
-            </div>
-          </AdminField>
-          {mode === "setup" && <AdminField id="admin-confirm-password" label="Nhập lại mật khẩu cấp 2" required>
-            <Input id="admin-confirm-password" type="password" autoComplete="new-password" required minLength={12} maxLength={72}
-              value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} />
-          </AdminField>}
-          <Button className="auth-submit" type="submit" disabled={busy}>
-            {busy ? "Đang xử lý…" : mode === "setup" ? "Lưu mật khẩu cấp 2" : "Xác minh và vào quản trị"}
-          </Button>
-        </form>
-        <p className="auth-footer-text"><Link to="/">Về trang chủ</Link></p>
-      </Card>
-    </AdminGateFrame>
+    <AuthCard
+      title={mode === "setup" ? "Thiết lập mật khẩu cấp 2" : "Xác minh quản trị viên"}
+      description={mode === "setup"
+        ? "Tạo mật khẩu cấp 2 riêng để bảo vệ khu quản trị."
+        : "Nhập mật khẩu cấp 2 để mở phiên quản trị trong 30 phút."}
+      error={error}
+      footer={<Link to="/">Về trang chủ</Link>}
+    >
+      <form className="auth-form" autoComplete="off" onSubmit={submit}>
+        {mode === "setup" && (
+          <AuthField
+            id="admin-current-password"
+            icon={LockKeyhole}
+            label="Mật khẩu đăng nhập hiện tại"
+            name="currentPassword"
+            type="password"
+            autoComplete="off"
+            placeholder="Nhập mật khẩu hiện tại"
+            value={form.currentPassword}
+            onChange={(event) => setForm({ ...form, currentPassword: event.target.value })}
+            required
+          />
+        )}
+        <AuthField
+          id="admin-second-password"
+          icon={LockKeyhole}
+          label="Mật khẩu cấp 2"
+          name="secondPassword"
+          type="password"
+          autoComplete="off"
+          minLength={mode === "setup" ? 12 : undefined}
+          maxLength={72}
+          placeholder={mode === "setup" ? "Tối thiểu 12 ký tự" : "Nhập mật khẩu cấp 2"}
+          value={form.secondPassword}
+          onChange={(event) => setForm({ ...form, secondPassword: event.target.value })}
+          required
+        />
+        {mode === "setup" && (
+          <AuthField
+            id="admin-confirm-password"
+            icon={LockKeyhole}
+            label="Nhập lại mật khẩu cấp 2"
+            name="confirmPassword"
+            type="password"
+            autoComplete="off"
+            minLength={12}
+            maxLength={72}
+            placeholder="Nhập lại mật khẩu cấp 2"
+            value={form.confirmPassword}
+            onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
+            required
+          />
+        )}
+        <button className="btn-primary auth-submit" type="submit" disabled={busy} aria-busy={busy}>
+          <ShieldCheck size={18} aria-hidden="true" />
+          {busy ? "Đang xử lý…" : mode === "setup" ? "Lưu mật khẩu cấp 2" : "Xác minh và vào quản trị"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

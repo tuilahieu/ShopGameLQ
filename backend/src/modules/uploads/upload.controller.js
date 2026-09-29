@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 
 import { successResponse, errorResponse } from "../../shared/utils/response.util.js";
+import { importRemoteImage, RemoteImageError } from "./remote-image.service.js";
 
 function matchesImageSignature(buffer, mimeType) {
   if (mimeType === "image/jpeg") return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
@@ -37,5 +38,21 @@ export async function uploadImage(req, res) {
     console.error(error);
 
     return errorResponse(res, "Có lỗi xảy ra", 500);
+  }
+}
+
+export async function importImageFromUrl(req, res) {
+  try {
+    if (typeof req.body?.url !== "string" || !req.body.url.trim()) {
+      return errorResponse(res, "Vui lòng nhập URL ảnh", 400, "REMOTE_IMAGE_URL_REQUIRED", req);
+    }
+    const image = await importRemoteImage(req.body.url.trim());
+    return successResponse(res, "Đã tải ảnh về hệ thống", image);
+  } catch (error) {
+    if (error instanceof RemoteImageError) {
+      return errorResponse(res, error.message, error.status, error.code, req);
+    }
+    console.error("REMOTE IMAGE IMPORT ERROR:", error);
+    return errorResponse(res, "Không thể tải ảnh từ URL", 500, "REMOTE_IMAGE_IMPORT_FAILED", req);
   }
 }

@@ -4,6 +4,7 @@ import { GameAccount, AccountType, Sale, Order } from "../../database/models.js"
 
 import { successResponse, errorResponse } from "../../shared/utils/response.util.js";
 import { encryptCredential } from "../../shared/utils/credential.util.js";
+import { normalizeStoredImageList, normalizeStoredImagePath } from "../../shared/utils/image-path.util.js";
 import { requirePositiveMoney } from "../../shared/utils/money.util.js";
 import { parsePagination } from "../../shared/utils/pagination.util.js";
 import { parsePercentage, parsePositiveId, resolveAccountPricing, validateListingSalePrice } from "../commerce/pricing.service.js";
@@ -188,14 +189,17 @@ export async function createAccount(req, res) {
       return errorResponse(res, "Loại tài khoản không tồn tại", 404);
     }
 
+    const storedImage = normalizeStoredImagePath(img, "Ảnh đại diện");
+    const storedImageList = normalizeStoredImageList(list_img);
+
     const account = await GameAccount.create({
       seller_id: req.user.id,
 
       loai_id,
       thong_tin,
       list_thong_tin,
-      img,
-      list_img,
+      img: storedImage,
+      list_img: storedImageList,
       login: encryptCredential(login),
       gia: price,
       sale_price: listingSalePrice,
@@ -277,12 +281,14 @@ export async function updateAccount(req, res) {
       nextListPrice,
       sale_price === undefined ? account.sale_price : sale_price,
     );
+    const storedImage = img === undefined ? undefined : normalizeStoredImagePath(img, "Ảnh đại diện");
+    const storedImageList = list_img === undefined ? undefined : normalizeStoredImageList(list_img);
     const updateData = {
       ...(loai_id !== undefined && { loai_id }),
       ...(thong_tin !== undefined && { thong_tin }),
       ...(list_thong_tin !== undefined && { list_thong_tin }),
-      ...(img !== undefined && { img }),
-      ...(list_img !== undefined && { list_img }),
+      ...(storedImage !== undefined && { img: storedImage }),
+      ...(storedImageList !== undefined && { list_img: storedImageList }),
       ...(login !== undefined && { login: encryptCredential(login) }),
       ...(gia !== undefined && { gia: updatePrice }),
       ...(sale_price !== undefined || gia !== undefined ? { sale_price: nextListingSalePrice } : {}),

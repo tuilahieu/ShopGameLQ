@@ -12,7 +12,6 @@ const STARTER = {
   accounts: [],
 };
 const SUGGESTIONS = ["Tìm acc 200k", "Acc dưới 100k", "Acc đang sale"];
-const DEFAULT_AVATAR_URL = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-jXgFWFj2PRcDPCDeQSstvlzW_-DXWC7xVZQYgNsv5-8qgRb8wArhzynL&s=10";
 const THREAD_STORAGE_KEY = "shop-assistant-thread";
 
 function readStoredThread() {
@@ -28,7 +27,7 @@ function AssistantAvatar({ name, avatarUrl, small = false }) {
   const initials = name.split(/\s+/u).slice(-2).map((part) => part[0]).join("").toLocaleUpperCase("vi-VN");
   return (
     <span className={`shop-assistant-avatar${small ? " is-small" : ""}`} aria-hidden="true">
-      {failedUrl === src ? <b>{initials}</b> : <img src={src} alt="" width={small ? 28 : 42} height={small ? 28 : 42} loading="eager" onError={() => setFailedUrl(src)} />}
+      {!src || failedUrl === src ? <b>{initials}</b> : <img src={src} alt="" width={small ? 28 : 42} height={small ? 28 : 42} loading="eager" onError={() => setFailedUrl(src)} />}
     </span>
   );
 }
@@ -80,7 +79,7 @@ function AssistantMessageBody({ message, animate, onNavigate, onTextChange }) {
 
 export default function ShopAssistant({ profile }) {
   const assistantName = typeof profile?.name === "string" && profile.name.trim() ? profile.name.trim() : "Gia Linh";
-  const avatarUrl = typeof profile?.avatar === "string" && profile.avatar.trim() ? profile.avatar.trim() : DEFAULT_AVATAR_URL;
+  const avatarUrl = typeof profile?.avatar === "string" ? profile.avatar.trim() : "";
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([STARTER]);

@@ -188,7 +188,7 @@ export default function Profile() {
                       id="current-password"
                       name="currentPassword"
                       type="password"
-                      autoComplete="current-password"
+                      autoComplete="off"
                       placeholder="Nhập mật khẩu hiện tại"
                       value={passwordForm.oldPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
@@ -201,7 +201,7 @@ export default function Profile() {
                       id="new-password"
                       name="newPassword"
                       type="password"
-                      autoComplete="new-password"
+                      autoComplete="off"
                       minLength={4}
                       maxLength={16}
                       placeholder="4 - 16 ký tự"
@@ -216,7 +216,7 @@ export default function Profile() {
                       id="confirm-new-password"
                       name="confirmNewPassword"
                       type="password"
-                      autoComplete="new-password"
+                      autoComplete="off"
                       minLength={4}
                       maxLength={16}
                       placeholder="Xác nhận lại mật khẩu mới"

@@ -11,6 +11,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "..
 import { Input } from "../../components/ui/input";
 import { Select } from "../../components/ui/select";
 import { notifyAdmin } from "../../utils/adminFeedback";
+import { importImageUrl, uploadImageFile } from "../../utils/imageUpload";
 
 const emptyForm = { danhmuc_id: "", name: "", img: "", noidung: "", camket: "", status: 1 };
 
@@ -46,10 +47,8 @@ export default function AdminAccountTypes() {
     const file = event.target.files[0];
     if (!file) return;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      setForm((previous) => ({ ...previous, img: res.data.data.url }));
+      const url = await uploadImageFile(api, file);
+      setForm((previous) => ({ ...previous, img: url }));
       notifyAdmin("Đã tải ảnh lên");
     } catch {
       notifyAdmin("Tải ảnh lên thất bại. Vui lòng thử lại.");
@@ -63,13 +62,14 @@ export default function AdminAccountTypes() {
     if (!form.name.trim()) return notifyAdmin("Vui lòng nhập tên loại tài khoản");
     setSaving(true);
     try {
-      if (editingId) await api.put(`/account-types/${editingId}`, form);
-      else await api.post("/account-types", form);
+      const payload = { ...form, img: await importImageUrl(api, form.img) };
+      if (editingId) await api.put(`/account-types/${editingId}`, payload);
+      else await api.post("/account-types", payload);
       notifyAdmin(editingId ? "Cập nhật loại tài khoản thành công" : "Thêm loại tài khoản thành công");
       resetForm();
       load();
     } catch (err) {
-      notifyAdmin(err.response?.data?.message || "Lỗi lưu loại tài khoản");
+      notifyAdmin(err.response?.data?.message || err.message || "Lỗi lưu loại tài khoản");
     } finally {
       setSaving(false);
     }
@@ -108,7 +108,7 @@ export default function AdminAccountTypes() {
   return (
     <div className="admin-account-types-page admin-accounts-page">
       <AdminPageHeader eyebrow="Sản phẩm · Admin" title="Quản lý loại tài khoản" description="Khai báo các loại account thuộc từng danh mục, kèm ảnh, mô tả và cam kết bán hàng." actions={<Button onClick={resetForm}><Plus size={15} aria-hidden="true" /> Loại tài khoản mới</Button>} />
-      <Card><CardHeader><CardTitle>{editingId ? `Chỉnh sửa loại nick #${editingId}` : "Thêm loại nick mới"}</CardTitle><CardDescription>Thông tin này được dùng trên trang danh mục và thẻ sản phẩm.</CardDescription></CardHeader><form onSubmit={save}><CardContent><div className="ui-form-grid"><AdminField id="admin-type-category" label="Danh mục cha" required><Select id="admin-type-category" value={form.danhmuc_id} onChange={(event) => setForm({ ...form, danhmuc_id: event.target.value })} required><option value="">Chọn danh mục…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></AdminField><AdminField id="admin-type-name" label="Tên loại tài khoản" required><Input id="admin-type-name" placeholder="Ví dụ: Túi mù 50k, VIP…" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></AdminField><div className="ui-field ui-field-full"><AdminField id="admin-type-image" label="Ảnh đại diện"><div className="ui-upload-row"><Input id="admin-type-image" type="url" placeholder="Nhập link ảnh" value={form.img} onChange={(event) => setForm({ ...form, img: event.target.value })} /><label className="ui-upload-trigger" htmlFor="admin-type-upload"><Upload size={15} aria-hidden="true" /> Upload<input ref={imageRef} id="admin-type-upload" type="file" accept="image/*" onChange={handleUpload} /></label></div>{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh loại tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</AdminField></div><AdminField id="admin-type-description" label="Mô tả ngắn"><Input id="admin-type-description" placeholder="Mô tả về loại account…" value={form.noidung} onChange={(event) => setForm({ ...form, noidung: event.target.value })} /></AdminField><AdminField id="admin-type-commitment" label="Cam kết của shop"><Input id="admin-type-commitment" placeholder="Ví dụ: Đúng mật khẩu 100%…" value={form.camket} onChange={(event) => setForm({ ...form, camket: event.target.value })} /></AdminField><AdminField id="admin-type-status" label="Trạng thái"><Select id="admin-type-status" value={form.status} onChange={(event) => setForm({ ...form, status: Number(event.target.value) })}><option value={1}>Hiển thị</option><option value={0}>Ẩn</option></Select></AdminField></div></CardContent><CardFooter><Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Đặt lại</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}</Button></CardFooter></form></Card>
+      <Card><CardHeader><CardTitle>{editingId ? `Chỉnh sửa loại nick #${editingId}` : "Thêm loại nick mới"}</CardTitle><CardDescription>Thông tin này được dùng trên trang danh mục và thẻ sản phẩm.</CardDescription></CardHeader><form onSubmit={save}><CardContent><div className="ui-form-grid"><AdminField id="admin-type-category" label="Danh mục cha" required><Select id="admin-type-category" value={form.danhmuc_id} onChange={(event) => setForm({ ...form, danhmuc_id: event.target.value })} required><option value="">Chọn danh mục…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></AdminField><AdminField id="admin-type-name" label="Tên loại tài khoản" required><Input id="admin-type-name" placeholder="Ví dụ: Túi mù 50k, VIP…" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></AdminField><div className="ui-field ui-field-full"><AdminField id="admin-type-image" label="Ảnh đại diện" helper="URL ngoài sẽ được tải về /uploads trước khi lưu."><div className="ui-upload-row"><Input id="admin-type-image" type="text" inputMode="url" placeholder="Dán URL ảnh hoặc chọn tệp" value={form.img} onChange={(event) => setForm({ ...form, img: event.target.value })} /><label className="ui-upload-trigger" htmlFor="admin-type-upload"><Upload size={15} aria-hidden="true" /> Upload<input ref={imageRef} id="admin-type-upload" type="file" accept="image/*" onChange={handleUpload} /></label></div>{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh loại tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</AdminField></div><AdminField id="admin-type-description" label="Mô tả ngắn"><Input id="admin-type-description" placeholder="Mô tả về loại account…" value={form.noidung} onChange={(event) => setForm({ ...form, noidung: event.target.value })} /></AdminField><AdminField id="admin-type-commitment" label="Cam kết của shop"><Input id="admin-type-commitment" placeholder="Ví dụ: Đúng mật khẩu 100%…" value={form.camket} onChange={(event) => setForm({ ...form, camket: event.target.value })} /></AdminField><AdminField id="admin-type-status" label="Trạng thái"><Select id="admin-type-status" value={form.status} onChange={(event) => setForm({ ...form, status: Number(event.target.value) })}><option value={1}>Hiển thị</option><option value={0}>Ẩn</option></Select></AdminField></div></CardContent><CardFooter><Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Đặt lại</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? "Đang lưu…" : editingId ? "Cập nhật" : "Thêm mới"}</Button></CardFooter></form></Card>
       <AdminError message={loadError} onRetry={load} />
       <Card className="ui-data-table-card"><CardHeader><CardTitle>Account type table</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `${types.length} loại tài khoản.`}</CardDescription></CardHeader><CardContent><DataTable data={types} loading={loading} columns={columns} caption="Bảng loại tài khoản" empty={<Empty><EmptyMedia><Layers size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Chưa có loại tài khoản</EmptyTitle><EmptyDescription>Tạo loại tài khoản đầu tiên để kết nối với kho account.</EmptyDescription></EmptyHeader><Button size="sm" onClick={resetForm}><Plus size={14} aria-hidden="true" /> Thêm loại</Button></Empty>} /></CardContent></Card>
       <AdminConfirmDialog open={Boolean(confirmation)} title={confirmation?.title} description={confirmation?.description} destructive={confirmation?.destructive} pending={confirming} onClose={() => setConfirmation(null)} onConfirm={confirmAction} confirmLabel={confirmation?.destructive ? "Xóa hẳn" : "Xác nhận"} />

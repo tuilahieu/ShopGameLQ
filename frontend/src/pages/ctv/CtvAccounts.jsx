@@ -6,6 +6,7 @@ import CurrencyInput from "../../components/CurrencyInput";
 import PanelLoading from "../../components/PanelLoading";
 import { PageHeading } from "../../components/Ui";
 import { AdminConfirmDialog } from "../../components/admin/AdminUi";
+import { importImageList, importImageUrl, uploadImageFile } from "../../utils/imageUpload";
 
 function makeEmptyForm(firstTypeId = "") {
   return {
@@ -71,18 +72,10 @@ export default function CtvAccounts() {
     if (!file) return;
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await api.post("/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
+      const url = await uploadImageFile(api, file);
       setForm((prev) => ({
         ...prev,
-        img: res.data.data.url,
+        img: url,
       }));
     } catch (err) {
       console.error(err);
@@ -104,6 +97,8 @@ export default function CtvAccounts() {
 
     setSaving(true);
     try {
+      payload.img = await importImageUrl(api, form.img);
+      payload.list_img = await importImageList(api, form.list_img);
       if (editingId) {
         await api.put(`/accounts/${editingId}`, payload);
         alert("Cập nhật tài khoản thành công.");
@@ -115,7 +110,7 @@ export default function CtvAccounts() {
       loadData(pagination.page);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi lưu tài khoản");
+      alert(err.response?.data?.message || err.message || "Có lỗi xảy ra khi lưu tài khoản");
     } finally {
       setSaving(false);
     }
@@ -163,7 +158,7 @@ export default function CtvAccounts() {
 
       <section className="card ctv-editor-card">
         <h3>{editingId ? `Chỉnh sửa tài khoản #${editingId}` : "Đăng bán tài khoản mới"}</h3>
-        <form onSubmit={handleSubmit} className="form-grid ctv-account-form">
+        <form onSubmit={handleSubmit} className="form-grid ctv-account-form" autoComplete="off">
           <div className="form-group-premium">
             <label htmlFor="ctv-account-type">Loại tài khoản</label>
             <select
@@ -225,7 +220,8 @@ export default function CtvAccounts() {
             <div className="ctv-upload-row">
               <input
                 id="ctv-account-image"
-                placeholder="Nhập link ảnh hoặc upload file"
+                autoComplete="off"
+                placeholder="Dán URL ngoài — hệ thống sẽ tải về khi lưu"
                 value={form.img}
                 onChange={(e) => setForm({ ...form, img: e.target.value })}
               />
@@ -237,6 +233,7 @@ export default function CtvAccounts() {
             {form.img && (
               <div className="ctv-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={160} height={90} fallbackLabel="Ảnh không tải được" /></div>
             )}
+            <small className="form-hint">URL ngoài sẽ được sao chép vào kho ảnh của hệ thống trước khi lưu.</small>
           </div>
 
           <div className="form-group-premium ctv-form-full">
@@ -254,7 +251,8 @@ export default function CtvAccounts() {
             <label htmlFor="ctv-account-details-list">Danh sách thông tin</label>
             <input
               id="ctv-account-details-list"
-              placeholder="0 hoặc JSON array"
+              autoComplete="off"
+              placeholder="0 hoặc JSON array URL ảnh"
               value={form.list_thong_tin}
               onChange={(e) => setForm({ ...form, list_thong_tin: e.target.value })}
             />
@@ -264,6 +262,7 @@ export default function CtvAccounts() {
             <label htmlFor="ctv-account-images-list">Danh sách ảnh</label>
             <input
               id="ctv-account-images-list"
+              autoComplete="off"
               placeholder="0 hoặc JSON array"
               value={form.list_img}
               onChange={(e) => setForm({ ...form, list_img: e.target.value })}

@@ -29,7 +29,7 @@ export function AuthCard({ title, description, error, children, footer }) {
 export function AuthField({ id, label, icon: Icon, ...inputProps }) {
   return (
     <FormField id={id} label={<><Icon size={15} aria-hidden="true" /> {label}</>} labelClassName="auth-field-label">
-      <input id={id} {...inputProps} />
+      <input id={id} {...inputProps} autoComplete="off" />
     </FormField>
   );
 }

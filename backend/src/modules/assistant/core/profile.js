@@ -1,5 +1,5 @@
 export const DEFAULT_ASSISTANT_NAME = "Gia Linh";
-export const DEFAULT_ASSISTANT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-jXgFWFj2PRcDPCDeQSstvlzW_-DXWC7xVZQYgNsv5-8qgRb8wArhzynL&s=10";
+export const DEFAULT_ASSISTANT_AVATAR = "";
 
 export function normalizeAssistantName(value) {
   if (typeof value !== "string") return null;

@@ -18,6 +18,7 @@ import { successResponse, errorResponse } from "../../shared/utils/response.util
 import { writeLog } from "../../shared/utils/log.util.js";
 import { parsePagination } from "../../shared/utils/pagination.util.js";
 import { parseMoney, requirePositiveMoney } from "../../shared/utils/money.util.js";
+import { normalizeStoredImagePath } from "../../shared/utils/image-path.util.js";
 import { applyWalletMutation } from "../wallet/wallet.service.js";
 import { decryptCredential, encryptCredential } from "../../shared/utils/credential.util.js";
 import { getSePayConfig } from "../payments/sepay-config.service.js";
@@ -738,10 +739,15 @@ export async function updateAdminSetting(req, res) {
     if (sepay_secret !== undefined && (typeof sepay_secret !== "string" || sepay_secret.trim().length < 16 || sepay_secret.trim().length > 2048)) {
       return errorResponse(res, "Khóa SePay phải có từ 16 đến 2048 ký tự", 400, "INVALID_SEPAY_SECRET", req);
     }
+    const storedLogo = logo === undefined ? undefined : normalizeStoredImagePath(logo, "Logo website");
+    const storedFavicon = favicon === undefined ? undefined : normalizeStoredImagePath(favicon, "Favicon");
+    const storedBanner = banner === undefined ? undefined : normalizeStoredImagePath(banner, "Banner trang chủ");
+    const storedBackground = background === undefined ? undefined : normalizeStoredImagePath(background, "Ảnh nền website");
+    const storedAssistantAvatar = assistant_avatar === undefined ? undefined : normalizeStoredImagePath(assistant_avatar, "Avatar chatbot");
     const assistantName = assistant_name === undefined ? undefined : normalizeAssistantName(assistant_name);
-    const assistantAvatar = assistant_avatar === undefined ? undefined : normalizeAssistantAvatar(assistant_avatar);
+    const assistantAvatar = storedAssistantAvatar === undefined ? undefined : normalizeAssistantAvatar(storedAssistantAvatar);
     if (assistantName === null) return errorResponse(res, "Tên chatbot phải dài 2–40 ký tự và chỉ gồm chữ, số, dấu cách", 400, "INVALID_ASSISTANT_NAME", req);
-    if (assistantAvatar === null) return errorResponse(res, "Avatar chatbot phải là URL HTTPS hoặc ảnh trong /uploads", 400, "INVALID_ASSISTANT_AVATAR", req);
+    if (assistantAvatar === null) return errorResponse(res, "Avatar chatbot phải là ảnh đã tải lên hệ thống", 400, "INVALID_ASSISTANT_AVATAR", req);
     const llmProvider = assistant_llm_provider === undefined ? undefined : normalizeAssistantLlmProvider(assistant_llm_provider);
     if (llmProvider === null) return errorResponse(res, "Nhà cung cấp LLM không hợp lệ", 400, "INVALID_ASSISTANT_LLM_PROVIDER", req);
     const llmModel = assistant_llm_model === undefined ? undefined : normalizeAssistantLlmModel(assistant_llm_model);
@@ -760,10 +766,10 @@ export async function updateAdminSetting(req, res) {
 
     await setting.update({
       ...(ten_web !== undefined && { ten_web }),
-      ...(logo !== undefined && { logo }),
-      ...(favicon !== undefined && { favicon }),
-      ...(banner !== undefined && { banner }),
-      ...(background !== undefined && { background }),
+      ...(storedLogo !== undefined && { logo: storedLogo }),
+      ...(storedFavicon !== undefined && { favicon: storedFavicon }),
+      ...(storedBanner !== undefined && { banner: storedBanner }),
+      ...(storedBackground !== undefined && { background: storedBackground }),
       ...(fb_admin !== undefined && { fb_admin }),
       ...(sdt_admin !== undefined && { sdt_admin }),
       ...(email !== undefined && { email }),
@@ -793,7 +799,8 @@ export async function updateAdminSetting(req, res) {
     );
   } catch (error) {
     console.error("UPDATE ADMIN SETTING ERROR:", error);
-    return errorResponse(res, "Có lỗi xảy ra, vui lòng thử lại sau", 500);
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500;
+    return errorResponse(res, status === 500 ? "Có lỗi xảy ra, vui lòng thử lại sau" : error.message, status, error.code, req);
   }
 }
 

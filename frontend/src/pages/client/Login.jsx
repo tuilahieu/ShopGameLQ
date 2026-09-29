@@ -75,7 +75,7 @@ export default function Login() {
               icon={User}
               label="Tên đăng nhập"
               name="username"
-              autoComplete="username"
+              autoComplete="off"
               autoCapitalize="none"
               spellCheck="false"
               maxLength={16}
@@ -90,7 +90,7 @@ export default function Login() {
               label="Mật khẩu"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="off"
               maxLength={16}
               placeholder="Nhập mật khẩu"
               value={form.password}

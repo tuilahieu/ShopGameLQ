@@ -69,7 +69,7 @@ export default function Register() {
               icon={User}
               label="Tên đăng nhập"
               name="username"
-              autoComplete="username"
+              autoComplete="off"
               autoCapitalize="none"
               spellCheck="false"
               minLength={4}
@@ -85,7 +85,7 @@ export default function Register() {
               label="Mật khẩu"
               name="password"
               type="password"
-              autoComplete="new-password"
+              autoComplete="off"
               minLength={4}
               maxLength={16}
               placeholder="Mật khẩu (4 - 16 ký tự)"
@@ -99,7 +99,7 @@ export default function Register() {
               label="Xác nhận mật khẩu"
               name="confirmPassword"
               type="password"
-              autoComplete="new-password"
+              autoComplete="off"
               minLength={4}
               maxLength={16}
               placeholder="Nhập lại mật khẩu"
