@@ -26,6 +26,7 @@ jobs:
       - name: Build Frontend
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
         run: |
           cd frontend
           npm install
