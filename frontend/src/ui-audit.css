@@ -105,10 +105,27 @@ html { scroll-behavior: smooth; }
 
 .table-empty-cell { padding: 1.25rem; text-align: center; color: var(--color-text-secondary); }
 
-/* The reserved image box behaves like a skeleton while media is decoded. */
-.safe-image { background-color: var(--skeleton-fill, var(--color-surface-subtle)); transition: opacity 160ms ease; }
-.safe-image.is-loading { opacity: 0.58; animation: skeleton-pulse 1.35s ease-in-out infinite alternate; }
-.safe-image.is-loaded { opacity: 1; animation: none; }
+/* Keep every media slot stable and show a real shimmer until the image is decoded. */
+.safe-image {
+  background-color: var(--skeleton-fill, var(--color-surface-subtle));
+  transition: opacity 180ms ease, background-color 180ms ease;
+}
+.safe-image.is-loading {
+  opacity: 1;
+  background-image: linear-gradient(
+    100deg,
+    var(--skeleton-fill, var(--color-surface-subtle)) 18%,
+    var(--skeleton-highlight, var(--color-surface)) 42%,
+    var(--skeleton-fill, var(--color-surface-subtle)) 66%
+  );
+  background-size: 220% 100%;
+  animation: image-skeleton-shimmer 1.25s ease-in-out infinite;
+}
+.safe-image.is-loaded {
+  opacity: 1;
+  background-image: none;
+  animation: none;
+}
 
 .panel-loading { display: grid; gap: 0.75rem; min-height: 15rem; padding: 1rem; align-content: start; }
 .panel-loading-heading { width: min(14rem, 45%); height: 1.5rem; border-radius: 0.5rem; background: var(--skeleton-fill, var(--color-surface-subtle)); animation: skeleton-pulse 1.35s ease-in-out infinite alternate; }
@@ -178,6 +195,11 @@ html { scroll-behavior: smooth; }
 @keyframes skeleton-pulse {
   from { opacity: 0.62; }
   to { opacity: 1; background-color: var(--skeleton-highlight); }
+}
+
+@keyframes image-skeleton-shimmer {
+  from { background-position: 110% 0; }
+  to { background-position: -110% 0; }
 }
 
 @keyframes network-progress {

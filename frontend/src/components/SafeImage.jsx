@@ -59,6 +59,7 @@ export default function SafeImage({
       loading={loading}
       decoding={decoding}
       fetchPriority={fetchPriority}
+      aria-busy={!loaded}
       className={`safe-image ${loaded ? "is-loaded" : "is-loading"} ${className}`.trim()}
       style={style}
       onLoad={(event) => {
