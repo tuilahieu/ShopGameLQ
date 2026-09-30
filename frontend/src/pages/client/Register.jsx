@@ -46,8 +46,7 @@ export default function Register() {
         password: form.password,
         captcha_token: captchaToken || undefined,
       });
-      alert("Đăng ký thành công! Hãy đăng nhập để tiếp tục mua acc.");
-      navigate("/login");
+      navigate("/login", { replace: true, state: { notice: "Đăng ký thành công. Hãy đăng nhập để tiếp tục mua tài khoản." } });
     } catch (error) {
       resetCaptcha();
       setErrorMsg(getApiErrorMessage(error, "Đăng ký thất bại. Tên đăng nhập có thể đã tồn tại."));

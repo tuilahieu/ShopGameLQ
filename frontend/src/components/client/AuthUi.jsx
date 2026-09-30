@@ -8,7 +8,7 @@ export function AuthCard({ title, description, error, children, footer }) {
         <div className="auth-header-logo">
           <div className="auth-game-mark"><Gamepad2 size={27} aria-hidden="true" /></div>
           <h1>{title}</h1>
-          <p>{description}</p>
+          {description && <p>{description}</p>}
         </div>
 
         {error && (
@@ -20,7 +20,7 @@ export function AuthCard({ title, description, error, children, footer }) {
 
         {children}
 
-        <div className="auth-footer-text">{footer}</div>
+        {footer && <div className="auth-footer-text">{footer}</div>}
       </div>
     </div>
   );

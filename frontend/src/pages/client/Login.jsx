@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../../api/api";
-import { User, Lock, LogIn } from "lucide-react";
+import { CheckCircle2, User, Lock, LogIn } from "lucide-react";
 import TurnstileCaptcha from "../../components/TurnstileCaptcha";
 import { AuthCard, AuthField } from "../../components/client/AuthUi";
 import usePageSeo from "../../hooks/usePageSeo";
@@ -24,6 +24,7 @@ export default function Login() {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const successNotice = typeof location.state?.notice === "string" ? location.state.notice : "";
   const { captchaToken, captchaResetRef, captchaEnabled, onCaptchaToken, resetCaptcha } = useTurnstileCaptcha();
 
   async function submit(e) {
@@ -70,6 +71,7 @@ export default function Login() {
       footer={<>Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link></>}
     >
       <form onSubmit={submit} className="auth-form">
+          {successNotice && <div className="auth-success-notice" role="status"><CheckCircle2 size={18} aria-hidden="true" /><span>{successNotice}</span></div>}
           <AuthField
               id="login-username"
               icon={User}

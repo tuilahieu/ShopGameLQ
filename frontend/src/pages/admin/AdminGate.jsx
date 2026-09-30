@@ -1,9 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Gamepad2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { AuthCard, AuthField } from "../../components/client/AuthUi";
 import { Skeleton } from "../../components/ui/skeleton";
+import ThemeToggle from "../../components/ThemeToggle";
+import { utf8ByteLength } from "../../utils/browserCompat";
+
+function AdminGateShell({ children }) {
+  return (
+    <main className="admin-gate-page">
+      <div className="admin-gate-tools"><ThemeToggle compact /></div>
+      <div className="admin-gate-shell">
+        <header className="admin-gate-intro">
+          <div className="admin-gate-brand">
+            <span className="admin-gate-brand-mark" aria-hidden="true">S</span>
+            <strong>SHOP Liên Quân</strong>
+          </div>
+        </header>
+        <section className="admin-gate-card-area" aria-label="Biểu mẫu xác minh quản trị">
+          {children}
+        </section>
+      </div>
+    </main>
+  );
+}
 
 export default function AdminGate({ children }) {
   const [mode, setMode] = useState("loading");
@@ -71,7 +92,7 @@ export default function AdminGate({ children }) {
       setError("Hai lần nhập mật khẩu cấp 2 chưa khớp.");
       return;
     }
-    if (mode === "setup" && (Array.from(form.secondPassword).length < 12 || new TextEncoder().encode(form.secondPassword).length > 72)) {
+    if (mode === "setup" && (Array.from(form.secondPassword).length < 12 || utf8ByteLength(form.secondPassword) > 72)) {
       setError("Mật khẩu cấp 2 cần ít nhất 12 ký tự và tối đa 72 byte.");
       return;
     }
@@ -100,34 +121,30 @@ export default function AdminGate({ children }) {
 
   if (mode === "ready") return children;
   if (mode === "loading") return (
-    <AuthCard
-      title="Đang kiểm tra quyền quản trị"
-      description="Vui lòng chờ trong giây lát."
-      footer={<Link to="/">Về trang chủ</Link>}
+    <AdminGateShell><AuthCard
+      title="Đang kiểm tra…"
+      footer={<Link className="admin-gate-home-link" to="/"><ArrowLeft size={16} aria-hidden="true" /> Về cửa hàng</Link>}
     >
-      <div className="ui-dashboard-loading" aria-label="Đang tải">
+      <div className="ui-dashboard-loading admin-gate-loading" role="status" aria-label="Đang tải">
+        <Skeleton className="ui-skeleton-line" />
         <Skeleton className="ui-skeleton-line" />
         <Skeleton className="ui-skeleton-line" />
       </div>
-    </AuthCard>
+    </AuthCard></AdminGateShell>
   );
   if (mode === "error") return (
-    <AuthCard
+    <AdminGateShell><AuthCard
       title="Không thể xác minh"
-      description="Hệ thống chưa thể kiểm tra phiên quản trị."
       error={error}
-      footer={<Link to="/">Về trang chủ</Link>}
-    />
+      footer={<Link className="admin-gate-home-link" to="/"><ArrowLeft size={16} aria-hidden="true" /> Về cửa hàng</Link>}
+    /></AdminGateShell>
   );
 
   return (
-    <AuthCard
-      title={mode === "setup" ? "Thiết lập mật khẩu cấp 2" : "Xác minh quản trị viên"}
-      description={mode === "setup"
-        ? "Tạo mật khẩu cấp 2 riêng để bảo vệ khu quản trị."
-        : "Nhập mật khẩu cấp 2 để mở phiên quản trị trong 30 phút."}
+    <AdminGateShell><AuthCard
+      title={mode === "setup" ? "Tạo mật khẩu cấp 2" : "Xác minh quản trị"}
       error={error}
-      footer={<Link to="/">Về trang chủ</Link>}
+      footer={<Link className="admin-gate-home-link" to="/"><ArrowLeft size={16} aria-hidden="true" /> Về cửa hàng</Link>}
     >
       <form className="auth-form" autoComplete="off" onSubmit={submit}>
         {mode === "setup" && (
@@ -175,10 +192,10 @@ export default function AdminGate({ children }) {
           />
         )}
         <button className="btn-primary auth-submit" type="submit" disabled={busy} aria-busy={busy}>
-          <ShieldCheck size={18} aria-hidden="true" />
-          {busy ? "Đang xử lý…" : mode === "setup" ? "Lưu mật khẩu cấp 2" : "Xác minh và vào quản trị"}
+          {busy ? <Gamepad2 size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
+          {busy ? "Đang xử lý…" : mode === "setup" ? "Lưu mật khẩu" : "Tiếp tục"}
         </button>
       </form>
-    </AuthCard>
+    </AuthCard></AdminGateShell>
   );
 }
