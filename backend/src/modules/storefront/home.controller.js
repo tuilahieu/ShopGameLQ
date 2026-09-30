@@ -1,14 +1,15 @@
-import { Category, AccountType, GameAccount, Setting, Transaction, Sale } from "../../database/models.js";
+import { Category, AccountType, GameAccount, Order, Setting, Sale, User } from "../../database/models.js";
 import { successResponse, errorResponse } from "../../shared/utils/response.util.js";
 import { Sequelize } from "sequelize";
 import { buildActiveSaleWhere } from "../promotions/sale.service.js";
 import { resolveAccountPricing } from "../commerce/pricing.service.js";
 import { publicAssistantProfile } from "../assistant/core/profile.js";
+import { buildRecentPurchases } from "./recentPurchases.service.js";
 
 export async function getHome(req, res) {
   try {
     const now = new Date();
-    const [categories, accountTypes, latestAccounts, totalAccounts, setting, countRows, flashSales] =
+    const [categories, accountTypes, latestAccounts, totalAccounts, setting, countRows, flashSales, recentOrders] =
       await Promise.all([
         Category.findAll({
           where: { status: 1 },
@@ -64,6 +65,29 @@ export async function getHome(req, res) {
           limit: 10,
         }),
 
+        Order.findAll({
+          where: { status: 1 },
+          attributes: ["id", "final_price", "created_at"],
+          include: [
+            { model: User, as: "user", attributes: ["username"], required: true },
+            {
+              model: GameAccount,
+              as: "account",
+              attributes: ["id", "loai_id"],
+              required: true,
+              include: [{
+                model: AccountType,
+                as: "accountType",
+                attributes: ["name"],
+                required: true,
+                include: [{ model: Category, as: "category", attributes: ["name"], required: false }],
+              }],
+            },
+          ],
+          order: [["id", "DESC"]],
+          limit: 8,
+        }),
+
       ]);
 
     const latestAccountIds = latestAccounts.map((account) => Number(account.id));
@@ -92,6 +116,14 @@ export async function getHome(req, res) {
         sale_source: pricing.saleSource,
         is_flash_sale: pricing.hasFlashSale,
       };
+    });
+
+    const recentPurchases = buildRecentPurchases({
+      orders: recentOrders,
+      accountTypes,
+      categories,
+      accounts: latestAccountsWithPricing,
+      now,
     });
 
     // Build { loai_id: count } map for easy frontend lookup
@@ -146,6 +178,7 @@ export async function getHome(req, res) {
       accountCountByType,
       setting: publicSetting,
       flashSaleAccounts,
+      recentPurchases,
     });
   } catch (error) {
     console.error("GET HOME ERROR:", error);

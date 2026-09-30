@@ -3,6 +3,7 @@ import { sequelize } from "../../config/database.js";
 import {
   User,
   GameAccount,
+  AccountType,
   Order,
   Sale,
   Discount,
@@ -270,6 +271,14 @@ export async function getMyOrders(req, res) {
           attributes: {
             exclude: ["login"],
           },
+          include: [
+            {
+              model: AccountType,
+              as: "accountType",
+              attributes: ["id", "name"],
+              required: false,
+            },
+          ],
         },
       ],
       order: [["id", "DESC"]],
