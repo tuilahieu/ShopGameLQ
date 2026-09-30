@@ -19,6 +19,7 @@ export default function Modal({
   children,
   footer,
   className = "",
+  hideHeader = false,
   closeOnBackdrop = true,
   closeOnEscape = true,
 }) {
@@ -112,6 +113,8 @@ export default function Modal({
 
   if (!isRendered) return null;
 
+  const isAdminWorkspaceModal = className.split(/\s+/).some((name) => name.startsWith("admin-"));
+
   const handleBackdropClick = (event) => {
     if (closeOnBackdrop && event.target === event.currentTarget) {
       onClose();
@@ -119,21 +122,28 @@ export default function Modal({
   };
 
   return createPortal(
-    <div className={`modal-backdrop${isClosing ? " is-closing" : ""}`} onClick={handleBackdropClick}>
+    <div className={`modal-backdrop${isAdminWorkspaceModal ? " admin-workspace-modal" : ""}${isClosing ? " is-closing" : ""}`} onClick={handleBackdropClick}>
       <div
         ref={dialogRef}
         className={`modal-content-wrapper ${isClosing ? "is-closing" : ""} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={hideHeader ? undefined : titleId}
+        aria-label={hideHeader && typeof title === "string" ? title : undefined}
         tabIndex={-1}
       >
-        <div className="modal-header">
-          <h3 id={titleId}>{title}</h3>
-          <button type="button" onClick={onClose} className="modal-close-btn" aria-label="Đóng hộp thoại">
+        {hideHeader ? (
+          <button type="button" onClick={onClose} className="modal-close-btn modal-close-floating" aria-label="Đóng hộp thoại">
             <X size={20} aria-hidden="true" />
           </button>
-        </div>
+        ) : (
+          <div className="modal-header">
+            <h3 id={titleId}>{title}</h3>
+            <button type="button" onClick={onClose} className="modal-close-btn" aria-label="Đóng hộp thoại">
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         <div className="modal-body">
           {children}

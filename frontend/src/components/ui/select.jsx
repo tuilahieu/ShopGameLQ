@@ -47,11 +47,22 @@ export const Select = forwardRef(function Select({
   useImperativeHandle(ref, () => triggerRef.current);
 
   useEffect(() => {
-    function handleOutsidePointerDown(event) {
+    function handleOutsidePress(event) {
       if (!rootRef.current?.contains(event.target)) setOpen(false);
     }
-    document.addEventListener("pointerdown", handleOutsidePointerDown);
-    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+    if ("PointerEvent" in window) {
+      document.addEventListener("pointerdown", handleOutsidePress);
+      return () => document.removeEventListener("pointerdown", handleOutsidePress);
+    }
+
+    // Safari/WebKit versions without Pointer Events keep the same dismissal
+    // behavior through mouse and touch input.
+    document.addEventListener("mousedown", handleOutsidePress);
+    document.addEventListener("touchstart", handleOutsidePress, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleOutsidePress);
+      document.removeEventListener("touchstart", handleOutsidePress);
+    };
   }, []);
 
   useEffect(() => {
@@ -120,7 +131,7 @@ export const Select = forwardRef(function Select({
 
   return (
     <div ref={rootRef} className="ui-select-root">
-      {name && <input type="hidden" name={name} value={value} readOnly />}
+      {name && <input type="hidden" name={name} value={value} readOnly autoComplete="off" />}
       <button
         ref={triggerRef}
         id={triggerId}

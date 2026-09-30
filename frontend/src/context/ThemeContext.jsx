@@ -29,8 +29,13 @@ export function ThemeProvider({ children }) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       apply(mq.matches ? "dark" : "light");
       const handler = (e) => apply(e.matches ? "dark" : "light");
-      mq.addEventListener("change", handler);
-      return () => mq.removeEventListener("change", handler);
+      if (typeof mq.addEventListener === "function") {
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+      }
+      // Safari/WebKit 12 exposes the legacy MediaQueryList listener API.
+      mq.addListener?.(handler);
+      return () => mq.removeListener?.(handler);
     } else {
       apply(theme);
     }

@@ -13,7 +13,12 @@ const REVEAL_SELECTOR = [
 export default function useMotionReveal(containerRef, routeKey) {
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    if (!container || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
+
+    if (!("IntersectionObserver" in window) || !("MutationObserver" in window)) {
+      container.querySelectorAll(REVEAL_SELECTOR).forEach((node) => node.classList.add("is-visible"));
+      return undefined;
+    }
 
     const observed = new WeakSet();
     const observer = new IntersectionObserver((entries) => {

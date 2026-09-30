@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import SkeletonLoading, { SkeletonBlock } from "./SkeletonLoading";
+import SkeletonLoading from "./SkeletonLoading";
 
 function getRouteSkeleton(pathname, search) {
   if (pathname === "/") return { variant: "home", label: "Đang tải cửa hàng" };
@@ -18,16 +18,16 @@ function getRouteSkeleton(pathname, search) {
   return { variant: "article", label: "Đang tải trang" };
 }
 
-function ClientShellSkeleton({ children }) {
+function BundleLoadingOverlay({ label }) {
   return (
-    <div className="client-page skeleton-app-shell">
-      <header className="skeleton-client-header" aria-hidden="true">
-        <SkeletonBlock className="skeleton-brand" />
-        <nav><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></nav>
-        <div><SkeletonBlock className="is-button-small" /><SkeletonBlock className="is-button-small" /></div>
-      </header>
-      <main className="skeleton-client-main">{children}</main>
-      <div className="skeleton-mobile-nav" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <SkeletonBlock key={index} />)}</div>
+    <div className="bundle-loading-overlay" role="status" aria-live="polite" aria-label={label}>
+      <div className="bundle-loading-card">
+        <div className="bundle-loading-mark" aria-hidden="true">
+          <span className="bundle-loading-logo"><strong>Shop</strong><b>Game</b><i /></span>
+          <span className="bundle-loading-orbit"><i /><i /><i /></span>
+        </div>
+        <span className="bundle-loading-track" aria-hidden="true"><i /></span>
+      </div>
     </div>
   );
 }
@@ -35,9 +35,14 @@ function ClientShellSkeleton({ children }) {
 export default function AppLoader({ inline = false }) {
   const location = useLocation();
   const route = getRouteSkeleton(location.pathname, location.search);
-  const skeleton = <SkeletonLoading {...route} items={route.variant === "catalogue-results" ? 3 : 6} />;
+  const skeletonItems = route.variant === "orders"
+    ? 2
+    : route.variant === "catalogue" || route.variant === "catalogue-results"
+      ? 4
+      : 6;
+  const skeleton = <SkeletonLoading {...route} items={skeletonItems} />;
 
   if (inline) return <div className="app-loader app-loader--inline">{skeleton}</div>;
   if (location.pathname.startsWith("/admin") || location.pathname.startsWith("/ctv")) return <div className="app-loader app-loader--workspace">{skeleton}</div>;
-  return <ClientShellSkeleton>{skeleton}</ClientShellSkeleton>;
+  return <BundleLoadingOverlay label={route.label} />;
 }

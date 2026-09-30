@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
@@ -33,6 +33,7 @@ export function DataTable({
   empty,
   rowClassName,
 }) {
+  const mobileSortId = useId();
   const [sort, setSort] = useState({ id: "", direction: "asc" });
   const sortableColumns = useMemo(() => columns.filter((column) => column.sortable), [columns]);
   const sortedData = useMemo(() => {
@@ -57,6 +58,14 @@ export function DataTable({
     }));
   }
 
+  function selectMobileSort(event) {
+    const id = event.target.value;
+    setSort((current) => ({
+      id,
+      direction: current.id === id ? current.direction : "asc",
+    }));
+  }
+
   function toggleAll(checked) {
     const next = new Set(selectedIds);
     data.forEach((row) => {
@@ -76,8 +85,28 @@ export function DataTable({
   }
 
   return (
-    <div className={cn("ui-data-table", className)} aria-busy={loading || undefined}>
+    <div className={cn("ui-data-table", loading && "is-loading", className)} aria-busy={loading || undefined}>
       {toolbar && <div className="ui-data-table-toolbar">{toolbar}</div>}
+      {sortableColumns.length > 0 && data.length > 0 && (
+        <div className="ui-data-table-mobile-sort">
+          <label htmlFor={mobileSortId}>Sắp xếp</label>
+          <select id={mobileSortId} value={sort.id} onChange={selectMobileSort}>
+            <option value="">Mặc định</option>
+            {sortableColumns.map((column) => <option key={column.id} value={column.id}>{column.header}</option>)}
+          </select>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setSort((current) => ({ ...current, direction: current.direction === "asc" ? "desc" : "asc" }))}
+            disabled={!sort.id}
+            aria-label={sort.direction === "asc" ? "Đổi sang giảm dần" : "Đổi sang tăng dần"}
+            title={sort.direction === "asc" ? "Tăng dần" : "Giảm dần"}
+          >
+            {sort.direction === "asc" ? <ArrowUp size={16} aria-hidden="true" /> : <ArrowDown size={16} aria-hidden="true" />}
+          </Button>
+        </div>
+      )}
       <TableViewport>
         <Table>
           {caption && <caption className="ui-table-caption">{caption}</caption>}
@@ -106,27 +135,27 @@ export function DataTable({
           </TableHeader>
           <TableBody>
             {loading && data.length === 0 && Array.from({ length: 6 }, (_, index) => (
-              <TableRow key={`loading-${index}`} aria-hidden="true">
-                {selectable && <TableCell><Skeleton className="ui-skeleton-checkbox" /></TableCell>}
-                {columns.map((column) => <TableCell key={column.id}><Skeleton className="ui-skeleton-line" /></TableCell>)}
+              <TableRow key={`loading-${index}`} className="ui-table-loading-row" aria-hidden="true">
+                {selectable && <TableCell data-label="Chọn"><Skeleton className="ui-skeleton-checkbox" /></TableCell>}
+                {columns.map((column) => <TableCell key={column.id} data-label={column.mobileLabel || column.header}><Skeleton className="ui-skeleton-line" /></TableCell>)}
               </TableRow>
             ))}
             {!loading && sortedData.length === 0 && (
-              <TableRow>
+              <TableRow className="ui-table-empty-row">
                 <TableCell colSpan={columns.length + (selectable ? 1 : 0)} className="ui-table-empty-cell">
                   {empty || <Empty><EmptyMedia>—</EmptyMedia><EmptyHeader><EmptyTitle>Không có dữ liệu</EmptyTitle><EmptyDescription>Chưa có bản ghi phù hợp để hiển thị.</EmptyDescription></EmptyHeader></Empty>}
                 </TableCell>
               </TableRow>
             )}
             {sortedData.map((row) => (
-              <TableRow key={getRowId(row)} className={cn(rowClassName?.(row), selectedIds.has(getRowId(row)) && "is-selected")}>
+              <TableRow key={getRowId(row)} className={cn("ui-table-data-row", rowClassName?.(row), selectedIds.has(getRowId(row)) && "is-selected")}>
                 {selectable && (
-                  <TableCell className="ui-table-selection-cell">
+                  <TableCell className="ui-table-selection-cell" data-label="Chọn">
                     <Checkbox checked={selectedIds.has(getRowId(row))} onChange={(event) => toggleRow(row, event.target.checked)} aria-label={`Chọn tài khoản #${getRowId(row)}`} />
                   </TableCell>
                 )}
                 {columns.map((column) => (
-                  <TableCell key={column.id} className={cn(column.cellClassName, (column.id === "actions" || column.id === "action") && "ui-table-actions-column")}>
+                  <TableCell key={column.id} data-label={column.mobileLabel || column.header} className={cn(column.cellClassName, (column.id === "actions" || column.id === "action") && "ui-table-actions-column")}>
                     {column.cell ? column.cell(row) : valueFor(column, row)}
                   </TableCell>
                 ))}

@@ -22,7 +22,6 @@ export default function ThemeToggle({ compact = false }) {
   return (
     <button
       onClick={cycle}
-      title={`Chủ đề: ${label} — bấm để đổi`}
       aria-label={`Chủ đề hiện tại: ${label}. Bấm để đổi chủ đề`}
       className="theme-toggle-btn"
       data-compact={compact}

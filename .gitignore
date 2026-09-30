@@ -1,5 +1,6 @@
 shop_game.sql
 backend/uploads/
+scratch/
 
 # Local environment configuration
 .env

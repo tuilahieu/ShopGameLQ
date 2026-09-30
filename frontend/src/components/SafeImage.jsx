@@ -31,6 +31,10 @@ export default function SafeImage({
 
   if (failed) {
     const fallbackStyle = {
+      maxWidth: "100%",
+      maxHeight: "100%",
+      boxSizing: "border-box",
+      overflow: "hidden",
       ...(width && height ? { aspectRatio: `${width} / ${height}` } : {}),
       ...style,
     };
@@ -42,34 +46,46 @@ export default function SafeImage({
         role="img"
         aria-label={alt || fallbackLabel}
       >
-        <ImageOff size={18} aria-hidden="true" />
-        <span>{fallbackLabel}</span>
-        {width && height && <small>{width} × {height}</small>}
+        <ImageOff size={16} aria-hidden="true" className="image-fallback-icon" />
+        {fallbackLabel && <span className="image-fallback-label">{fallbackLabel}</span>}
       </div>
     );
   }
 
   return (
-    <img
-      {...props}
-      src={resolvedSrc}
-      alt={alt || "Hình ảnh"}
-      width={width}
-      height={height}
-      loading={loading}
-      decoding={decoding}
-      fetchPriority={fetchPriority}
-      aria-busy={!loaded}
-      className={`safe-image ${loaded ? "is-loaded" : "is-loading"} ${className}`.trim()}
-      style={style}
-      onLoad={(event) => {
-        setLoadedSrc(resolvedSrc);
-        onLoad?.(event);
-      }}
-      onError={(event) => {
-        setFailedSrc(resolvedSrc);
-        onError?.(event);
-      }}
-    />
+    <>
+      <img
+        {...props}
+        src={resolvedSrc}
+        alt={alt || "Hình ảnh"}
+        width={width}
+        height={height}
+        loading={loading}
+        decoding={decoding}
+        fetchPriority={fetchPriority}
+        aria-busy={!loaded}
+        className={`safe-image ${loaded ? "is-loaded" : "is-loading"} ${className}`.trim()}
+        style={style}
+        onLoad={async (event) => {
+          const image = event.currentTarget;
+          // Consumers that read natural dimensions must run while React still
+          // exposes currentTarget. After the async decode boundary it may be
+          // cleared, especially when a modal or theme change triggers a render.
+          onLoad?.(event);
+          try {
+            await image.decode?.();
+          } catch {
+            // The load event already confirms usable image data in browsers where
+            // decode() is unavailable or rejects cached SVG/data images.
+          }
+          setLoadedSrc(resolvedSrc);
+        }}
+        onError={(event) => {
+          setFailedSrc(resolvedSrc);
+          onError?.(event);
+        }}
+      />
+      {!loaded && <span className="safe-image-loader" aria-hidden="true" />}
+    </>
   );
 }

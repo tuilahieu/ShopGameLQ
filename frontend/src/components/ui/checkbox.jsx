@@ -9,5 +9,5 @@ export const Checkbox = forwardRef(function Checkbox({ className, indeterminate 
     if (inputRef.current) inputRef.current.indeterminate = indeterminate;
   }, [indeterminate, inputRef]);
 
-  return <input ref={inputRef} type="checkbox" className={cn("ui-checkbox", className)} {...props} />;
+  return <input ref={inputRef} type="checkbox" className={cn("ui-checkbox", className)} {...props} autoComplete="off" />;
 });

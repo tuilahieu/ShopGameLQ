@@ -19,20 +19,66 @@ function ProductSkeletonCard({ compact = false }) {
   );
 }
 
+function CatalogueCategorySkeletonCard() {
+  return (
+    <article className="skeleton-catalogue-category-card" aria-hidden="true">
+      <SkeletonBlock className="skeleton-catalogue-category-media" />
+      <div className="skeleton-catalogue-category-copy">
+        <SkeletonBlock className="is-title is-65" />
+        <SkeletonBlock className="skeleton-catalogue-category-action" />
+      </div>
+    </article>
+  );
+}
+
+function CatalogueAccountSkeletonCard() {
+  return (
+    <article className="skeleton-catalogue-account-card" aria-hidden="true">
+      <div className="skeleton-catalogue-account-media">
+        <SkeletonBlock />
+        <SkeletonBlock className="is-badge skeleton-catalogue-account-id" />
+      </div>
+      <div className="skeleton-catalogue-account-copy">
+        <SkeletonBlock className="is-title is-65" />
+        <div className="skeleton-catalogue-account-description"><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /></div>
+        <div className="skeleton-chip-row"><SkeletonBlock className="is-mini-chip" /><SkeletonBlock className="is-mini-chip" /></div>
+        <div className="skeleton-catalogue-account-price"><SkeletonBlock className="is-price-line" /><SkeletonBlock className="is-status" /></div>
+        <SkeletonBlock className="skeleton-catalogue-account-action" />
+      </div>
+    </article>
+  );
+}
+
 function HomeSkeleton({ label }) {
   return (
     <LoadingRegion className="skeleton-home" label={label}>
-      <section className="skeleton-home-hero" aria-hidden="true">
-        <SkeletonBlock className="skeleton-home-title" />
-        <div className="skeleton-console"><SkeletonBlock className="skeleton-console-screen" /></div>
-        <div className="skeleton-home-actions"><SkeletonBlock /><SkeletonBlock /></div>
+      <div className="skeleton-home-stack" aria-hidden="true">
+        <section className="skeleton-home-hero">
+          <div className="skeleton-home-copy">
+            <SkeletonBlock className="skeleton-home-eyebrow" />
+            <div className="skeleton-home-title">
+              <SkeletonBlock />
+              <SkeletonBlock />
+              <SkeletonBlock />
+            </div>
+            <div className="skeleton-home-description"><SkeletonBlock /><SkeletonBlock /></div>
+            <div className="skeleton-home-actions"><SkeletonBlock /></div>
+            <div className="skeleton-home-benefits"><SkeletonBlock /><SkeletonBlock /></div>
+          </div>
+          <div className="skeleton-home-media">
+            <div className="skeleton-console">
+              <div className="skeleton-console-ticker is-top"><SkeletonBlock className="is-line" /><SkeletonBlock className="is-badge" /></div>
+              <div className="skeleton-console-screen"><SkeletonBlock className="skeleton-console-count" /></div>
+              <div className="skeleton-console-ticker is-bottom"><SkeletonBlock className="is-badge" /><SkeletonBlock className="is-line" /></div>
+            </div>
+          </div>
+        </section>
         <div className="skeleton-notice-row"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-badge" /></div>
-        <SkeletonBlock className="skeleton-feed" />
-      </section>
+      </div>
       {Array.from({ length: 2 }, (_, section) => (
         <section className="skeleton-store-section" aria-hidden="true" key={section}>
           <div className="skeleton-section-heading"><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-button-small" /></div>
-          <div className="skeleton-home-grid"><ProductSkeletonCard compact /><ProductSkeletonCard compact /></div>
+          <div className="skeleton-home-grid">{Array.from({ length: 4 }, (_, index) => <ProductSkeletonCard compact key={index} />)}</div>
         </section>
       ))}
     </LoadingRegion>
@@ -42,12 +88,18 @@ function HomeSkeleton({ label }) {
 function CatalogueSkeleton({ label, results = false, items = 4 }) {
   return (
     <LoadingRegion className={`skeleton-catalogue${results ? " is-results" : ""}`} label={label}>
-      <div className="skeleton-catalogue-heading" aria-hidden="true">
-        <SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" />{!results && <SkeletonBlock className="is-line is-65" />}
-      </div>
-      {results && <div className="skeleton-type-cartridge" aria-hidden="true"><SkeletonBlock className="skeleton-cartridge-media" /><div className="skeleton-cartridge-copy"><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-field" /></div></div>}
+      {!results && (
+        <div className="skeleton-catalogue-category-heading" aria-hidden="true">
+          <div><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-65" /></div>
+        </div>
+      )}
+      {results && <div className="skeleton-type-cartridge" aria-hidden="true"><SkeletonBlock className="skeleton-cartridge-media" /><div className="skeleton-cartridge-copy"><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-field" /></div></div>}
       {results && <div className="skeleton-sort-control" aria-hidden="true"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /></div>}
-      <div className={results ? "skeleton-account-grid" : "skeleton-category-grid"}>{Array.from({ length: items }, (_, index) => <ProductSkeletonCard compact={!results} key={index} />)}</div>
+      <div className={results ? "skeleton-account-grid" : "skeleton-category-grid"}>
+        {Array.from({ length: items }, (_, index) => results
+          ? <CatalogueAccountSkeletonCard key={index} />
+          : <CatalogueCategorySkeletonCard key={index} />)}
+      </div>
     </LoadingRegion>
   );
 }
@@ -57,13 +109,31 @@ function DetailSkeleton({ label }) {
     <LoadingRegion className="skeleton-detail-page" label={label}>
       <SkeletonBlock className="skeleton-back-link" />
       <div className="skeleton-detail-layout">
-        <div className="skeleton-detail-media"><SkeletonBlock /></div>
+        <div className="skeleton-detail-media"><SkeletonBlock /><div className="skeleton-detail-thumbs"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div></div>
         <div className="skeleton-detail-panel">
           <div className="skeleton-detail-badges"><SkeletonBlock className="is-badge" /><SkeletonBlock className="is-badge" /></div>
           <SkeletonBlock className="is-title" /><SkeletonBlock className="is-price" />
           <div className="skeleton-chip-row"><SkeletonBlock className="is-chip" /><SkeletonBlock className="is-chip" /></div>
-          <SkeletonBlock className="is-line is-45" /><div className="skeleton-field-row"><SkeletonBlock className="is-field" /><SkeletonBlock className="is-button-small" /></div><SkeletonBlock className="is-button" />
+          <div className="skeleton-detail-specs">
+            <SkeletonBlock className="is-line is-45" />
+            {Array.from({ length: 2 }, (_, index) => <div className="skeleton-detail-spec-row" key={index}><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-line is-65" /></div>)}
+          </div>
+          <div className="skeleton-detail-coupon">
+            <SkeletonBlock className="is-line is-45" />
+            <div className="skeleton-field-row"><SkeletonBlock className="is-field" /><SkeletonBlock className="is-button-small" /></div>
+          </div>
+          <div className="skeleton-detail-benefits">
+            <SkeletonBlock className="is-line is-45" />
+            <SkeletonBlock className="is-line is-65" />
+            <SkeletonBlock className="is-line is-65" />
+          </div>
+          <SkeletonBlock className="is-button skeleton-detail-purchase" />
+          <SkeletonBlock className="skeleton-detail-notice" />
         </div>
+      </div>
+      <div className="skeleton-detail-mobile-purchase" aria-hidden="true">
+        <span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-price-line" /></span>
+        <SkeletonBlock className="is-button" />
       </div>
     </LoadingRegion>
   );
@@ -75,7 +145,10 @@ function ProfileSkeleton({ label, showHeading = true }) {
       {showHeading && <div className="skeleton-page-heading"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>}
       <div className="skeleton-profile-layout">
         <div className="skeleton-profile-side"><SkeletonBlock className="is-avatar" /><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-45" />{Array.from({ length: 3 }, (_, index) => <SkeletonBlock className="is-field" key={index} />)}</div>
-        <div className="skeleton-profile-main"><SkeletonBlock className="is-title is-45" />{Array.from({ length: 5 }, (_, index) => <SkeletonBlock className={`is-line ${index % 2 ? "is-65" : ""}`} key={index} />)}<SkeletonBlock className="is-button is-45" /></div>
+        <div className="skeleton-profile-main-stack">
+          <div className="skeleton-profile-main"><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>
+          <div className="skeleton-profile-main"><SkeletonBlock className="is-title is-45" />{Array.from({ length: 4 }, (_, index) => <div className="skeleton-transaction-row" key={index}><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-price-line" /></div>)}</div>
+        </div>
       </div>
     </LoadingRegion>
   );
@@ -85,7 +158,25 @@ function OrdersSkeleton({ label, items, showHeading = true }) {
   return (
     <LoadingRegion className="skeleton-orders-page" label={label}>
       {showHeading && <div className="skeleton-page-heading"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>}
-      <div className="skeleton-orders-list">{Array.from({ length: items }, (_, index) => <article className="skeleton-order-card" aria-hidden="true" key={index}><div><SkeletonBlock className="is-badge" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div><div><SkeletonBlock className="is-price-line" /><SkeletonBlock className="is-button" /></div></article>)}</div>
+      <div className="skeleton-orders-list">
+        {Array.from({ length: items }, (_, index) => (
+          <article className="skeleton-order-card" aria-hidden="true" key={index}>
+            <SkeletonBlock className="skeleton-order-media" />
+            <div className="skeleton-order-content">
+              <div>
+                <SkeletonBlock className="is-badge" />
+                <SkeletonBlock className="is-title is-65" />
+                <SkeletonBlock className="is-line is-55" />
+                <SkeletonBlock className="is-line is-45" />
+              </div>
+              <div>
+                <SkeletonBlock className="is-price-line" />
+                <SkeletonBlock className="is-button" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </LoadingRegion>
   );
 }
@@ -96,10 +187,12 @@ function RechargeSkeleton({ label }) {
       <div className="skeleton-page-heading"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>
       <div className="skeleton-recharge-layout">
         <div className="skeleton-recharge-card" aria-hidden="true">
-          <SkeletonBlock className="is-title is-45" />
-          <div className="skeleton-recharge-step"><SkeletonBlock className="is-line is-45" /><div className="skeleton-amount-grid">{Array.from({ length: 4 }, (_, i) => <SkeletonBlock className="is-chip" key={i} />)}</div><SkeletonBlock className="is-field" /></div>
-          <div className="skeleton-recharge-step"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /><SkeletonBlock className="is-price" /></div>
-          <SkeletonBlock className="is-button" />
+          <div className="skeleton-recharge-intro"><div><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /></div><SkeletonBlock className="is-badge" /></div>
+          <div className="skeleton-recharge-grid">
+            <div className="skeleton-recharge-step"><SkeletonBlock className="is-line is-45" /><div className="skeleton-amount-grid">{Array.from({ length: 4 }, (_, i) => <SkeletonBlock className="is-chip" key={i} />)}</div><SkeletonBlock className="is-field" /></div>
+            <div className="skeleton-recharge-step"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" />{Array.from({ length: 3 }, (_, index) => <SkeletonBlock className="is-line" key={index} />)}</div>
+          </div>
+          <div className="skeleton-recharge-actions"><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-button" /></div>
         </div>
       </div>
     </LoadingRegion>
@@ -111,7 +204,7 @@ function AuthSkeleton({ label }) {
 }
 
 function ArticleSkeleton({ label, contact = false }) {
-  return <LoadingRegion className={`skeleton-article-page${contact ? " is-contact" : ""}`} label={label}><div className="skeleton-page-heading"><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div><div className="skeleton-article-card" aria-hidden="true">{Array.from({ length: contact ? 5 : 9 }, (_, index) => <SkeletonBlock className={index % 3 === 2 ? "is-line is-65" : "is-line"} key={index} />)}{contact && <><SkeletonBlock className="is-field" /><SkeletonBlock className="is-button is-45" /></>}</div></LoadingRegion>;
+  return <LoadingRegion className={`skeleton-article-page${contact ? " is-contact" : ""}`} label={label}><div className="skeleton-page-heading"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>{contact ? <div className="skeleton-article-card skeleton-contact-card" aria-hidden="true"><SkeletonBlock className="is-title is-45" />{Array.from({ length: 3 }, (_, index) => <div className="skeleton-contact-row" key={index}><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-line is-65" /></span><SkeletonBlock className="is-button-small" /></div>)}</div> : <><div className="skeleton-article-card skeleton-terms-intro" aria-hidden="true"><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /></div><div className="skeleton-terms-grid" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <div className="skeleton-article-card" key={index}><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /></div>)}</div></>}</LoadingRegion>;
 }
 
 function WorkspaceSkeleton({ label, table = false, items = 6 }) {
