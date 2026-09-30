@@ -1,36 +1,47 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
 import { ArrowRight, Boxes, CheckCircle2, CircleDollarSign, EyeOff, Gamepad2, Plus, ShoppingBag } from "lucide-react";
-import { StatusMessage } from "../../components/Ui";
-import { AdminPageHeader } from "../../components/admin/AdminUi";
+import { AdminError, AdminPageHeader } from "../../components/admin/AdminUi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import SkeletonLoading from "../../components/SkeletonLoading";
+import { Skeleton } from "../../components/ui/skeleton";
+
+function CtvDashboardSkeleton() {
+  return (
+    <div className="ctv-dashboard-page admin-accounts-page" aria-busy="true" aria-label="Đang tải số liệu cộng tác viên">
+      <AdminPageHeader eyebrow="Cộng tác viên" title="Tổng quan bán hàng" description="Đang đồng bộ kho tài khoản, đơn hàng và doanh thu…" />
+      <section className="ctv-overview-grid" aria-hidden="true">
+        {[0, 1, 2, 3].map((item) => <Card key={item} className="ctv-overview-card ctv-dashboard-skeleton-card"><CardContent><Skeleton className="ui-skeleton-line" /><Skeleton className="ctv-dashboard-skeleton-value" /><Skeleton className="ctv-dashboard-skeleton-copy" /><Skeleton className="ctv-dashboard-skeleton-foot" /></CardContent></Card>)}
+      </section>
+      <Card className="ctv-start-card"><CardHeader><CardTitle>Tiếp tục công việc</CardTitle><CardDescription>Đang chuẩn bị các lối tắt của bạn.</CardDescription></CardHeader><CardContent><div className="ctv-start-grid"><Skeleton /><Skeleton /></div></CardContent></Card>
+    </div>
+  );
+}
 
 export default function CtvDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    api.get("/ctv/dashboard")
-      .then((res) => {
-        setData(res.data.data);
-      })
-      .catch((err) => {
-        console.error("Failed to load CTV dashboard:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    setError("");
+    try {
+      const response = await api.get("/ctv/dashboard");
+      setData(response.data.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Không thể tải dữ liệu thống kê.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (loading) {
-    return <SkeletonLoading variant="stats" items={4} label="Đang tải số liệu cộng tác viên" />;
-  }
+  useEffect(() => { load(); }, [load]);
+
+  if (loading && !data) return <CtvDashboardSkeleton />;
 
   if (!data) {
-    return <StatusMessage title="Không thể tải dữ liệu thống kê" description="Vui lòng tải lại trang để thử lại." />;
+    return <div className="ctv-dashboard-page admin-accounts-page"><AdminPageHeader eyebrow="Cộng tác viên" title="Tổng quan bán hàng" description="Theo dõi kho tài khoản, đơn hàng và doanh thu của bạn." /><AdminError message={error || "Không thể tải dữ liệu thống kê."} onRetry={load} /></div>;
   }
 
   const formatNumber = (value) => Number(value || 0).toLocaleString("vi-VN");
@@ -41,6 +52,7 @@ export default function CtvDashboard() {
   return (
     <div className="ctv-dashboard-page admin-accounts-page">
       <AdminPageHeader eyebrow="Cộng tác viên" title="Tổng quan bán hàng" description="Theo dõi kho tài khoản, đơn hàng và doanh thu của bạn." />
+      <AdminError message={error} onRetry={load} />
 
       <section className="ctv-overview-grid" aria-label="Các chỉ số cộng tác viên">
         <Card className="ctv-overview-card ctv-overview-primary"><CardContent><div className="ctv-metric-heading"><span><Gamepad2 size={18} aria-hidden="true" /></span><small>Tổng tài khoản</small></div><strong>{formatNumber(data.totalAccounts)}</strong><p>Tất cả tài khoản bạn đã đăng lên hệ thống</p><div className="ctv-metric-foot"><span className="is-success"><CheckCircle2 size={14} aria-hidden="true" /> {formatNumber(data.sellingAccounts)} đang bán</span></div></CardContent></Card>
