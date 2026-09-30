@@ -1,30 +1,62 @@
-# Copy to /etc/nginx/sites-available/shoplienquan and replace the domains.
-# The frontend build is served by Nginx; Node only serves the API.
+# Production path: Visitor -> Cloudflare -> Nginx -> frontend / Node.js.
+# Copy this file to /etc/nginx/sites-available/shoplienquan and replace the
+# domain, certificate paths, document root and upstream port.
+#
+# Cloudflare DNS must be proxied (orange cloud), SSL/TLS mode must be
+# "Full (strict)", and the origin must have a valid public or Cloudflare Origin
+# CA certificate. Nginx still serves the frontend and proxies API requests;
+# Cloudflare does not replace Nginx.
 
 server {
     listen 80;
     server_name shop.example.com;
 
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name shop.example.com;
+
+    # Example paths for a Cloudflare Origin CA certificate. Keep the private
+    # key readable only by root/Nginx and never commit it to the repository.
+    ssl_certificate /etc/ssl/cloudflare/shop.example.com.pem;
+    ssl_certificate_key /etc/ssl/cloudflare/shop.example.com.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Trust CF-Connecting-IP only when the direct peer belongs to Cloudflare.
+    # Copy cloudflare-real-ip.conf.example to this path and keep its ranges
+    # synchronized with https://www.cloudflare.com/ips/.
+    include /etc/nginx/snippets/cloudflare-real-ip.conf;
+
     root /var/www/SHOPLIENQUAN/frontend/dist;
     index index.html;
 
-    client_max_body_size 8m;
+    client_max_body_size 50m;
 
+    # Node only accepts traffic from this local reverse proxy. After the realip
+    # module runs, $remote_addr is the visitor IP supplied by Cloudflare.
     location /api/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
         proxy_set_header X-Request-Id $request_id;
+        proxy_set_header CF-Ray $http_cf_ray;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
     }
 
     location /uploads/ {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header CF-Ray $http_cf_ray;
     }
 
     # Required for BrowserRouter deep links.
@@ -33,6 +65,6 @@ server {
     }
 }
 
-# Put the SePay webhook on the API hostname, or route this path to the same
-# upstream if using a separate api.example.com server block:
-# https://api.example.com/api/payments/sepay/webhook
+# Do not cache /api/* in Cloudflare. If a WAF rule challenges the SePay webhook,
+# create a narrow skip rule for its exact path only; backend HMAC verification
+# must remain enabled.
