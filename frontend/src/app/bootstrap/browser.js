@@ -17,6 +17,19 @@ export function initializeBrowserBehavior() {
   // Enable instantaneous :active tactile response across mobile and WebKit browsers
   document.addEventListener("touchstart", () => {}, { passive: true });
 
+  // Keep the mobile storefront at its authored 100% scale. Safari may still
+  // emit proprietary pinch events even when the viewport meta is locked.
+  const isMobileViewport = () => window.matchMedia("(max-width: 48rem)").matches;
+  document.addEventListener("gesturestart", (event) => {
+    if (isMobileViewport()) event.preventDefault();
+  }, { passive: false });
+  document.addEventListener("gesturechange", (event) => {
+    if (isMobileViewport()) event.preventDefault();
+  }, { passive: false });
+  document.addEventListener("touchmove", (event) => {
+    if (isMobileViewport() && event.touches.length > 1) event.preventDefault();
+  }, { passive: false });
+
   // Guarantee visible sunken tactile press on macOS trackpad taps & rapid mobile clicks
   let activePressedTarget = null;
   let pressedTimer = null;

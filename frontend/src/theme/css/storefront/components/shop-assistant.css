@@ -313,12 +313,19 @@
   .shop-assistant { right: 0.75rem; bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px)); }
   body.has-mobile-purchase-bar:not(.has-form-focus) .shop-assistant:not(.is-open) { bottom: calc(10rem + env(safe-area-inset-bottom, 0px)); }
   body.shop-assistant-open .mobile-purchase-bar { display: none; }
+  body.shop-assistant-open { overflow: hidden; }
+  body.shop-assistant-open .mobile-bottom-nav { display: none !important; }
   .shop-assistant.is-open,
   .shop-assistant.is-closing {
-    top: max(0.5rem, env(safe-area-inset-top, 0px));
-    right: 0.5rem;
-    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
-    left: 0.5rem;
+    --assistant-mobile-gap-top: max(0.5rem, env(safe-area-inset-top, 0px));
+    --assistant-mobile-gap-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    top: calc(var(--assistant-viewport-top, 0px) + var(--assistant-mobile-gap-top)) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: calc(var(--assistant-viewport-left, 0px) + 0.5rem) !important;
+    width: calc(var(--assistant-viewport-width, 100vw) - 1rem) !important;
+    height: calc(var(--assistant-viewport-height, 100dvh) - var(--assistant-mobile-gap-top) - var(--assistant-mobile-gap-bottom)) !important;
+    z-index: 100000 !important;
   }
   .shop-assistant-panel {
     width: 100%;

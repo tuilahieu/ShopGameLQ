@@ -643,6 +643,16 @@ button[type="submit"] {
 }
 
 @media (max-width: 48rem) {
+  html,
+  body,
+  #root { touch-action: pan-x pan-y; }
+
+  .modal-backdrop,
+  .mobile-drawer-backdrop,
+  .shop-assistant:is(.is-open, .is-closing) {
+    touch-action: pan-y;
+  }
+
   .auth-card input,
   .auth-card select,
   .auth-card textarea {

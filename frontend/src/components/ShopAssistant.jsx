@@ -171,6 +171,41 @@ export default function ShopAssistant({ profile }) {
     return () => document.body.classList.remove("shop-assistant-open");
   }, [panelMounted]);
 
+  useEffect(() => {
+    if (!panelMounted || !rootRef.current) return undefined;
+
+    const viewport = window.visualViewport;
+    const root = rootRef.current;
+    let frame = 0;
+    const syncViewport = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const width = viewport?.width ?? window.innerWidth;
+        const height = viewport?.height ?? window.innerHeight;
+        root.style.setProperty("--assistant-viewport-width", `${Math.round(width)}px`);
+        root.style.setProperty("--assistant-viewport-height", `${Math.round(height)}px`);
+        root.style.setProperty("--assistant-viewport-left", `${Math.round(viewport?.offsetLeft ?? 0)}px`);
+        root.style.setProperty("--assistant-viewport-top", `${Math.round(viewport?.offsetTop ?? 0)}px`);
+        scrollToLatest();
+      });
+    };
+
+    syncViewport();
+    const resizeTarget = viewport ?? window;
+    resizeTarget.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeTarget.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+      root.style.removeProperty("--assistant-viewport-width");
+      root.style.removeProperty("--assistant-viewport-height");
+      root.style.removeProperty("--assistant-viewport-left");
+      root.style.removeProperty("--assistant-viewport-top");
+    };
+  }, [panelMounted, scrollToLatest]);
+
   useEffect(() => () => window.clearTimeout(closeTimerRef.current), []);
 
   useEffect(() => {
