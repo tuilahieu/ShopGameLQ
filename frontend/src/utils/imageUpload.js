@@ -33,14 +33,18 @@ export function isStoredImagePath(value) {
 export async function uploadImageFile(api, file) {
   const body = new FormData();
   body.append("file", file);
-  const response = await api.post("/upload", body, { headers: { "Content-Type": "multipart/form-data" } });
+  // Image uploads can legitimately take longer than the API client's 15-second
+  // default on mobile or slow connections. Let the browser/proxy own the
+  // connection lifetime for this request, and let Axios set the multipart
+  // boundary automatically.
+  const response = await api.post("/upload", body, { timeout: 0 });
   return response.data.data.url;
 }
 
 export async function importImageUrl(api, value) {
   const url = normalizeStoredImagePath(String(value || ""));
   if (!url || isStoredImagePath(url)) return url;
-  const response = await api.post("/upload/remote", { url });
+  const response = await api.post("/upload/remote", { url }, { timeout: 0 });
   return response.data.data.url;
 }
 
