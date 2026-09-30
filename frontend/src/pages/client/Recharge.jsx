@@ -11,7 +11,6 @@ import { formatVnd } from "../../utils/formatters";
 import CopyButton from "../../components/client/CopyButton";
 import AccessState from "../../components/client/AccessState";
 import FormField from "../../components/client/FormField";
-import "./Recharge.css";
 
 const QUICK_AMOUNTS = [20000, 50000, 100000, 500000];
 
@@ -73,7 +72,10 @@ function LazyPaymentQr({ src, alt, enabled }) {
           loading="lazy"
           decoding="async"
           fetchPriority="low"
-          onLoad={() => setState("loaded")}
+          onLoad={async (event) => {
+            try { await event.currentTarget.decode?.(); } catch { /* load event is the fallback */ }
+            setState("loaded");
+          }}
           onError={() => setState("error")}
         />
       )}

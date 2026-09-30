@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, Bell, Clock, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, Bell, ChevronLeft, ChevronRight, Clock, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import Modal from "../../components/Modal";
@@ -51,6 +51,176 @@ function SaleCountdown({ endTimes, onExpired }) {
   return <div className="flash-sale-timer">Kết thúc sau <span>{timeLeft || "--:--:--"}</span></div>;
 }
 
+function StorefrontCategorySection({ category, accountCountByType }) {
+  const railRef = useRef(null);
+  const frameRef = useRef(null);
+  const dragRef = useRef({ active: false, moved: false, startX: 0, scrollLeft: 0, pointerId: null });
+  const [railState, setRailState] = useState({ atStart: true, atEnd: true });
+
+  const updateRailState = useCallback(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const maxScrollLeft = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    const currentScrollLeft = Math.max(0, rail.scrollLeft);
+    setRailState({
+      atStart: currentScrollLeft <= 2,
+      atEnd: currentScrollLeft >= maxScrollLeft - 2,
+    });
+  }, []);
+
+  useEffect(() => {
+    updateRailState();
+    const rail = railRef.current;
+    if (!rail || typeof ResizeObserver === "undefined") return undefined;
+
+    const resizeObserver = new ResizeObserver(updateRailState);
+    resizeObserver.observe(rail);
+    Array.from(rail.children).forEach((card) => resizeObserver.observe(card));
+    return () => resizeObserver.disconnect();
+  }, [category.types.length, updateRailState]);
+
+  const handleRailScroll = useCallback(() => {
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(updateRailState);
+  }, [updateRailState]);
+
+  useEffect(() => () => {
+    if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+  }, []);
+
+  function scrollRail(direction) {
+    const rail = railRef.current;
+    if (!rail) return;
+    const firstCard = rail.querySelector(".storefront-category-card");
+    const gap = Number.parseFloat(window.getComputedStyle(rail).columnGap) || 0;
+    const distance = direction * Math.max((firstCard?.getBoundingClientRect().width || rail.clientWidth) + gap, 280);
+
+    try {
+      rail.scrollBy({ left: distance, behavior: "smooth" });
+    } catch {
+      rail.scrollLeft += distance;
+    }
+  }
+
+  function handlePointerDown(event) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    const rail = railRef.current;
+    if (!rail) return;
+
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startX: event.clientX,
+      scrollLeft: rail.scrollLeft,
+      pointerId: event.pointerId,
+    };
+  }
+
+  function handlePointerMove(event) {
+    const rail = railRef.current;
+    const drag = dragRef.current;
+    if (!rail || !drag.active) return;
+
+    const distance = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(distance) > 6) {
+      drag.moved = true;
+      rail.classList.add("is-dragging");
+      rail.setPointerCapture?.(drag.pointerId);
+    }
+    if (!drag.moved) return;
+    rail.scrollLeft = drag.scrollLeft - distance;
+  }
+
+  function finishPointerDrag() {
+    const rail = railRef.current;
+    if (!rail || !dragRef.current.active) return;
+    dragRef.current.active = false;
+    rail.classList.remove("is-dragging");
+    if (rail.hasPointerCapture?.(dragRef.current.pointerId)) rail.releasePointerCapture(dragRef.current.pointerId);
+    dragRef.current.pointerId = null;
+    updateRailState();
+  }
+
+  function preventClickAfterDrag(event) {
+    if (!dragRef.current.moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragRef.current.moved = false;
+  }
+
+  return (
+    <section className="storefront-section storefront-game-section" id={`game-category-${category.id}`} aria-labelledby={`game-category-title-${category.id}`}>
+      <div className="storefront-game-heading">
+        <div>
+          <h2
+            id={`game-category-title-${category.id}`}
+            className={category.name?.trim().toLocaleUpperCase("vi-VN") === "ACC GIÁ RẺ" ? "storefront-gradient-title" : undefined}
+          >
+            <Flame size={25} aria-hidden="true" /> <span>{category.name}</span>
+          </h2>
+          <p>{category.noidung?.trim() || `${category.types.length} loại tài khoản đang được giới thiệu`}</p>
+        </div>
+        {category.types.length > 0 && (
+          <div className="storefront-game-heading-actions">
+            <div className="storefront-rail-controls" aria-label={`Điều hướng danh mục ${category.name}`}>
+              <button type="button" onClick={() => scrollRail(-1)} disabled={railState.atStart} aria-label={`Xem mục trước trong ${category.name}`}>
+                <ChevronLeft size={28} aria-hidden="true" />
+              </button>
+              <button type="button" onClick={() => scrollRail(1)} disabled={railState.atEnd} aria-label={`Xem mục tiếp theo trong ${category.name}`}>
+                <ChevronRight size={28} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {category.types.length > 0 ? (
+        <div
+          className="storefront-category-grid"
+          ref={railRef}
+          onScroll={handleRailScroll}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishPointerDrag}
+          onPointerCancel={finishPointerDrag}
+          onClickCapture={preventClickAfterDrag}
+          onDragStart={(event) => event.preventDefault()}
+        >
+          {category.types.map((type) => {
+            const count = Number(accountCountByType?.[type.id] ?? 0);
+            return (
+              <Link to={`/accounts?loai_id=${type.id}`} className="storefront-category-card" key={type.id}>
+                <div className="storefront-category-media">
+                  <SafeImage
+                    src={resolveAccountTypeImage(type)}
+                    alt={`Ảnh ${type.name}`}
+                    width={960}
+                    height={600}
+                    loading="lazy"
+                    decoding="async"
+                    fallbackLabel="Ảnh danh mục"
+                  />
+                </div>
+                <div className="storefront-category-copy">
+                  <h3>{type.name}</h3>
+                  <div className="storefront-category-footer">
+                    <strong>{count > 0 ? `Còn ${count.toLocaleString("vi-VN")} tài khoản` : "Tạm hết hàng"}</strong>
+                    <small>{count > 0 ? "Chọn để xem danh sách tài khoản" : "Danh mục đang được cập nhật"}</small>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="storefront-game-empty">Danh mục đang được cập nhật tài khoản.</p>
+      )}
+
+    </section>
+  );
+}
+
 export default function Home() {
   const [data, setData] = useState({
     categories: [],
@@ -58,6 +228,7 @@ export default function Home() {
     latestAccounts: [],
     totalAccounts: 0,
     flashSaleAccounts: [],
+    recentPurchases: { simulated: false, items: [] },
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -113,6 +284,7 @@ export default function Home() {
         Number(type.status) === 1 && Number(type.danhmuc_id) === Number(category.id)),
     }));
   const heroImage = resolveStorefrontHero(data.setting?.banner);
+  const shopName = data.setting?.ten_web?.trim() || "Shop Game";
 
   if (loading) {
     return (
@@ -134,19 +306,29 @@ export default function Home() {
     <div className="page-container home storefront-home">
       <div className="storefront-hero-stack">
         <section className="storefront-hero" aria-label="Banner cửa hàng và thao tác nhanh">
-          <h1 className="storefront-hero-title">ACC LIÊN QUÂN RẺ NHẤT VIỆT NAM</h1>
           <div className="storefront-hero-copy">
+            <span className="storefront-eyebrow"><i aria-hidden="true" /> UY TÍN · GIÁ RẺ · BẢO HÀNH</span>
+            <h1 className="storefront-hero-title">{shopName} -<br /><span>Shop Liên Quân rẻ nhất Việt Nam</span></h1>
+            <p>Tìm tài khoản theo tướng, trang phục và mức giá. Thông tin đăng nhập được giao ngay sau khi thanh toán thành công.</p>
             <div className="storefront-hero-actions">
               <Link to="/accounts" className="btn-primary storefront-primary-cta">
-                Khám phá acc <ArrowRight size={19} aria-hidden="true" />
+                Xem kho acc <ArrowRight size={19} aria-hidden="true" />
               </Link>
+            </div>
+            <div className="storefront-hero-footnote" aria-label="Lợi ích mua hàng">
+              <span><ShieldCheck size={17} aria-hidden="true" /> Thông tin rõ ràng</span>
+              <span><Zap size={17} aria-hidden="true" /> Giao acc tự động</span>
             </div>
           </div>
 
           <div className="storefront-hero-media">
             <div className="storefront-banner-frame">
-              <div className="storefront-banner-frame-top" aria-hidden="true">
-                <span className="storefront-banner-lights"><i /><i /><i /></span>
+              <div className="storefront-banner-frame-top">
+                <RecentPurchases
+                  compact
+                  items={data.recentPurchases?.items}
+                  simulated={data.recentPurchases?.simulated}
+                />
               </div>
               <div className="storefront-banner-screen">
                 {heroImage ? (
@@ -167,13 +349,18 @@ export default function Home() {
                     <small>Chọn nhân vật. Chọn cuộc chơi.</small>
                   </div>
                 )}
+                <span className="storefront-banner-count"><strong>{formatNumber(data.totalAccounts || 0)}</strong> acc đang bán</span>
               </div>
-              <div className="storefront-banner-frame-bottom" aria-hidden="true">
-                <span className="storefront-banner-pad" />
-                <span className="storefront-banner-buttons"><i /><i /></span>
+              <div className="storefront-banner-frame-bottom">
+                <RecentPurchases
+                  compact
+                  reverse
+                  ariaHidden
+                  items={data.recentPurchases?.items}
+                  simulated={data.recentPurchases?.simulated}
+                />
               </div>
             </div>
-            <span className="storefront-banner-count"><Gamepad2 size={17} aria-hidden="true" /> {formatNumber(data.totalAccounts || 0)} acc đang bán</span>
           </div>
         </section>
 
@@ -193,8 +380,6 @@ export default function Home() {
           </button>
         )}
 
-        {/* Simulated recent-purchase feed; it deliberately does not query order records. */}
-        <RecentPurchases />
       </div>
 
       {/* Store Notice Popup Modal */}
@@ -255,77 +440,12 @@ export default function Home() {
       )}
 
       {categorySections.map((category) => (
-        <section className="storefront-section storefront-game-section" id={`game-category-${category.id}`} aria-labelledby={`game-category-title-${category.id}`} key={category.id}>
-          <div className="storefront-game-heading">
-            <div>
-              <h2 id={`game-category-title-${category.id}`}><Flame size={25} aria-hidden="true" /> {category.name}</h2>
-              <p>{category.noidung?.trim() || `${category.types.length} loại tài khoản đang được giới thiệu`}</p>
-            </div>
-            <Link
-              to={`/accounts?danhmuc_id=${category.id}`}
-              className="storefront-game-explore"
-              aria-label={`Xem tất cả tài khoản ${category.name}`}
-            >
-              <span>Khám phá</span><ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          </div>
-
-          {category.types.length > 0 ? (
-            <div className="storefront-category-grid">
-              {category.types.map((type) => {
-                const count = Number(data.accountCountByType?.[type.id] ?? 0);
-                return (
-                  <Link to={`/accounts?loai_id=${type.id}`} className="storefront-category-card" key={type.id}>
-                    <div className="storefront-category-media">
-                      <SafeImage
-                        src={resolveAccountTypeImage(type)}
-                        alt={`Ảnh ${type.name}`}
-                        width={960}
-                        height={600}
-                        loading="lazy"
-                        decoding="async"
-                        fallbackLabel="Ảnh danh mục"
-                      />
-                    </div>
-                    <div className="storefront-category-copy">
-                      <h3>{type.name}</h3>
-                      <p>
-                        <span className="storefront-stock-label">Tài khoản hiện có: </span>
-                        <strong>{count.toLocaleString("vi-VN")}</strong>
-                        <span className="storefront-stock-unit"> acc</span>
-                      </p>
-                      <span className="storefront-category-action">
-                        <span className="storefront-action-desktop">Xem tài khoản</span>
-                        <span className="storefront-action-mobile">Xem acc</span>
-                        <ArrowRight size={16} aria-hidden="true" />
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="storefront-game-empty">Danh mục đang được cập nhật tài khoản.</p>
-          )}
-        </section>
+        <StorefrontCategorySection
+          category={category}
+          accountCountByType={data.accountCountByType}
+          key={category.id}
+        />
       ))}
-
-      {(data.latestAccounts || []).length > 0 && (
-        <section className="storefront-section" aria-labelledby="latest-accounts-title">
-          <div className="storefront-section-heading">
-            <div>
-              <span className="storefront-section-kicker">Vừa lên kho</span>
-              <h2 id="latest-accounts-title">Acc mới cập nhật</h2>
-            </div>
-            <Link to="/accounts" className="storefront-text-link">Xem toàn bộ <ArrowRight size={17} aria-hidden="true" /></Link>
-          </div>
-          <div className="account-grid storefront-latest-grid">
-            {data.latestAccounts.map((acc) => (
-              <AccountCard key={acc.id} acc={acc} />
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="storefront-trust" aria-label="Cam kết mua hàng">
         <Link to="/terms" className="storefront-trust-item">

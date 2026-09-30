@@ -3,13 +3,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/api";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
-import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, Layers, ShieldCheck } from "lucide-react";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { StatusMessage } from "../../components/Ui";
 import SkeletonLoading from "../../components/SkeletonLoading";
 import { resolveAccountTypeImage } from "../../utils/storefrontAssets";
 import usePageSeo from "../../hooks/usePageSeo";
 import { getApiErrorMessage } from "../../utils/apiError";
 import useLatestRequest from "../../hooks/useLatestRequest";
+import { Select } from "../../components/ui/select";
 
 export default function Accounts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +40,7 @@ export default function Accounts() {
   // Find the selected type object for showing its info banner
   const selectedType = loaiId ? types.find((t) => t.id.toString() === loaiId) : null;
   const selectedCategory = categoryId ? categories.find((category) => String(category.id) === categoryId) : null;
+  const currentCategory = selectedCategory || (selectedType ? categories.find((category) => String(category.id) === String(selectedType.danhmuc_id)) : null);
   const visibleTypes = !loaiId && categoryId
     ? types.filter((type) => String(type.danhmuc_id) === categoryId)
     : types;
@@ -140,22 +142,34 @@ export default function Accounts() {
   return (
     <div className="page-container catalogue-page">
       {loading ? (
-        <SkeletonLoading variant={loaiId ? "catalogue-results" : "catalogue"} items={loaiId ? 3 : 6} label="Đang tải kho tài khoản" />
+        <SkeletonLoading variant={loaiId ? "catalogue-results" : "catalogue"} items={4} label="Đang tải kho tài khoản" />
       ) : loadError ? (
         <StatusMessage title="Không thể tải kho tài khoản" description={loadError} action={<button className="btn-primary" onClick={loadData}>Tải lại</button>} />
       ) : !loaiId ? (
-        /* Render Category Types Selection List when no specific type selected */
         <div className="catalogue-category-view">
           <div className="catalogue-heading">
-            <span className="storefront-section-kicker"><Layers size={17} aria-hidden="true" /> Kho tài khoản</span>
-            {selectedCategory && <Link to="/accounts" className="catalogue-back-link"><ArrowLeft size={17} aria-hidden="true" /> Tất cả danh mục</Link>}
-            <h1 className="page-title">{selectedCategory?.name || "Chọn loại tài khoản"}</h1>
-            <p>{selectedCategory?.noidung || "Chọn đúng gói bạn quan tâm để xem acc và giá đang có."}</p>
+            <div className="catalogue-heading-top">
+              <span className="catalogue-pill-kicker">Kho tài khoản</span>
+              {selectedCategory && (
+                <Link to="/accounts" className="catalogue-back-link">
+                  <ArrowLeft size={14} aria-hidden="true" /> Tất cả danh mục
+                </Link>
+              )}
+            </div>
+            <h1 className="page-title">
+              <span className="page-title-text">{selectedCategory?.name || "Chọn loại tài khoản"}</span>
+              {visibleTypes.length > 0 && (
+                <span className="catalogue-count-badge" aria-label={`${visibleTypes.length} loại tài khoản`}>
+                  {visibleTypes.length}
+                </span>
+              )}
+            </h1>
+            <p className="catalogue-subtitle">{selectedCategory?.noidung || "Chọn đúng gói bạn quan tâm để xem acc và giá đang có."}</p>
           </div>
           
-          <div className="catalogue-category-grid">
+          <div className={`catalogue-category-grid${visibleTypes.length === 1 ? " is-single" : ""}`}>
             {visibleTypes.map((type) => {
-              const count = counts[type.id] ?? 0;
+              const count = Number(counts[type.id] ?? 0);
               return (
                 <Link
                   to={`/accounts?loai_id=${type.id}`}
@@ -165,7 +179,7 @@ export default function Accounts() {
                   <div className="catalogue-category-media">
                     <SafeImage
                       src={resolveAccountTypeImage(type)}
-                      alt={`Ảnh loại tài khoản ${type.name}`}
+                      alt={`Ảnh ${type.name}`}
                       width={960}
                       height={600}
                       loading="lazy"
@@ -173,11 +187,12 @@ export default function Accounts() {
                       fallbackLabel="Chưa có ảnh loại tài khoản"
                     />
                   </div>
-                  <div className="catalogue-category-info">
+                  <div className="catalogue-category-copy">
                     <h3>{type.name}</h3>
-                    <span className={count > 0 ? "catalogue-stock available" : "catalogue-stock unavailable"}>
-                      {count > 0 ? `${count} tài khoản` : "Tạm hết hàng"}
-                    </span>
+                    <div className="catalogue-category-footer">
+                      <strong>{count > 0 ? `Còn ${count.toLocaleString("vi-VN")} tài khoản` : "Tạm hết hàng"}</strong>
+                      <small>{count > 0 ? "Chọn để xem danh sách tài khoản" : "Danh mục đang được cập nhật"}</small>
+                    </div>
                   </div>
                 </Link>
               );
@@ -188,46 +203,63 @@ export default function Accounts() {
       ) : (
         /* Render Filtered Accounts Grid when type is selected */
         <>
-          <div className="catalogue-results-heading">
-            <div>
-              <Link to="/accounts" className="catalogue-back-link"><ArrowLeft size={17} aria-hidden="true" /> Đổi loại tài khoản</Link>
-              <h1 className="page-title">{selectedType ? selectedType.name : "Kho tài khoản game"}</h1>
-            </div>
-            <span className="catalogue-result-count"><strong>{pagination.total}</strong> acc đang có</span>
-          </div>
-
           {/* Type Info Banner - shown when a specific type is selected */}
           {selectedType && (
-            <div className="type-info-banner">
+            <section className="type-info-banner theme-bachdyon" aria-label={`Gói ${selectedType.name}`}>
               <div className="type-info-banner-img">
                 <SafeImage
                   src={resolveAccountTypeImage(selectedType)}
                   alt={`Ảnh loại tài khoản ${selectedType.name}`}
-                  width={960}
-                  height={600}
                   loading="lazy"
                   decoding="async"
                   fallbackLabel="Chưa có ảnh loại tài khoản"
                 />
               </div>
               <div className="type-info-banner-body">
-                <h2 className="type-info-banner-title">{selectedType.name}</h2>
+                <div className="type-banner-header">
+                  <span className="type-banner-eyebrow">
+                    <i className="eyebrow-dot" aria-hidden="true"></i>
+                    {currentCategory?.name || "Kho tài khoản"}
+                  </span>
+                  <Link to="/accounts" className="type-banner-back-btn desktop-only" title="Quay lại chọn loại tài khoản">
+                    <ArrowLeft size={14} aria-hidden="true" />
+                    <span>Đổi loại acc</span>
+                  </Link>
+                </div>
+
+                <div className="type-banner-title-row">
+                  <h1 className="type-info-banner-title">{selectedType.name}</h1>
+                  <Link to="/accounts" className="type-banner-back-btn mobile-only" title="Quay lại chọn loại tài khoản">
+                    <ArrowLeft size={13} aria-hidden="true" />
+                    <span>Đổi loại acc</span>
+                  </Link>
+                </div>
+
                 {selectedType.noidung && (
                   <p className="type-info-banner-desc">{selectedType.noidung}</p>
                 )}
-                {selectedType.camket && (
-                  <div className="type-info-banner-warranty">
-                    <span className="warranty-icon"><ShieldCheck size={18} aria-hidden="true" /></span>
-                    <span>{selectedType.camket}</span>
-                  </div>
-                )}
+
+                <div className="type-banner-meta-row">
+                  {selectedType.camket && (
+                    <div className="type-info-banner-warranty">
+                      <ShieldCheck size={16} className="warranty-icon" aria-hidden="true" />
+                      <span>{selectedType.camket}</span>
+                    </div>
+                  )}
+                  {pagination.total > 0 && (
+                    <span className="type-banner-stock-badge">
+                      <span className="stock-dot" aria-hidden="true"></span>
+                      <strong>{pagination.total}</strong> acc sẵn sàng
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            </section>
           )}
 
           <div className="catalogue-sort-bar">
             <label htmlFor="account-sort"><SlidersHorizontal size={17} aria-hidden="true" /> Sắp xếp</label>
-            <select
+            <Select
               id="account-sort"
               name="sort"
               className="filter-input"
@@ -237,14 +269,14 @@ export default function Accounts() {
               <option value="">Mới cập nhật</option>
               <option value="price_asc">Giá thấp đến cao</option>
               <option value="price_desc">Giá cao đến thấp</option>
-            </select>
+            </Select>
           </div>
 
           {accounts.length === 0 ? (
             <StatusMessage className="catalogue-empty-state" title="Tạm hết hàng" description="Gói này chưa có tài khoản sẵn sàng. Bạn có thể chọn loại khác." action={<button onClick={resetFilters} className="btn-primary">Chọn loại khác</button>} />
           ) : (
             <>
-              <div className={`account-grid ${accounts.length === 1 ? "is-single" : ""}`}>
+              <div className="account-grid">
                 {accounts.map((acc, index) => (
                   <AccountCard acc={acc} key={acc.id} priority={index < 2} />
                 ))}

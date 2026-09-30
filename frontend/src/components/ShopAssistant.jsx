@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../api/api";
 import SafeImage from "./SafeImage";
 import { resolveMediaUrl } from "../utils/mediaUrl";
-import "../shop-assistant.css";
+import "@/theme/css/storefront/components/shop-assistant.css";
 
 const STARTER = {
   role: "assistant",
@@ -23,11 +23,27 @@ function readStoredThread() {
 
 function AssistantAvatar({ name, avatarUrl, small = false }) {
   const [failedUrl, setFailedUrl] = useState(null);
+  const [loadedUrl, setLoadedUrl] = useState(null);
   const src = resolveMediaUrl(avatarUrl);
   const initials = name.split(/\s+/u).slice(-2).map((part) => part[0]).join("").toLocaleUpperCase("vi-VN");
   return (
     <span className={`shop-assistant-avatar${small ? " is-small" : ""}`} aria-hidden="true">
-      {!src || failedUrl === src ? <b>{initials}</b> : <img src={src} alt="" width={small ? 28 : 42} height={small ? 28 : 42} loading="eager" onError={() => setFailedUrl(src)} />}
+      {!src || failedUrl === src ? <b>{initials}</b> : (
+        <img
+          src={src}
+          alt=""
+          width={small ? 28 : 42}
+          height={small ? 28 : 42}
+          loading="eager"
+          decoding="async"
+          className={loadedUrl === src ? "is-loaded" : "is-loading"}
+          onLoad={async (event) => {
+            try { await event.currentTarget.decode?.(); } catch { /* load event is the fallback */ }
+            setLoadedUrl(src);
+          }}
+          onError={() => setFailedUrl(src)}
+        />
+      )}
     </span>
   );
 }
@@ -246,6 +262,9 @@ export default function ShopAssistant({ profile }) {
               <div className={`shop-assistant-message is-${message.role}`} key={index}>
                 {message.role === "assistant" && <AssistantAvatar name={assistantName} avatarUrl={avatarUrl} small />}
                 <div className="shop-assistant-message-content">
+                  {message.role === "assistant" && (
+                    <span className="shop-assistant-message-label">{assistantName} · Trợ lý AI</span>
+                  )}
                   {message.role === "assistant"
                     ? <AssistantMessageBody message={message} animate={message.animate === true} onNavigate={closeChat} onTextChange={scrollToLatest} />
                     : <p>{message.text}</p>}

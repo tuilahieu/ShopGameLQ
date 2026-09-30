@@ -1,22 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { formatVnd } from "../utils/formatters";
 
-function maskUsername(username) {
-  if (!username || typeof username !== "string") return "kh*****ch";
-  const clean = username.trim();
-  if (clean.length <= 2) {
-    return clean[0] + "*****" + (clean[1] || clean[0]);
-  }
-  if (clean.length === 3) {
-    return clean.slice(0, 2) + "*****" + clean.slice(-1);
-  }
-  return clean.slice(0, 2) + "*****" + clean.slice(-2);
-}
-
-function formatRelativeTime(dateInput) {
+function formatRelativeTime(dateInput, now) {
   if (!dateInput) return "vừa xong";
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(dateInput).getTime()) / 1000));
+  const timestamp = new Date(dateInput).getTime();
+  if (!Number.isFinite(timestamp)) return "vừa xong";
+  const diffSec = Math.max(0, Math.floor((now - timestamp) / 1000));
   if (diffSec < 60) return "vừa xong";
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin} phút trước`;
@@ -26,33 +16,41 @@ function formatRelativeTime(dateInput) {
   return `${diffDay} ngày trước`;
 }
 
-const SIMULATED_PURCHASES = [
-  { id: 101, username: "admin", account_type_name: "ACC GIÁ RẺ", price: 60000, createdAt: new Date(Date.now() - 2 * 60 * 1000) },
-  { id: 102, username: "thanhdat99", account_type_name: "TÚI MÙ 179K", price: 179000, createdAt: new Date(Date.now() - 6 * 60 * 1000) },
-  { id: 103, username: "hoanglong_lq", account_type_name: "ACC GIÁ SIÊU RẺ 20K", price: 20000, createdAt: new Date(Date.now() - 14 * 60 * 1000) },
-  { id: 104, username: "nguyenduc", account_type_name: "ACC GIÁ RẺ", price: 120000, createdAt: new Date(Date.now() - 25 * 60 * 1000) },
-  { id: 105, username: "quocbao2k4", account_type_name: "ACC VIP LIÊN QUÂN", price: 450000, createdAt: new Date(Date.now() - 40 * 60 * 1000) },
-];
+export default function RecentPurchases({ items = [], simulated = false, compact = false, reverse = false, ariaHidden = false }) {
+  const [now, setNow] = useState(() => Date.now());
 
-export default function RecentPurchases() {
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const displayItems = useMemo(() => {
-    const mapped = SIMULATED_PURCHASES.map((order) => ({
+    const mapped = items.map((order) => ({
       id: order.id,
-      maskedUser: maskUsername(order.username),
+      maskedUser: order.masked_user || "kh*****ch",
       typeName: order.account_type_name || "Tài khoản game",
-      priceStr: formatVnd(order.price || 0),
-      timeStr: formatRelativeTime(order.createdAt),
+      priceStr: Number(order.price) > 0 ? formatVnd(order.price) : "",
+      timeStr: formatRelativeTime(order.created_at, now),
     }));
+
+    if (mapped.length === 0) return [];
 
     let filled = [...mapped];
     while (filled.length < 8) {
       filled = [...filled, ...mapped];
     }
     return filled;
-  }, []);
+  }, [items, now]);
+
+  if (displayItems.length === 0) return null;
 
   return (
-    <div className="storefront-purchase-feed" aria-label="Hoạt động mua tài khoản gần đây">
+    <div
+      className={`storefront-purchase-feed${compact ? " is-compact" : ""}${reverse ? " is-reverse" : ""}`}
+      aria-label={ariaHidden ? undefined : simulated ? "Hoạt động mua tài khoản mô phỏng" : "Hoạt động mua tài khoản gần đây"}
+      aria-hidden={ariaHidden || undefined}
+      data-simulated={simulated || undefined}
+    >
       <div className="purchase-feed-badge">
         <span className="live-dot" />
         <ShoppingBag size={13} />
@@ -65,7 +63,7 @@ export default function RecentPurchases() {
               <span className="purchase-user">{item.maskedUser}</span>
               <span className="purchase-action">vừa mua</span>
               <strong className="purchase-type">{item.typeName}</strong>
-              <span className="purchase-price">{item.priceStr}</span>
+              {item.priceStr && <span className="purchase-price">{item.priceStr}</span>}
               <span className="purchase-dot">·</span>
               <span className="purchase-time">{item.timeStr}</span>
             </div>

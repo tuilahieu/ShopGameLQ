@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { Key, Calendar, ShieldCheck, Info } from "lucide-react";
+import { Key, Calendar, ShieldCheck, ShieldAlert } from "lucide-react";
 import CustomerPageHeading from "../../components/client/CustomerPageHeading";
 import LoginCredentials from "../../components/client/LoginCredentials";
+import SafeImage from "../../components/SafeImage";
 import useClipboardFeedback from "../../hooks/useClipboardFeedback";
 import { formatDateTime, formatVnd } from "../../utils/formatters";
 import { getApiErrorMessage } from "../../utils/apiError";
@@ -68,7 +69,7 @@ export default function MyOrders() {
       />
 
       {loading ? (
-        <SkeletonLoading variant="orders" items={4} compact label="Đang tải tài khoản đã mua" />
+        <SkeletonLoading variant="orders" items={2} compact label="Đang tải tài khoản đã mua" />
       ) : loadError ? (
         <div className="empty-state"><p>{loadError}</p><button className="btn-primary" onClick={load}>Tải lại</button></div>
       ) : orders.length === 0 ? (
@@ -81,24 +82,37 @@ export default function MyOrders() {
         <div className="order-cards-container">
           {orders.map((o) => (
             <article className="order-card-item" key={o.id}>
-              <div className="order-info-left">
+              <div className="order-card-media">
+                <SafeImage
+                  src={o.account?.img}
+                  alt={`Ảnh tài khoản đã mua mã số ${o.acc_id}`}
+                  width={960}
+                  height={540}
+                  loading="lazy"
+                  decoding="async"
+                  fallbackLabel="Chưa có ảnh tài khoản"
+                />
                 <span className="order-number">Đơn hàng #{o.id}</span>
-                <h2>Acc #{o.acc_id}</h2>
-                <p>
-                  <Calendar size={15} aria-hidden="true" /> <time dateTime={o.created_at || o.createdAt}>{formatDateTime(o.created_at || o.createdAt)}</time>
-                </p>
-                {o.account?.accountType?.name && (
-                  <p>
-                    <ShieldCheck size={15} aria-hidden="true" /> {o.account.accountType.name}
-                  </p>
-                )}
               </div>
 
-              <div className="order-info-right">
-                <span className="order-price">{formatVnd(o.final_price)}</span>
-                <button onClick={() => viewOrderDetails(o.id)} className="btn-primary">
-                  <Key size={16} aria-hidden="true" /> Xem thông tin acc
-                </button>
+              <div className="order-card-content">
+                <div className="order-info-left">
+                  <span className="order-card-eyebrow">Đã bán</span>
+                  <h2>{o.account?.accountType?.name || `Acc Liên Quân #${o.acc_id}`}</h2>
+                  <p>
+                    <Calendar size={15} aria-hidden="true" /> <time dateTime={o.created_at || o.createdAt}>{formatDateTime(o.created_at || o.createdAt)}</time>
+                  </p>
+                  <p>
+                    <ShieldCheck size={15} aria-hidden="true" /> Mã tài khoản #{o.acc_id}
+                  </p>
+                </div>
+
+                <div className="order-info-right">
+                  <span className="order-price">{formatVnd(o.final_price)}</span>
+                  <button type="button" onClick={() => viewOrderDetails(o.id)} className="btn-primary">
+                    <Key size={16} aria-hidden="true" /> Xem thông tin acc
+                  </button>
+                </div>
               </div>
             </article>
           ))}
@@ -113,6 +127,7 @@ export default function MyOrders() {
           setSelectedOrder(null);
         }}
         title={`Thông tin tài khoản đơn hàng #${selectedOrder?.id || ""}`}
+        className="client-transaction-dialog client-credentials-dialog"
         footer={
           <button 
             onClick={() => {
@@ -139,17 +154,24 @@ export default function MyOrders() {
             </dl>
 
             <div className="order-credentials">
-              <h4>Thông tin đăng nhập</h4>
+              <div className="order-credentials-header">
+                <div className="order-credentials-heading">
+                  <ShieldCheck size={18} aria-hidden="true" />
+                  <h4>THÔNG TIN ĐĂNG NHẬP</h4>
+                </div>
+                <span className="order-credentials-tag">Đã bán</span>
+              </div>
               
               <LoginCredentials login={selectedOrder.account?.login} copiedField={copiedField} onCopy={copy} />
             </div>
 
-            <p className="order-security-note">
-              <Info size={15} aria-hidden="true" />
-              <span>
-                <strong>Khuyến nghị bảo mật:</strong> Nếu đăng nhập thành công, vui lòng truy cập trang chủ Garena để liên kết số điện thoại, email bảo mật cá nhân và đổi mật khẩu mới.
-              </span>
-            </p>
+            <div className="order-security-note">
+              <ShieldAlert size={18} className="order-security-icon" aria-hidden="true" />
+              <div className="order-security-content">
+                <strong>Khuyến nghị bảo mật:</strong>
+                <p>Nếu đăng nhập thành công, vui lòng truy cập trang chủ Garena để liên kết số điện thoại, email bảo mật cá nhân và đổi mật khẩu mới.</p>
+              </div>
+            </div>
           </div>
         ) : null}
       </Modal>

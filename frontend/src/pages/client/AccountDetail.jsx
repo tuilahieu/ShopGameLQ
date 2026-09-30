@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, MessageCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, Sparkles, ShieldCheck, History } from "lucide-react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
 import LoginCredentials from "../../components/client/LoginCredentials";
@@ -14,6 +15,7 @@ import usePageSeo from "../../hooks/usePageSeo";
 import { formatVnd } from "../../utils/formatters";
 import { getApiErrorMessage } from "../../utils/apiError";
 import useLatestRequest from "../../hooks/useLatestRequest";
+import { createIdempotencyKey } from "../../utils/idempotencyKey";
 
 function getAccountImages(account) {
   if (!account) return [];
@@ -62,15 +64,6 @@ export default function AccountDetail() {
   // Image gallery state
   const [activeImg, setActiveImg] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
-  const [zoomScale, setZoomScale] = useState(1);
-  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
-  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
-  const [isImagePanning, setIsImagePanning] = useState(false);
-  const imagePointersRef = useRef(new Map());
-  const imageGestureRef = useRef(null);
-  const imageViewRef = useRef({ scale: 1, pan: { x: 0, y: 0 } });
-  const lastImageTapRef = useRef(null);
-  const imageStageRef = useRef(null);
   
   // Modal states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -144,9 +137,10 @@ export default function AccountDetail() {
   async function buyAccount() {
     if (isBuying) return;
     setErrorMsg("");
+    await new Promise((resolve) => setTimeout(resolve, 140));
     setIsBuying(true);
     try {
-      purchaseKeyRef.current ||= crypto.randomUUID();
+      if (!purchaseKeyRef.current) purchaseKeyRef.current = createIdempotencyKey();
       const res = await api.post("/orders/buy", {
         account_id: account.id,
         discount_code: discountCode || undefined,
@@ -195,148 +189,13 @@ export default function AccountDetail() {
     setIsConfirmOpen(true);
   }
 
-  function resetImageViewer() {
-    imagePointersRef.current.clear();
-    imageGestureRef.current = null;
-    lastImageTapRef.current = null;
-    imageViewRef.current = { scale: 1, pan: { x: 0, y: 0 } };
-    setIsImagePanning(false);
-    setZoomScale(1);
-    setImagePan({ x: 0, y: 0 });
-  }
-
   function closeImageViewer() {
     setIsZoomOpen(false);
-    resetImageViewer();
   }
 
   function openImageViewer() {
     if (!activeImg) return;
-    resetImageViewer();
-    setImageAspectRatio(16 / 9);
     setIsZoomOpen(true);
-  }
-
-  function clampImagePan(nextPan, stage, scale) {
-    const rect = stage.getBoundingClientRect();
-    const image = stage.querySelector("img");
-    const boxWidth = image?.offsetWidth || rect.width;
-    const boxHeight = image?.offsetHeight || rect.height;
-    const ratio = image?.naturalWidth && image?.naturalHeight ? image.naturalWidth / image.naturalHeight : boxWidth / boxHeight;
-    const imageWidth = Math.min(boxWidth, boxHeight * ratio);
-    const imageHeight = Math.min(boxHeight, boxWidth / ratio);
-    const maxX = Math.max(0, (imageWidth * scale - rect.width) / 2);
-    const maxY = Math.max(0, (imageHeight * scale - rect.height) / 2);
-    return {
-      x: Math.max(-maxX, Math.min(maxX, nextPan.x)),
-      y: Math.max(-maxY, Math.min(maxY, nextPan.y)),
-    };
-  }
-
-  function updateImageView(nextScale, nextPan, stage) {
-    const scale = Math.min(4, Math.max(1, nextScale));
-    const pan = scale === 1 ? { x: 0, y: 0 } : stage ? clampImagePan(nextPan, stage, scale) : nextPan;
-    imageViewRef.current = { scale, pan };
-    setZoomScale(scale);
-    setImagePan(pan);
-  }
-
-  function setImageZoom(nextScale, stage, clientPoint) {
-    const { scale, pan } = imageViewRef.current;
-    const targetScale = Math.min(4, Math.max(1, nextScale));
-    stage ||= imageStageRef.current;
-    if (!stage || !clientPoint) {
-      updateImageView(targetScale, pan, stage);
-      return;
-    }
-    const rect = stage.getBoundingClientRect();
-    const x = clientPoint.x - rect.left - rect.width / 2;
-    const y = clientPoint.y - rect.top - rect.height / 2;
-    updateImageView(targetScale, {
-      x: x - (x - pan.x) * targetScale / scale,
-      y: y - (y - pan.y) * targetScale / scale,
-    }, stage);
-  }
-
-  function imagePointerDistance(first, second) {
-    return Math.hypot(first.x - second.x, first.y - second.y);
-  }
-
-  function handleImagePointerDown(event) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    const stage = event.currentTarget;
-    stage.setPointerCapture?.(event.pointerId);
-    imagePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const points = [...imagePointersRef.current.values()];
-    const { scale, pan } = imageViewRef.current;
-    if (points.length >= 2) {
-      lastImageTapRef.current = null;
-      imageGestureRef.current = {
-        distance: imagePointerDistance(points[0], points[1]),
-        center: { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 },
-        scale,
-        pan,
-      };
-      setIsImagePanning(true);
-    } else {
-      imageGestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, pan, moved: false };
-      setIsImagePanning(scale > 1);
-    }
-  }
-
-  function handleImagePointerMove(event) {
-    const pointers = imagePointersRef.current;
-    if (!pointers.has(event.pointerId)) return;
-    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const gesture = imageGestureRef.current;
-    if (!gesture) return;
-    const points = [...pointers.values()];
-    if (points.length >= 2 && gesture.distance) {
-      event.preventDefault();
-      const nextScale = Math.min(4, Math.max(1, gesture.scale * imagePointerDistance(points[0], points[1]) / gesture.distance));
-      const center = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
-      const rect = event.currentTarget.getBoundingClientRect();
-      const anchorX = gesture.center.x - rect.left - rect.width / 2;
-      const anchorY = gesture.center.y - rect.top - rect.height / 2;
-      updateImageView(nextScale, {
-        x: center.x - rect.left - rect.width / 2 - (anchorX - gesture.pan.x) * nextScale / gesture.scale,
-        y: center.y - rect.top - rect.height / 2 - (anchorY - gesture.pan.y) * nextScale / gesture.scale,
-      }, event.currentTarget);
-      return;
-    }
-    if (gesture.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 12) gesture.moved = true;
-    if (imageViewRef.current.scale <= 1 || gesture.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    updateImageView(imageViewRef.current.scale, {
-      x: gesture.pan.x + event.clientX - gesture.x,
-      y: gesture.pan.y + event.clientY - gesture.y,
-    }, event.currentTarget);
-  }
-
-  function handleImagePointerEnd(event) {
-    const pointers = imagePointersRef.current;
-    if (!pointers.has(event.pointerId)) return;
-    const wasSingleTouch = event.pointerType === "touch" && pointers.size === 1 && !imageGestureRef.current?.moved;
-    pointers.delete(event.pointerId);
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (pointers.size === 1) {
-      const [pointerId, point] = pointers.entries().next().value;
-      imageGestureRef.current = { pointerId, x: point.x, y: point.y, pan: imageViewRef.current.pan, moved: true };
-      return;
-    }
-    imageGestureRef.current = null;
-    setIsImagePanning(false);
-    if (wasSingleTouch && event.type === "pointerup") {
-      const lastTap = lastImageTapRef.current;
-      const now = Date.now();
-      if (lastTap && now - lastTap.time < 300 && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 30) {
-        event.preventDefault();
-        setImageZoom(imageViewRef.current.scale > 1 ? 1 : 2.5, event.currentTarget, { x: event.clientX, y: event.clientY });
-        lastImageTapRef.current = null;
-      } else {
-        lastImageTapRef.current = { x: event.clientX, y: event.clientY, time: now };
-      }
-    }
   }
 
   useEffect(() => {
@@ -355,22 +214,6 @@ export default function AccountDetail() {
     description: `Xem chi tiết tài khoản game Liên Quân Mobile mã số #${account.id}. Giá bán: ${formatVnd(seoPrice)}. Nhận tài khoản lập tức sau khi thanh toán.`,
     keywords: `acc game #${account.id}, mua nick game #${account.id}, tai khoan lien quan #${account.id}`,
   } : null);
-
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === "Escape") {
-        imagePointersRef.current.clear();
-        imageGestureRef.current = null;
-        imageViewRef.current = { scale: 1, pan: { x: 0, y: 0 } };
-        setIsZoomOpen(false);
-        setIsImagePanning(false);
-        setZoomScale(1);
-        setImagePan({ x: 0, y: 0 });
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   if (loading) {
     return <SkeletonLoading variant="detail" label="Đang tải chi tiết tài khoản" />;
@@ -466,7 +309,10 @@ export default function AccountDetail() {
               {isSold ? "Hết tài khoản" : "Có thể mua ngay"}
             </span>
           </div>
-          <h1 id="account-detail-title">{account.accountType?.name || "Tài khoản game"} #{account.id}</h1>
+          <div className="detail-heading">
+            <span>Chi tiết tài khoản</span>
+            <h1 id="account-detail-title">{account.accountType?.name || "Tài khoản game"} #{account.id}</h1>
+          </div>
 
           <div className="detail-price-section">
             <div className="detail-price-heading">
@@ -487,35 +333,26 @@ export default function AccountDetail() {
             </div>
           )}
 
-          {(specs.length > 0 || highlights.length === 0) && (
-            <section className="detail-specs" aria-labelledby="account-specs-title">
-              <h2 id="account-specs-title">Thông tin chính</h2>
-              <dl className="detail-spec-list">
-                <div>
-                  <dt>Loại nick</dt>
-                  <dd>{account.accountType?.name || `Loại #${account.loai_id}`}</dd>
+          <section className="detail-specs" aria-labelledby="account-specs-title">
+            <h2 id="account-specs-title">Thông tin chính</h2>
+            <dl className="detail-spec-list">
+              <div>
+                <dt>Loại nick</dt>
+                <dd>{account.accountType?.name || `Loại #${account.loai_id}`}</dd>
+              </div>
+              {specs.length > 0 ? specs.map((item, i) => (
+                <div key={i}>
+                  <dt>{item.label}</dt>
+                  <dd>{item.value}</dd>
                 </div>
-                {specs.length > 0 ? specs.map((item, i) => (
-                  <div key={i}>
-                    <dt>{item.label}</dt>
-                    <dd>{item.value}</dd>
-                  </div>
-                )) : (
-                  <div>
-                    <dt>Mô tả</dt>
-                    <dd>Tài khoản game đăng bán tự động</dd>
-                  </div>
-                )}
-              </dl>
-            </section>
-          )}
-
-          {zaloLink && (
-            <a className="detail-zalo-prompt" href={zaloLink} target="_blank" rel="noopener noreferrer">
-              <MessageCircle size={22} aria-hidden="true" />
-              <span>Liên hệ Zalo để được tư vấn và hỗ trợ đổi thông tin acc</span>
-            </a>
-          )}
+              )) : (
+                <div>
+                  <dt>Mô tả</dt>
+                  <dd>Tài khoản game đăng bán tự động</dd>
+                </div>
+              )}
+            </dl>
+          </section>
 
           {!isSold ? (
             <>
@@ -576,9 +413,9 @@ export default function AccountDetail() {
           )}
 
           <aside className="detail-purchase-notice" aria-label="Lưu ý khi mua tài khoản">
-            <h2><Info size={20} aria-hidden="true" /> Lưu ý quan trọng</h2>
-            <p><strong>Miễn phí</strong> thay đổi thông tin khi mua acc. Liên hệ shop để được hỗ trợ.</p>
-            <p><strong>Không phát sinh thêm chi phí.</strong> Giá bán được ghi trên shop.</p>
+            <h2>Quyền lợi sau mua</h2>
+            <div><CheckCircle2 size={17} aria-hidden="true" /><p><strong>Miễn phí đổi thông tin</strong><span>Shop hỗ trợ sau khi nhận tài khoản.</span></p></div>
+            <div><CheckCircle2 size={17} aria-hidden="true" /><p><strong>Đúng giá niêm yết</strong><span>Không phát sinh thêm chi phí.</span></p></div>
           </aside>
 
           {zaloLink && (
@@ -593,7 +430,7 @@ export default function AccountDetail() {
         </section>
       </div>
 
-      {!isSold && (
+      {!isSold && createPortal((
         <div className="mobile-purchase-bar" aria-label="Mua tài khoản">
           <div className="mobile-purchase-price">
             <span className="mobile-purchase-label">
@@ -624,13 +461,14 @@ export default function AccountDetail() {
             MUA NGAY
           </button>
         </div>
-      )}
+      ), document.body)}
 
       {/* MODAL 1: CONFIRM PURCHASE */}
       <Modal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
-        title="Xác nhận mua tài khoản"
+        title={<span className="dialog-title-with-icon"><ShoppingCart size={20} aria-hidden="true" /> Xác nhận đơn hàng</span>}
+        className="client-transaction-dialog client-purchase-confirm-dialog"
         footer={
           <>
             <button onClick={() => setIsConfirmOpen(false)} className="btn-outline">
@@ -647,9 +485,11 @@ export default function AccountDetail() {
         }
       >
         <div className="purchase-confirmation">
-          <p>
-            Kiểm tra lại thông tin trước khi mua. Hệ thống chỉ trừ tiền khi giao dịch thành công.
-          </p>
+          <div className="purchase-confirm-product">
+            <SafeImage src={activeImg} alt={`Ảnh tài khoản ${account.id}`} width={112} height={70} fallbackLabel="Chưa có ảnh" />
+            <span><small>Tài khoản đang mua</small><strong>{account.accountType?.name || "Tài khoản game"} #{account.id}</strong><em>Nhận thông tin đăng nhập ngay sau thanh toán</em></span>
+            <b>{formatVnd(finalPurchasePrice)}</b>
+          </div>
           <dl className="purchase-confirm-summary">
             <div>
               <dt>Tài khoản</dt>
@@ -711,35 +551,64 @@ export default function AccountDetail() {
       <Modal
         isOpen={isSuccessOpen}
         onClose={() => setIsSuccessOpen(false)}
-        title="🎉 Mua tài khoản thành công!"
+        title={
+          <span className="dialog-title-with-icon">
+            <CheckCircle2 size={21} aria-hidden="true" /> Mua tài khoản thành công
+          </span>
+        }
+        className="client-transaction-dialog client-credentials-dialog"
         footer={
           <>
-            <button onClick={() => navigate("/my-orders")} className="btn-outline" style={{ padding: "8px 16px" }}>
-              Lịch sử mua hàng
+            <button
+              type="button"
+              onClick={() => navigate("/my-orders")}
+              className="btn-outline modal-btn-secondary"
+            >
+              <History size={16} aria-hidden="true" />
+              <span>Lịch sử mua hàng</span>
             </button>
-            <button onClick={() => setIsSuccessOpen(false)} className="btn-primary" style={{ padding: "8px 16px" }}>
-              Đóng lại
+            <button
+              type="button"
+              onClick={() => setIsSuccessOpen(false)}
+              className="btn-primary modal-btn-primary"
+            >
+              <span>Đóng lại</span>
             </button>
           </>
         }
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px", textAlign: "left" }}>
-          <p style={{ color: "var(--green-color)", fontWeight: "600" }}>
-            Giao dịch hoàn tất! Cảm ơn bạn đã tin tưởng ủng hộ {readStoredJson("setting", {}).ten_web || "Shopgameliqi"}.
-          </p>
+        <div className="credential-delivery">
+          <div className="credential-delivery-banner">
+            <div className="credential-delivery-badge">
+              <Sparkles size={13} aria-hidden="true" />
+              <span>GIAO DỊCH HOÀN TẤT</span>
+            </div>
+            <p className="credential-delivery-text">
+              Cảm ơn bạn đã tin tưởng ủng hộ <strong>{readStoredJson("setting", {}).ten_web || "Shop Tran Hieu"}</strong>. Tài khoản đã được bàn giao tự động thành công!
+            </p>
+          </div>
           
-          <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "16px", borderRadius: "12px" }}>
-            <h4 style={{ color: "var(--text-primary)", marginBottom: "8px", fontWeight: "700" }}>Thông tin đăng nhập của bạn:</h4>
+          <div className="order-credentials">
+            <div className="order-credentials-header">
+              <div className="order-credentials-heading">
+                <ShieldCheck size={18} aria-hidden="true" />
+                <h4>THÔNG TIN ĐĂNG NHẬP</h4>
+              </div>
+              <span className="order-credentials-tag">Bàn giao tự động</span>
+            </div>
             
             <LoginCredentials login={purchaseData?.login} copiedField={copiedField} onCopy={copy} />
           </div>
 
-          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: "6px" }}>
-            <Info size={14} style={{ flexShrink: "0", marginTop: "2px", color: "var(--gold-color)" }} />
-            <span>
-              <strong>Lưu ý quan trọng:</strong> Vui lòng đăng nhập vào tài khoản Liên Quân, kích hoạt số điện thoại bảo mật và đổi mật khẩu Garena để tránh xảy ra tranh chấp sau này.
-            </span>
-          </p>
+          <div className="order-security-note">
+            <ShieldAlert size={18} className="order-security-icon" aria-hidden="true" />
+            <div className="order-security-content">
+              <strong>Lưu ý bảo mật quan trọng:</strong>
+              <p>
+                Vui lòng đăng nhập vào tài khoản Liên Quân, kích hoạt số điện thoại bảo mật và đổi mật khẩu Garena ngay để tránh xảy ra tranh chấp sau này.
+              </p>
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -748,41 +617,9 @@ export default function AccountDetail() {
         onClose={closeImageViewer}
         title={`Ảnh tài khoản #${account.id}`}
         className="image-viewer-dialog"
-        footer={
-          <>
-            <div className="zoom-controls" aria-label="Điều khiển ảnh">
-              <button type="button" className="btn-outline" onClick={() => setImageZoom(zoomScale - 0.25)} disabled={zoomScale <= 1} aria-label="Thu nhỏ ảnh">
-                Thu nhỏ
-              </button>
-              <button type="button" className="btn-outline" onClick={resetImageViewer} aria-label="Đặt lại kích thước và vị trí ảnh">
-                {Math.round(zoomScale * 100)}%
-              </button>
-              <button type="button" className="btn-outline" onClick={() => setImageZoom(zoomScale + 0.25)} disabled={zoomScale >= 4} aria-label="Phóng to ảnh">
-                Phóng to
-              </button>
-            </div>
-            {!isSold && (
-              <button type="button" className="btn-primary zoom-purchase-action" onClick={() => { closeImageViewer(); openPurchase(); }}>
-                <ShoppingCart size={18} aria-hidden="true" /> MUA NGAY · {formatVnd(currentPrice)}
-              </button>
-            )}
-          </>
-        }
+        hideHeader
       >
-        <div
-          ref={imageStageRef}
-          className={`zoom-image-stage ${zoomScale > 1 ? "is-zoomed" : ""} ${isImagePanning ? "is-panning" : ""}`}
-          style={{ aspectRatio: imageAspectRatio }}
-          onPointerDown={handleImagePointerDown}
-          onPointerMove={handleImagePointerMove}
-          onPointerUp={handleImagePointerEnd}
-          onPointerCancel={handleImagePointerEnd}
-          onDoubleClick={(event) => {
-            if (event.nativeEvent.pointerType === "touch" || event.nativeEvent.sourceCapabilities?.firesTouchEvents) return;
-            setImageZoom(zoomScale > 1 ? 1 : 2.5, event.currentTarget, { x: event.clientX, y: event.clientY });
-          }}
-          aria-label={zoomScale > 1 ? "Chụm hai ngón hoặc kéo ảnh để xem chi tiết" : "Chụm hai ngón, nhấn đúp hoặc dùng nút phóng to để xem ảnh lớn"}
-        >
+        <div className="zoom-image-stage">
           <SafeImage
             src={activeImg}
             alt={`Ảnh phóng to của tài khoản ${account.id}`}
@@ -790,11 +627,6 @@ export default function AccountDetail() {
             height={800}
             loading="eager"
             draggable={false}
-            onLoad={(event) => {
-              const image = event.currentTarget;
-              if (image.naturalWidth && image.naturalHeight) setImageAspectRatio(image.naturalWidth / image.naturalHeight);
-            }}
-            style={{ transform: `translate3d(${imagePan.x}px, ${imagePan.y}px, 0) scale(${zoomScale})` }}
             fallbackLabel="Không thể hiển thị ảnh lớn"
           />
         </div>
