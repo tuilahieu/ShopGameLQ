@@ -7,6 +7,25 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
 
+function DashboardSkeleton() {
+  return (
+    <div className="admin-dashboard-page admin-accounts-page" aria-busy="true" aria-label="Đang tải tổng quan hệ thống">
+      <AdminPageHeader eyebrow="Dashboard" title="Tổng quan cửa hàng" description="Đang đồng bộ kho tài khoản, đơn hàng và doanh thu…" />
+      <section className="admin-overview-grid" aria-hidden="true">
+        {[0, 1, 2, 3].map((item) => (
+          <Card key={item} className="admin-overview-card admin-dashboard-skeleton-card"><CardContent>
+            <Skeleton className="ui-skeleton-line" />
+            <Skeleton className="admin-dashboard-skeleton-value" />
+            <Skeleton className="admin-dashboard-skeleton-progress" />
+            <div className="admin-card-split"><Skeleton /><Skeleton /></div>
+          </CardContent></Card>
+        ))}
+      </section>
+      <Card className="admin-quick-actions admin-dashboard-skeleton-actions"><CardHeader><div><CardTitle>Thao tác thường dùng</CardTitle><CardDescription>Đang chuẩn bị các lối tắt vận hành.</CardDescription></div></CardHeader><CardContent><div className="admin-quick-action-grid">{[0, 1, 2, 3].map((item) => <Skeleton key={item} />)}</div></CardContent></Card>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -20,7 +39,7 @@ export default function AdminDashboard() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  if (!data && loading && !error) return <Card><CardHeader><CardTitle>Đang tải tổng quan hệ thống</CardTitle><CardDescription>Đang đồng bộ các số liệu vận hành…</CardDescription></CardHeader><CardContent className="ui-dashboard-loading"><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /></CardContent></Card>;
+  if (!data && loading && !error) return <DashboardSkeleton />;
 
   const formatNumber = (value) => Number(value || 0).toLocaleString("vi-VN");
   const stockPercent = data?.totalAccounts ? Math.min(100, Math.round((Number(data.sellingAccounts || 0) / Number(data.totalAccounts)) * 100)) : 0;

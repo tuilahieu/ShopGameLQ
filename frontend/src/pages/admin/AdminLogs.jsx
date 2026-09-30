@@ -39,7 +39,7 @@ export default function AdminLogs() {
     <div className="admin-logs-page admin-accounts-page">
       <AdminPageHeader eyebrow="Hệ thống · Admin" title="Nhật ký hoạt động" description="Audit trail của các hành động quản trị và sự kiện quan trọng trong hệ thống." actions={<Button variant="outline" onClick={load} disabled={loading}><RefreshCw size={15} aria-hidden="true" /> Làm mới</Button>} />
       <AdminError message={error} onRetry={load} />
-      <Card className="ui-data-table-card"><CardHeader><CardTitle>Activity log</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `${logs.length} sự kiện được tải.`}</CardDescription></CardHeader><CardContent><DataTable data={logs} loading={loading} columns={columns} caption="Bảng nhật ký hoạt động" empty={<Empty><EmptyMedia><Activity size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Chưa có nhật ký</EmptyTitle><EmptyDescription>Các hoạt động quản trị mới sẽ được ghi nhận tại đây.</EmptyDescription></EmptyHeader></Empty>} /></CardContent></Card>
+      <Card className="ui-data-table-card"><CardHeader><CardTitle>Nhật ký hoạt động</CardTitle><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `${logs.length} sự kiện được tải.`}</CardDescription></CardHeader><CardContent><DataTable data={logs} loading={loading} columns={columns} caption="Bảng nhật ký hoạt động" empty={<Empty><EmptyMedia><Activity size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Chưa có nhật ký</EmptyTitle><EmptyDescription>Các hoạt động quản trị mới sẽ được ghi nhận tại đây.</EmptyDescription></EmptyHeader></Empty>} /></CardContent></Card>
     </div>
   );
 }

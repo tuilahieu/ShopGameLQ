@@ -14,6 +14,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { Textarea } from "../../components/ui/textarea";
 import { notifyAdmin } from "../../utils/adminFeedback";
 import { importImageUrl, uploadImageFile } from "../../utils/imageUpload";
+import { utf8ByteLength } from "../../utils/browserCompat";
 
 const MASKED_SECRET = "••••••••••••••••";
 const settingNavigation = [
@@ -38,6 +39,19 @@ function SettingSection({ id, icon: Icon, eyebrow, title, description, status, c
       <CardContent>{children}</CardContent>
       {footer && <CardFooter>{footer}</CardFooter>}
     </Card>
+  );
+}
+
+function AdminSettingSkeleton() {
+  return (
+    <div className="admin-setting-page admin-accounts-page admin-setting-skeleton" aria-busy="true" aria-label="Đang tải cấu hình hệ thống">
+      <AdminPageHeader eyebrow="Hệ thống · Admin" title="Cấu hình hệ thống" description="Đang đồng bộ nhận diện cửa hàng, tích hợp và bảo mật…" />
+      <div className="admin-setting-overview" aria-hidden="true">{[0, 1, 2, 3].map((item) => <div key={item}><Skeleton /><span><Skeleton /><Skeleton /></span></div>)}</div>
+      <div className="admin-settings-layout" aria-hidden="true">
+        <aside className="admin-settings-nav"><Skeleton />{[0, 1, 2, 3].map((item) => <Skeleton key={item} />)}</aside>
+        <div className="admin-settings-content">{[0, 1, 2].map((item) => <Card key={item} className="admin-setting-section"><CardHeader className="admin-setting-section-header"><Skeleton /><div><Skeleton /><Skeleton /></div></CardHeader><CardContent className="ui-dashboard-loading"><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /></CardContent></Card>)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -97,7 +111,7 @@ function ImageUploadField({ label, fieldKey, value, onChange }) {
         <div className="ui-image-preview">{value ? <SafeImage src={value} alt={`Xem trước ${label}`} width={214} height={120} fallbackLabel="Ảnh không tải được" /> : <div className="admin-setting-media-empty"><Upload size={18} aria-hidden="true" /><span>Chưa có ảnh</span></div>}</div>
         <div className="admin-setting-media-inputs">
           <Input id={inputId} type="text" inputMode="url" placeholder="Nhập URL ảnh hoặc tải file lên" value={value || ""} onChange={(event) => onChange(fieldKey, event.target.value)} />
-          <label className={`ui-upload-trigger${uploading ? " is-disabled" : ""}`} htmlFor={`${inputId}-upload`}><Upload size={14} aria-hidden="true" /> {uploading ? "Đang tải…" : "Chọn ảnh"}<input ref={inputRef} id={`${inputId}-upload`} type="file" accept="image/*" onChange={handleFile} disabled={uploading} /></label>
+          <label className={`ui-upload-trigger${uploading ? " is-disabled" : ""}`} htmlFor={`${inputId}-upload`}><Upload size={14} aria-hidden="true" /> {uploading ? "Đang tải…" : "Chọn ảnh"}<input ref={inputRef} id={`${inputId}-upload`} type="file" accept="image/*" autoComplete="off" onChange={handleFile} disabled={uploading} /></label>
         </div>
       </div>
     </AdminField>
@@ -105,6 +119,7 @@ function ImageUploadField({ label, fieldKey, value, onChange }) {
 }
 
 export default function AdminSetting() {
+  const [activeSettingSection, setActiveSettingSection] = useState("storefront");
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -138,7 +153,8 @@ export default function AdminSetting() {
       const settings = { ...form };
       delete settings.sepay_secret;
       delete settings.assistant_llm_api_key;
-      const mediaFields = ["logo", "favicon", "banner", "background", "assistant_avatar"];
+      delete settings.background;
+      const mediaFields = ["logo", "favicon", "banner", "assistant_avatar"];
       const localizedMedia = await Promise.all(mediaFields.map((field) => importImageUrl(api, settings[field])));
       mediaFields.forEach((field, index) => { settings[field] = localizedMedia[index]; });
       const res = await api.put("/admin/setting", { ...settings, ...(sepaySecretInput.trim() && { sepay_secret: sepaySecretInput.trim() }), ...(!clearLlmKey && llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }), ...(clearLlmKey && { assistant_llm_clear_key: true }) });
@@ -165,7 +181,7 @@ export default function AdminSetting() {
   async function changeSecondPassword(event) {
     event.preventDefault(); setSecurityError("");
     if (securityForm.newSecondPassword !== securityForm.confirmPassword) { setSecurityError("Hai lần nhập mật khẩu cấp 2 mới chưa khớp."); return; }
-    if (Array.from(securityForm.newSecondPassword).length < 12 || new TextEncoder().encode(securityForm.newSecondPassword).length > 72) { setSecurityError("Mật khẩu cấp 2 mới cần ít nhất 12 ký tự và tối đa 72 byte."); return; }
+    if (Array.from(securityForm.newSecondPassword).length < 12 || utf8ByteLength(securityForm.newSecondPassword) > 72) { setSecurityError("Mật khẩu cấp 2 mới cần ít nhất 12 ký tự và tối đa 72 byte."); return; }
     setSecurityBusy(true);
     try {
       await api.post("/auth/admin-security/change", { currentPassword: securityForm.currentPassword, oldSecondPassword: securityForm.oldSecondPassword, newSecondPassword: securityForm.newSecondPassword });
@@ -177,7 +193,43 @@ export default function AdminSetting() {
 
   useEffect(() => { load(); }, []);
 
-  if (loading) return <Card className="admin-setting-loading"><CardHeader><CardTitle>Đang tải cấu hình hệ thống</CardTitle><CardDescription>Đang đồng bộ thiết lập website và các kết nối.</CardDescription></CardHeader><CardContent className="ui-dashboard-loading"><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /><Skeleton className="ui-skeleton-line" /></CardContent></Card>;
+  useEffect(() => {
+    if (loading || loadError) return undefined;
+
+    const sections = settingNavigation
+      .map(({ id }) => document.getElementById(id))
+      .filter(Boolean);
+    if (!sections.length) return undefined;
+
+    let frame = 0;
+    const updateActiveSection = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const activationLine = window.innerWidth <= 832 ? 150 : 112;
+        let current = sections[0].id;
+
+        sections.forEach((section) => {
+          if (section.getBoundingClientRect().top <= activationLine) current = section.id;
+        });
+
+        setActiveSettingSection(current);
+      });
+    };
+
+    const hashSection = window.location.hash.replace("#", "");
+    if (settingNavigation.some(({ id }) => id === hashSection)) setActiveSettingSection(hashSection);
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
+  }, [loading, loadError]);
+
+  if (loading) return <AdminSettingSkeleton />;
   if (loadError) return <div className="admin-setting-page admin-accounts-page"><AdminPageHeader eyebrow="Hệ thống · Admin" title="Cấu hình hệ thống" description="Thiết lập website, thanh toán, bảo mật và trợ lý chatbot." /><AdminError message={loadError} onRetry={load} /></div>;
 
   const apiBase = new URL(api.defaults.baseURL, window.location.origin);
@@ -188,7 +240,7 @@ export default function AdminSetting() {
 
   return (
     <div className="admin-setting-page admin-accounts-page">
-      <AdminPageHeader eyebrow="Hệ thống · Admin" title="Cấu hình hệ thống" description="Quản lý nhận diện cửa hàng, tích hợp và bảo mật tại một nơi. Khóa bí mật đã lưu luôn được che khỏi trình duyệt." actions={<Button size="lg" onClick={save} disabled={saving} aria-busy={saving}><Save size={17} aria-hidden="true" />{saving ? "Đang lưu…" : "Lưu thay đổi"}</Button>} />
+      <AdminPageHeader eyebrow="Hệ thống · Admin" title="Cấu hình hệ thống" description="Quản lý nhận diện cửa hàng, tích hợp và bảo mật tại một nơi. Khóa bí mật đã lưu luôn được che khỏi trình duyệt." />
 
       <div className="admin-setting-overview" aria-label="Tổng quan cấu hình">
         <div><Globe2 size={18} aria-hidden="true" /><span><small>Cửa hàng</small><strong>{form.ten_web || "Chưa đặt tên"}</strong></span></div>
@@ -200,7 +252,10 @@ export default function AdminSetting() {
       <div className="admin-settings-layout">
         <aside className="admin-settings-nav" aria-label="Nhóm cấu hình">
           <div className="admin-settings-nav-heading"><Settings2 size={16} aria-hidden="true" /><span>Nhóm cài đặt</span></div>
-          {settingNavigation.map(({ id, label, description, icon: Icon }) => <a key={id} href={`#${id}`}><Icon size={17} aria-hidden="true" /><span><strong>{label}</strong><small>{description}</small></span></a>)}
+          {settingNavigation.map(({ id, label, description, icon: Icon }) => <a key={id} href={`#${id}`} className={activeSettingSection === id ? "is-active" : undefined} aria-current={activeSettingSection === id ? "location" : undefined} onClick={() => setActiveSettingSection(id)}><Icon size={17} aria-hidden="true" /><span><strong>{label}</strong><small>{description}</small></span></a>)}
+          <div className="admin-settings-nav-save">
+            <Button type="button" onClick={save} disabled={saving} aria-busy={saving}><Save size={16} aria-hidden="true" />{saving ? "Đang lưu…" : "Lưu thay đổi"}</Button>
+          </div>
         </aside>
 
         <div className="admin-settings-content">
@@ -210,7 +265,7 @@ export default function AdminSetting() {
               <AdminField id="admin-setting-email" label="Email liên hệ"><Input id="admin-setting-email" type="email" placeholder="admin@example.com" value={form.email || ""} onChange={(event) => set("email", event.target.value)} /></AdminField>
               <AdminField id="admin-setting-facebook" label="Facebook Admin"><Input id="admin-setting-facebook" type="url" placeholder="https://facebook.com/..." value={form.fb_admin || ""} onChange={(event) => set("fb_admin", event.target.value)} /></AdminField>
               <AdminField id="admin-setting-phone" label="Số điện thoại / Zalo"><Input id="admin-setting-phone" placeholder="0xxx xxx xxx" value={form.sdt_admin || ""} onChange={(event) => set("sdt_admin", event.target.value)} /></AdminField>
-              <div className="admin-setting-media-grid ui-field-full"><ImageUploadField label="Logo website" fieldKey="logo" value={form.logo} onChange={set} /><ImageUploadField label="Favicon" fieldKey="favicon" value={form.favicon} onChange={set} /><ImageUploadField label="Banner trang chủ" fieldKey="banner" value={form.banner} onChange={set} /><ImageUploadField label="Ảnh nền website" fieldKey="background" value={form.background} onChange={set} /></div>
+              <div className="admin-setting-media-grid ui-field-full"><ImageUploadField label="Logo website" fieldKey="logo" value={form.logo} onChange={set} /><ImageUploadField label="Favicon" fieldKey="favicon" value={form.favicon} onChange={set} /><ImageUploadField label="Banner trang chủ" fieldKey="banner" value={form.banner} onChange={set} /></div>
               <AdminField id="admin-setting-home-notice" label="Thông báo trang chủ" className="ui-field-full" helper="Nội dung ngắn hiển thị nổi bật với khách hàng."><Textarea id="admin-setting-home-notice" rows={5} placeholder="Nhập nội dung thông báo…" value={form.thongbao || ""} onChange={(event) => set("thongbao", event.target.value)} /></AdminField>
             </div>
           </SettingSection>

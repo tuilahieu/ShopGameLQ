@@ -1,11 +1,12 @@
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Bell, CheckCircle2, ChevronRight, Info, LockKeyhole, LogOut, Menu, UserRound, X } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Info, LogOut, Menu, UserRound, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import api from "../api/api";
 import AppLoader from "./AppLoader";
 import useMotionReveal from "../hooks/useMotionReveal";
-import { notifyAdmin } from "../utils/adminFeedback";
+import usePublicSettings from "../hooks/usePublicSettings";
+import SiteBrand from "./client/SiteBrand";
 
 export default function WorkspaceLayout({ title, role, links }) {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function WorkspaceLayout({ title, role, links }) {
   const sidebarRef = useRef(null);
   const mainRef = useRef(null);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const setting = usePublicSettings();
   const routeKey = `${location.pathname}${location.search}`;
   const groupedLinks = useMemo(() => {
     const groups = new Map();
@@ -30,16 +32,10 @@ export default function WorkspaceLayout({ title, role, links }) {
     .sort((a, b) => b.to.length - a.to.length)
     .find((link) => link.end ? location.pathname === link.to : location.pathname.startsWith(link.to));
   const workspaceRoleClass = role === "Cộng tác viên" ? " workspace-ctv" : " workspace-admin";
+  const userLabel = user.username || "Tài khoản";
+  const userInitial = userLabel.trim().charAt(0).toLocaleUpperCase("vi-VN") || "Q";
 
   useMotionReveal(mainRef, routeKey);
-
-  useEffect(() => {
-    // A few legacy workspace forms still call alert(). Route those messages
-    // through the non-blocking toast while keeping the pages backward compatible.
-    const nativeAlert = window.alert;
-    window.alert = (message) => notifyAdmin(message);
-    return () => { window.alert = nativeAlert; };
-  }, []);
 
   useEffect(() => {
     function handleToast(event) {
@@ -102,32 +98,37 @@ export default function WorkspaceLayout({ title, role, links }) {
       <a className="skip-link" href="#workspace-main">Bỏ qua điều hướng</a>
       <header className="admin-topbar">
         <div className="admin-topbar-inner">
-          <div className="admin-session-status"><LockKeyhole size={15} aria-hidden="true" /><span>Đang đăng nhập với tư cách: <strong>{user.username || "Quản trị viên"}</strong></span></div>
-          <div className="admin-topbar-actions">
-            <NavLink to="/" className="admin-topbar-store" title="Mở cửa hàng"><ArrowLeft size={15} aria-hidden="true" /><span>Về cửa hàng</span></NavLink>
-            <button type="button" className="admin-topbar-logout" onClick={logout}><LogOut size={15} aria-hidden="true" /><span>Thoát</span></button>
+          <div className="admin-topbar-context">
+            <small>{activeLink?.group || role}</small>
+            <strong>{activeLink?.label || title}</strong>
           </div>
-        </div>
-        <div className="admin-utilitybar">
-          <div className="admin-utilitybar-actions">
-            <ThemeToggle compact />
-            <button type="button" className="admin-notification-button" aria-label="Thông báo"><Bell size={17} aria-hidden="true" /><span aria-hidden="true">1</span></button>
-            <div className="admin-utility-user"><span><UserRound size={16} aria-hidden="true" /></span><strong>{user.username || "Quản trị viên"}</strong></div>
+
+          <div className="admin-topbar-actions">
+            <details className="admin-account-menu">
+              <summary aria-label={`Mở menu tài khoản ${userLabel}`}>
+                <span className="admin-account-avatar" aria-hidden="true">{userInitial}</span>
+                <span className="admin-account-copy"><small>{role}</small><strong>{userLabel}</strong></span>
+                <ChevronDown size={15} aria-hidden="true" />
+              </summary>
+              <div className="admin-account-popover">
+                <span><small>Đang đăng nhập</small><strong>{userLabel}</strong></span>
+                <button type="button" onClick={logout}><LogOut size={17} aria-hidden="true" /><span>Đăng xuất</span></button>
+              </div>
+            </details>
           </div>
         </div>
       </header>
       <header className="admin-mobile-topbar">
-        <div><small>{role}</small><strong>{activeLink?.label || title}</strong></div>
         <button ref={menuButtonRef} type="button" className="admin-mobile-menu-button" onClick={() => setMenuOpen(true)} aria-label={`Mở menu ${role}`} aria-expanded={menuOpen} aria-controls="workspace-sidebar">
           <Menu size={20} aria-hidden="true" />
         </button>
+        <div><small>{role}</small><strong>{activeLink?.label || title}</strong></div>
       </header>
       {menuOpen && <button type="button" className="admin-menu-backdrop" onClick={() => setMenuOpen(false)} aria-label={`Đóng menu ${role}`} />}
       <aside id="workspace-sidebar" ref={sidebarRef} className={`admin-sidebar workspace-sidebar ${menuOpen ? "is-open" : ""}`} aria-label={`Điều hướng ${role}`}>
-        <div className="workspace-brand">
-          <span className="workspace-brand-mark" aria-hidden="true">S</span>
-          <div><small>SHOP</small><h2>Liên Quân</h2></div>
-        </div>
+        <Link to="/" className="workspace-brand" aria-label={`Về ${setting.ten_web || "cửa hàng"}`}>
+          <SiteBrand setting={setting} imageWidth={156} imageHeight={38} />
+        </Link>
         <button type="button" className="admin-drawer-close" onClick={() => setMenuOpen(false)} aria-label={`Đóng menu ${role}`}><X size={20} aria-hidden="true" /></button>
         <nav className="admin-nav-links" aria-label={`Các trang ${role}`}>
           {groupedLinks.map(({ label, items }) => (
@@ -142,14 +143,20 @@ export default function WorkspaceLayout({ title, role, links }) {
           ))}
         </nav>
         <div className="workspace-sidebar-footer">
-          <div className="workspace-account"><span><UserRound size={16} aria-hidden="true" /></span><div><small>{role}</small><strong>{user.username || "Tài khoản"}</strong></div></div>
-          <button type="button" onClick={logout} className="btn-ghost workspace-sidebar-logout" aria-label="Đăng xuất"><LogOut size={17} aria-hidden="true" /></button>
+          <div className="workspace-sidebar-utilitybar">
+            <Link to="/" className="workspace-store-link"><ArrowLeft size={17} aria-hidden="true" /><span>Về cửa hàng</span></Link>
+            <ThemeToggle compact />
+          </div>
+          <div className="workspace-sidebar-session">
+            <div className="workspace-account"><span><UserRound size={16} aria-hidden="true" /></span><div><small>{role}</small><strong>{userLabel}</strong></div></div>
+            <button type="button" onClick={logout} className="btn-ghost workspace-sidebar-logout" aria-label="Đăng xuất"><LogOut size={17} aria-hidden="true" /></button>
+          </div>
         </div>
       </aside>
       <main ref={mainRef} id="workspace-main" tabIndex={-1} className="admin-content workspace-content">
         <header className="workspace-contextbar">
           <div><small>{activeLink?.group || role}</small><strong>{activeLink?.label || title}</strong></div>
-          <span>Xin chào, <b>{user.username || "Quản trị viên"}</b></span>
+          <span>Xin chào, <b>{userLabel}</b></span>
         </header>
         <div className="workspace-route-stage" key={routeKey}><Suspense fallback={<AppLoader inline />}><Outlet /></Suspense></div>
       </main>

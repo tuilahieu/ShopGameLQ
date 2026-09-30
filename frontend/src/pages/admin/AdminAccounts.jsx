@@ -135,6 +135,8 @@ export default function AdminAccounts() {
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState("");
+  const [formError, setFormError] = useState("");
+  const formErrorRef = useRef(null);
   const [metadataLoading, setMetadataLoading] = useState(true);
   const [metadataError, setMetadataError] = useState("");
   const [metadataRetry, setMetadataRetry] = useState(0);
@@ -265,10 +267,15 @@ export default function AdminAccounts() {
   async function saveAccount(event) {
     event.preventDefault();
     if (saving) return;
-    if (!form.loai_id) return notifyAdmin("Vui lòng chọn loại tài khoản!");
-    if (!form.gia) return notifyAdmin("Vui lòng nhập giá bán!");
+    setFormError("");
+    const showFormError = (message) => {
+      setFormError(message);
+      window.requestAnimationFrame(() => formErrorRef.current?.focus());
+    };
+    if (!form.loai_id) return showFormError("Vui lòng chọn loại tài khoản.");
+    if (!form.gia || Number(form.gia) < 0) return showFormError("Vui lòng nhập giá bán hợp lệ.");
     if (form.is_sale && (!form.sale_price || Number(form.sale_price) >= Number(form.gia))) {
-      return notifyAdmin("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
+      return showFormError("Giá sale phải lớn hơn 0 và thấp hơn giá bán gốc.");
     }
 
     const payload = { ...form, sale_price: form.is_sale ? form.sale_price : null };
@@ -308,7 +315,7 @@ export default function AdminAccounts() {
       closeForm();
       loadData();
     } catch (error) {
-      notifyAdmin(error?.response?.data?.message || error.message || "Có lỗi xảy ra");
+      showFormError(error?.response?.data?.message || error.message || "Không thể lưu tài khoản. Vui lòng thử lại.");
     } finally {
       setSaving(false);
       setSaveProgress("");
@@ -392,6 +399,7 @@ export default function AdminAccounts() {
   }
 
   function openEdit(account) {
+    setFormError("");
     setEditingId(account.id);
     setForm({
       loai_id: account.loai_id || "",
@@ -410,12 +418,14 @@ export default function AdminAccounts() {
   }
 
   function openCreate() {
+    setFormError("");
     setEditingId(null);
     setForm(makeEmpty(setting.sdt_admin));
     setShowForm(true);
   }
 
   function closeForm() {
+    setFormError("");
     setEditingId(null);
     setForm(makeEmpty(setting.sdt_admin));
     setShowForm(false);
@@ -459,11 +469,6 @@ export default function AdminAccounts() {
       cell: (account) => <div className="ui-table-actions"><Button size="sm" variant="outline" onClick={() => openEdit(account)} aria-label={`Sửa tài khoản #${account.id}`}><Pencil size={14} aria-hidden="true" /> Sửa</Button><Button size="sm" variant="destructive" onClick={() => deleteAccount(account.id)} aria-label={`Xóa tài khoản #${account.id}`}><Trash2 size={14} aria-hidden="true" /> Xóa</Button>{Number(account.status) !== 1 && <Button size="sm" variant="secondary" onClick={() => hideAccount(account.id)} aria-label={`Ẩn tài khoản #${account.id}`}><EyeOff size={14} aria-hidden="true" /> Ẩn</Button>}</div>,
     },
   ];
-  const summaryColumns = [
-    { id: "label", header: "Chỉ số", accessor: (row) => row.label, sortable: true, cell: (row) => <span className="ui-table-primary">{row.label}</span> },
-    { id: "value", header: "Số lượng", accessor: (row) => row.value, sortable: true, cell: (row) => <strong className="ui-table-price">{row.value}</strong> },
-  ];
-
   return (
     <div className="admin-accounts-page">
       <header className="ui-admin-page-header">
@@ -474,13 +479,13 @@ export default function AdminAccounts() {
       {showForm && <Card>
         <CardHeader><div className="ui-admin-page-header"><div><CardTitle>{editingId ? `Sửa account #${editingId}` : "Thêm account mới"}</CardTitle><CardDescription>{editingId ? "Cập nhật thông tin sản phẩm và trạng thái hiển thị." : "Nhập nhiều dòng đăng nhập để tạo nhiều account cùng lúc."}</CardDescription></div><Button type="button" variant="ghost" size="icon" onClick={closeForm} aria-label="Đóng biểu mẫu tài khoản"><X size={18} aria-hidden="true" /></Button></div></CardHeader>
         <form onSubmit={saveAccount}>
-          <CardContent><div className="ui-form-grid">
+          <CardContent>{formError && <p ref={formErrorRef} className="ui-form-error-summary" role="alert" tabIndex={-1}>{formError}</p>}<div className="ui-form-grid">
             <Field id="admin-account-type" label="Loại tài khoản" required><Select id="admin-account-type" value={form.loai_id} onChange={(event) => set("loai_id", event.target.value)} required><option value="">-- Chọn loại --</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></Field>
             <Field id="admin-account-price" label="Giá bán (đ)" required><CurrencyInput id="admin-account-price" placeholder="Ví dụ: 50.000" value={form.gia} onChange={(event) => set("gia", event.target.value)} required /></Field>
             <Field id="admin-account-status" label="Trạng thái"><Select id="admin-account-status" value={form.status} onChange={(event) => set("status", Number(event.target.value))}><option value={0}>Đang bán</option><option value={1}>Đã bán</option><option value={2}>Ẩn</option></Select></Field>
             <div className="ui-field"><Label htmlFor="listing-sale-enabled">Giá sale riêng account</Label><div className="ui-switch-card"><Switch id="listing-sale-enabled" checked={form.is_sale} onChange={(event) => setForm((prev) => ({ ...prev, is_sale: event.target.checked, sale_price: event.target.checked ? prev.sale_price : "" }))} /><span><strong>Bật giá giảm</strong><small>Hiện giá sale trên thẻ và trang chi tiết.</small></span></div></div>
             {form.is_sale && <Field id="listing-sale-price" label="Giá sale" helper={`Giá gốc hiện tại: ${Number(form.gia || 0).toLocaleString()}đ`}><CurrencyInput id="listing-sale-price" name="sale_price" placeholder="Ví dụ: 100.000" value={form.sale_price} onChange={(event) => set("sale_price", event.target.value)} /></Field>}
-            <div className="ui-field ui-field-full"><Label htmlFor="admin-account-image">Ảnh đại diện</Label><div className="ui-upload-row"><label className="ui-upload-trigger" htmlFor="admin-account-image-upload"><Upload size={15} aria-hidden="true" /> Tải ảnh lên<input ref={imgRef} id="admin-account-image-upload" type="file" accept="image/*" onChange={handleMainImage} /></label>{form.img && <Button type="button" variant="outline" size="sm" onClick={() => { set("img", ""); if (imgRef.current) imgRef.current.value = ""; }}>Xóa ảnh</Button>}</div><Input id="admin-account-image" type="text" inputMode="url" placeholder="Dán URL ngoài — hệ thống sẽ tải về khi lưu" value={form.img} onChange={(event) => set("img", event.target.value)} /><p className="ui-field-helper">URL ngoài không được lưu trực tiếp; ảnh sẽ được sao chép vào /uploads.</p>{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</div>
+            <div className="ui-field ui-field-full"><Label htmlFor="admin-account-image">Ảnh đại diện</Label><div className="ui-upload-row"><label className="ui-upload-trigger" htmlFor="admin-account-image-upload"><Upload size={15} aria-hidden="true" /> Tải ảnh lên<input ref={imgRef} id="admin-account-image-upload" type="file" accept="image/*" autoComplete="off" onChange={handleMainImage} /></label>{form.img && <Button type="button" variant="outline" size="sm" onClick={() => { set("img", ""); if (imgRef.current) imgRef.current.value = ""; }}>Xóa ảnh</Button>}</div><Input id="admin-account-image" type="text" inputMode="url" placeholder="Dán URL ngoài — hệ thống sẽ tải về khi lưu" value={form.img} onChange={(event) => set("img", event.target.value)} /><p className="ui-field-helper">URL ngoài không được lưu trực tiếp; ảnh sẽ được sao chép vào /uploads.</p>{form.img && <div className="ui-image-preview"><SafeImage src={form.img} alt="Xem trước ảnh tài khoản" width={214} height={120} fallbackLabel="Ảnh không tải được" /></div>}</div>
             <Field id="admin-account-details" className="ui-field-full" label="Thông tin hiển thị (thong_tin)" helper="Mỗi dòng là một tag thông tin. Dùng dấu phẩy hoặc | để phân tách.">
               <Textarea id="admin-account-details" rows={4} value={form.thong_tin} onChange={(event) => set("thong_tin", event.target.value)} />
               <TemplateControls
@@ -516,12 +521,14 @@ export default function AdminAccounts() {
 
       <Card className="ui-filter-card"><CardHeader><CardTitle>Bộ lọc kho tài khoản</CardTitle><CardDescription>Lọc theo loại và trạng thái; dữ liệu được tải theo từng trang.</CardDescription></CardHeader><CardContent><div className="ui-filter-grid"><Field id="admin-account-filter-type" label="Loại tài khoản"><Select id="admin-account-filter-type" value={filters.loai_id} onChange={(event) => setFilters({ ...filters, loai_id: event.target.value, page: 1 })}><option value="">Tất cả loại</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></Field><Field id="admin-account-filter-status" label="Trạng thái"><Select id="admin-account-filter-status" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value, page: 1 })}><option value="">Tất cả</option><option value="0">Đang bán</option><option value="1">Đã bán</option><option value="2">Đã ẩn</option></Select></Field><div className="ui-filter-summary"><span>Toàn bộ kho</span><strong>{pagination.total ?? accounts.length} account</strong></div></div></CardContent></Card>
 
-      <Card><CardHeader><CardTitle>Thống kê kho</CardTitle><CardDescription>Trang hiện tại có {pageCount} bản ghi đang hiển thị.</CardDescription></CardHeader><CardContent><DataTable data={summaryRows} columns={summaryColumns} caption="Bảng thống kê kho tài khoản" /></CardContent></Card>
+      <section className="admin-inventory-summary" aria-label={`Thống kê ${pageCount} tài khoản trên trang hiện tại`}>
+        {summaryRows.map((item) => <Card key={item.id}><CardContent><span>{item.label}</span><strong>{Number(item.value || 0).toLocaleString("vi-VN")}</strong></CardContent></Card>)}
+      </section>
 
       {selected.size > 0 && <div className="ui-selection-bar" role="region" aria-label="Thao tác tài khoản đã chọn"><span><ShoppingBag size={16} aria-hidden="true" /> Đã chọn {selected.size} tài khoản</span><div className="ui-selection-bar-actions"><Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Bỏ chọn</Button><Button size="sm" variant="destructive" onClick={deleteSelected}><Trash2 size={14} aria-hidden="true" /> Xóa đã chọn</Button></div></div>}
       {loadError && <Card><CardContent className="ui-inline-error" role="alert"><span>{loadError}</span><Button size="sm" variant="outline" onClick={loadData}><RefreshCw size={14} aria-hidden="true" /> Thử lại</Button></CardContent></Card>}
 
-      <Card className="ui-data-table-card"><CardHeader><div className="ui-data-table-toolbar-title"><span>Inventory table</span><strong>Danh sách tài khoản</strong></div><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `Hiển thị ${accounts.length} bản ghi trên trang ${filters.page}.`}</CardDescription></CardHeader><CardContent><DataTable selectable selectedIds={selected} onSelectionChange={setSelected} data={accounts} loading={loading} columns={columns} caption="Bảng kho tài khoản game" empty={<Empty><EmptyMedia><ShoppingBag size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Không có tài khoản nào</EmptyTitle><EmptyDescription>Thử đổi bộ lọc hoặc thêm account mới vào kho.</EmptyDescription></EmptyHeader><Button size="sm" onClick={openCreate}><Plus size={14} aria-hidden="true" /> Thêm account</Button></Empty>} /><DataTablePagination page={filters.page} totalPages={pagination.totalPage} total={pagination.total ?? accounts.length} pageSize={20} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} /></CardContent></Card>
+      <Card className="ui-data-table-card"><CardHeader><div className="ui-data-table-toolbar-title"><span>Kho sản phẩm</span><strong>Danh sách tài khoản</strong></div><CardDescription>{loading ? "Đang đồng bộ dữ liệu…" : `Hiển thị ${accounts.length} bản ghi trên trang ${filters.page}.`}</CardDescription></CardHeader><CardContent><DataTable selectable selectedIds={selected} onSelectionChange={setSelected} data={accounts} loading={loading} columns={columns} caption="Bảng kho tài khoản game" empty={<Empty><EmptyMedia><ShoppingBag size={20} aria-hidden="true" /></EmptyMedia><EmptyHeader><EmptyTitle>Không có tài khoản nào</EmptyTitle><EmptyDescription>Thử đổi bộ lọc hoặc thêm account mới vào kho.</EmptyDescription></EmptyHeader><Button size="sm" onClick={openCreate}><Plus size={14} aria-hidden="true" /> Thêm account</Button></Empty>} /><DataTablePagination page={filters.page} totalPages={pagination.totalPage} total={pagination.total ?? accounts.length} pageSize={20} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} /></CardContent></Card>
 
       <Modal isOpen={Boolean(confirmation)} onClose={() => !confirming && setConfirmation(null)} title={confirmation?.title || "Xác nhận thao tác"} className="admin-confirm-modal" footer={<><Button variant="outline" onClick={() => setConfirmation(null)} disabled={confirming}>Hủy</Button><Button variant={confirmation?.variant === "destructive" ? "destructive" : "default"} onClick={confirmAction} disabled={confirming} aria-busy={confirming}>{confirming ? "Đang xử lý…" : confirmation?.confirmLabel || "Xác nhận"}</Button></>}><p className="modal-description">{confirmation?.description}</p></Modal>
     </div>
