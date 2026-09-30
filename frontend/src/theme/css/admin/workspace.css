@@ -37,7 +37,6 @@
   display: grid;
   grid-template-columns: 16rem minmax(0, 1fr);
   min-height: 100dvh;
-  overflow-x: clip;
   background: var(--admin-bg);
   color: var(--admin-text);
 }
@@ -278,6 +277,7 @@ body:has(.workspace-shell) {
   width: auto;
   min-width: 0;
   padding: 0 clamp(1rem, 3vw, 3.25rem) 3.5rem;
+  overflow: visible;
   background: var(--admin-bg);
 }
 
@@ -391,7 +391,7 @@ body:has(.workspace-shell) {
 /* -------------------------------------------------------------------------- */
 
 .workspace-shell :where(.btn-primary, .small-btn, button[type="submit"]) { min-height: 2.75rem; color: #fff !important; background: var(--admin-accent); border: 1px solid var(--admin-accent); border-radius: 0.62rem; box-shadow: 0 4px 10px rgb(197 22 70 / 0.16); }
-.workspace-shell :where(.btn-primary, .small-btn, button[type="submit"]):hover:not(:disabled) { background: var(--admin-accent-strong); border-color: var(--admin-accent-strong); transform: translateY(-1px); }
+.workspace-shell :where(.btn-primary, .small-btn, button[type="submit"]):hover:not(:disabled) { background: var(--admin-accent-hover, var(--admin-accent)); border-color: var(--admin-accent-hover, var(--admin-accent)); transform: translateY(-1px); }
 .workspace-shell :where(.btn-primary, .small-btn, button[type="submit"]):active:not(:disabled) { transform: translateY(1px) scale(0.99); box-shadow: 0 2px 5px rgb(197 22 70 / 0.12); }
 .workspace-shell :where(.btn-outline, .btn-ghost) { min-height: 2.75rem; color: var(--admin-text-soft) !important; background: var(--admin-surface); border: 1px solid var(--admin-line-strong); border-radius: 0.62rem; box-shadow: none; }
 .workspace-shell :where(.btn-outline, .btn-ghost):hover:not(:disabled) { color: var(--admin-text) !important; background: var(--admin-surface-subtle); border-color: var(--admin-accent); }

@@ -1,0 +1,492 @@
+/*
+ * Canonical customer storefront layer.
+ * Keep this file scoped to `.client-page`; admin and CTV have separate systems.
+ * New storefront components should consume these tokens instead of adding a
+ * page-specific visual language.
+ */
+
+:root {
+  --storefront-layer-nav: 90;
+  --storefront-layer-purchase: 100;
+  --storefront-layer-assistant: 110;
+  --storefront-layer-drawer: 200;
+  --storefront-layer-modal: 300;
+}
+
+.client-page {
+  --storefront-font-display: var(--font-family-one);
+  --storefront-font-body: var(--font-family-three);
+  --storefront-content: 77.5rem;
+  --storefront-gutter: max(var(--page-gutter), env(safe-area-inset-left, 0px));
+  --storefront-radius-sm: 0.45rem;
+  --storefront-radius: 0.65rem;
+  --storefront-line: var(--color-border-strong);
+  --storefront-card: var(--color-surface);
+  --storefront-muted: var(--color-text-secondary);
+  --storefront-control-height: 2.75rem;
+  min-height: 100dvh;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  font-family: var(--storefront-font-body);
+}
+
+.client-page :where(h1, h2, h3, h4, h5, h6, .page-title) {
+  font-family: var(--storefront-font-display);
+}
+
+.client-page main > .client-route-stage > .page-container:not(.storefront-home) {
+  width: min(100%, var(--storefront-content));
+  max-width: var(--storefront-content);
+  margin-inline: auto;
+  padding-inline: var(--storefront-gutter);
+}
+
+/* Shared page introductions */
+.client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) {
+  width: 100%;
+  margin: 0 0 clamp(1.25rem, 3vw, 2rem);
+  padding: clamp(1.25rem, 3vw, 2rem) 0;
+  display: grid;
+  gap: 0.55rem;
+  border-top: 2px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) .storefront-section-kicker,
+.client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) > span {
+  width: fit-content;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) :where(h1, .page-title) {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) > p {
+  max-width: 46rem;
+  margin: 0;
+  color: var(--storefront-muted);
+  font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+  line-height: 1.55;
+}
+
+/* Shared controls */
+.client-page :where(.btn-primary, .btn-outline, .btn-secondary, .btn-ghost, .btn-destructive, .btn-gold) {
+  min-height: var(--storefront-control-height);
+  padding: 0.6rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: var(--storefront-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.client-page .btn-primary {
+  color: var(--color-on-primary) !important;
+  background: var(--color-primary) !important;
+  border: 1px solid var(--color-primary-pressed) !important;
+  box-shadow: 0 0.2rem 0 var(--color-primary-pressed) !important;
+}
+
+.client-page .btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 88%, #000) !important;
+  box-shadow: 0 0.08rem 0 var(--color-primary-pressed) !important;
+}
+
+.client-page :where(.btn-outline, .btn-secondary) {
+  color: var(--color-text) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border-strong) !important;
+  box-shadow: 0 0.15rem 0 color-mix(in srgb, var(--color-border-strong) 55%, transparent) !important;
+}
+
+.client-page :where(.btn-primary, .btn-outline, .btn-secondary):active:not(:disabled) {
+  box-shadow: none !important;
+  transform: translateY(0.15rem) !important;
+}
+
+/* Shared fields */
+.client-page :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea,
+  .filter-input,
+  .ui-select-trigger
+) {
+  min-height: var(--storefront-control-height);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--storefront-radius-sm);
+  font-family: var(--storefront-font-body);
+  font-size: 1rem;
+}
+
+.client-page :where(input, select, textarea, .filter-input, .ui-select-trigger):focus-visible {
+  border-color: var(--color-primary);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+/* Shared status and content surfaces */
+.client-page :where(.empty-state, .ui-status) {
+  width: min(100%, 42rem);
+  min-height: 12rem;
+  margin: clamp(1rem, 4vw, 3rem) auto;
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.8rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--storefront-radius);
+  box-shadow: 0 0.22rem 0 color-mix(in srgb, var(--color-border-strong) 30%, transparent);
+  text-align: center;
+}
+
+.client-page :where(.empty-state, .ui-status) > strong {
+  font-family: var(--storefront-font-display);
+  font-size: 1.25rem;
+}
+
+.client-page :where(.empty-state, .ui-status) > p {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--storefront-muted);
+}
+
+.client-page :where(
+  .auth-card,
+  .profile-sidebar-card,
+  .profile-section-card,
+  .order-card-item,
+  .support-card,
+  .terms-card,
+  .recharge-card,
+  .detail-gallery-card,
+  .detail-info-card
+) {
+  color: var(--color-text);
+  background: var(--storefront-card);
+  border: 2px solid var(--storefront-line);
+  border-radius: var(--storefront-radius) !important;
+  box-shadow: 0 0.22rem 0 color-mix(in srgb, var(--storefront-line) 28%, transparent);
+}
+
+/* Product cards share one interaction and type rhythm across Home/Accounts. */
+.client-page :where(.account-card-premium, .catalogue-category-card, .storefront-category-card) {
+  color: var(--color-text);
+  background: var(--storefront-card);
+  border: 2px solid var(--storefront-line);
+  border-radius: var(--storefront-radius-sm) !important;
+  box-shadow: 0 0.2rem 0 color-mix(in srgb, var(--storefront-line) 25%, transparent);
+}
+
+.client-page :where(.account-card-premium, .catalogue-category-card, .storefront-category-card):focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.client-page :where(.account-card-premium, .catalogue-category-card, .storefront-category-card):hover {
+  border-color: var(--storefront-line);
+  box-shadow: 0 0.08rem 0 color-mix(in srgb, var(--storefront-line) 35%, transparent);
+}
+
+.client-page .account-body-premium h3 {
+  color: var(--color-text);
+  font-family: var(--storefront-font-display);
+  font-weight: 700;
+}
+
+.client-page .account-desc { color: var(--storefront-muted); }
+.client-page .price-box :where(strong, del) { font-variant-numeric: tabular-nums; }
+
+/* Purchased-account cards retain the same media-first construction as store cards. */
+.client-page .orders-page .order-cards-container,
+.client-page .orders-page .skeleton-orders-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.client-page .orders-page .order-card-item,
+.client-page .orders-page .skeleton-order-card {
+  min-width: 0;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  overflow: hidden;
+  border: 2px solid var(--storefront-line) !important;
+  border-radius: var(--storefront-radius) !important;
+}
+
+.client-page .orders-page .order-card-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-surface-subtle);
+  border-bottom: 2px solid var(--storefront-line);
+}
+
+.client-page .orders-page .order-card-media > :where(img, .image-fallback) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.client-page .orders-page .order-card-media > .image-fallback {
+  min-height: 100%;
+}
+
+.client-page .orders-page .order-number {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2;
+  width: fit-content;
+  padding: 0.42rem 0.62rem;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary-pressed);
+  border-radius: var(--storefront-radius-sm);
+  box-shadow: 0 0.16rem 0 var(--color-primary-pressed);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.client-page .orders-page .order-card-content {
+  min-height: 13rem;
+  padding: 1rem;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.client-page .orders-page .order-info-left {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.client-page .orders-page .order-card-eyebrow {
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.client-page .orders-page .order-info-left h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.client-page .orders-page .order-info-left p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--storefront-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.client-page .orders-page .order-info-left p svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+
+.client-page .orders-page .order-info-right {
+  width: 100% !important;
+  margin-top: auto;
+  padding-top: 0.9rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between !important;
+  gap: 0.75rem;
+  border-top: 1px solid var(--color-border) !important;
+}
+
+.client-page .orders-page .order-price {
+  color: var(--color-price);
+  font-size: 1.15rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.client-page .orders-page .order-info-right .btn-primary {
+  min-height: 2.65rem !important;
+  padding-inline: 0.85rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.client-page .orders-page .skeleton-order-card:nth-child(n) { display: flex; }
+
+.client-page .orders-page .skeleton-order-media {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+  border-bottom: 2px solid var(--storefront-line);
+}
+
+.client-page .orders-page .skeleton-order-content {
+  min-height: 13rem;
+  padding: 1rem;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.client-page .orders-page .skeleton-order-content > div {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.65rem;
+}
+
+.client-page .orders-page .skeleton-order-content > div:last-child {
+  margin-top: auto;
+  padding-top: 0.9rem;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.85fr);
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+}
+
+.client-page .orders-page .skeleton-order-content .is-button { width: 100%; }
+
+/* Detail skeleton mirrors coupon, benefits and the mobile purchase action. */
+.client-page .skeleton-detail-coupon,
+.client-page .skeleton-detail-benefits {
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--storefront-radius);
+}
+
+.client-page .skeleton-detail-benefits .skeleton-block { max-width: 22rem; }
+.client-page .skeleton-detail-mobile-purchase { display: none; }
+
+/* One predictable fixed-layer stack on mobile. */
+@media (max-width: 48rem) {
+  .client-page { --storefront-gutter: max(0.85rem, env(safe-area-inset-left, 0px)); }
+
+  .client-page .orders-page .order-cards-container,
+  .client-page .orders-page .skeleton-orders-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) {
+    padding-block: 1rem;
+  }
+
+  .client-page :where(.customer-page-heading, .ui-page-heading, .recharge-heading, .catalogue-heading) :where(h1, .page-title) {
+    font-size: clamp(1.8rem, 9vw, 2.65rem);
+  }
+
+  .client-page .mobile-bottom-nav,
+  .client-page .mobile-nav {
+    z-index: var(--storefront-layer-nav) !important;
+  }
+
+  body.has-mobile-purchase-bar > .mobile-purchase-bar {
+    z-index: var(--storefront-layer-purchase) !important;
+  }
+
+  .client-page .shop-assistant {
+    z-index: var(--storefront-layer-assistant) !important;
+  }
+
+  .client-page :where(.mobile-drawer, .mobile-drawer-backdrop) {
+    z-index: var(--storefront-layer-drawer) !important;
+  }
+
+  body:has(.client-page) .modal-backdrop {
+    z-index: var(--storefront-layer-modal) !important;
+  }
+
+  .client-page .skeleton-detail-purchase { display: none; }
+
+  .client-page .skeleton-detail-mobile-purchase {
+    position: fixed;
+    z-index: var(--storefront-layer-purchase);
+    right: 0;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    min-height: 4.25rem;
+    padding: 0.65rem 0.85rem;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(8.5rem, 1.15fr);
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -0.5rem 1.5rem rgb(16 24 40 / 0.1);
+  }
+
+  .client-page .skeleton-detail-mobile-purchase > span {
+    display: grid;
+    gap: 0.4rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .client-page .orders-page .order-info-right,
+  .client-page .orders-page .skeleton-order-content > div:last-child {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .client-page .orders-page .order-info-right {
+    flex-direction: column;
+  }
+
+  .client-page .orders-page .order-info-right .btn-primary { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-page *,
+  .client-page *::before,
+  .client-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

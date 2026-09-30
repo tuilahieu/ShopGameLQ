@@ -1,14 +1,20 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   return {
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
+    },
     plugins: [
       react(),
       legacy({
-        targets: ["defaults", "not IE 11", "iOS >= 12", "Android >= 8"],
+        targets: ["Safari >= 12", "iOS >= 12", "Chrome >= 64", "Edge >= 79", "Firefox >= 68", "not IE 11"],
       }),
     ],
     build: {

@@ -1,0 +1,16 @@
+/*
+ * Global cascade manifest.
+ * This is the only global CSS entry. Import order is intentional: compatibility
+ * styles first, then shared foundations, product layers, and final overrides.
+ */
+@import "./base/legacy.css";
+@import "./base/foundation.css";
+@import "./storefront/layout.css";
+@import "./shared/app-shell.css";
+@import "./storefront/theme.css";
+@import "./storefront/editorial.css";
+@import "./storefront/pages/accounts.css";
+@import "./storefront/pages/recharge.css";
+@import "./storefront/system.css";
+@import "./admin/workspace.css";
+@import "./admin/ui-components.css";
