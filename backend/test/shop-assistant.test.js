@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Op } from "sequelize";
 
 import { compactAssistantHistory, runShopAssistant } from "../src/modules/assistant/core/harness.js";
 import { buildShopAssistantInstructions } from "../src/modules/assistant/core/instructions.js";
@@ -8,8 +9,8 @@ import { getAssistantSkillResponse, matchAssistantSkill } from "../src/modules/a
 import { parseAgentQuery } from "../src/modules/assistant/core/tools.js";
 import { getAssistantRuntimeStatus, observeAssistantProvider } from "../src/modules/assistant/core/runtime-status.js";
 import { validateAssistantAnswer } from "../src/modules/assistant/core/output-validator.js";
-import { GameAccount, Sale } from "../src/database/models.js";
-import { answerShoppingRequest, parseShoppingRequest, recommendAccounts } from "../src/modules/assistant/shop-assistant.service.js";
+import { AccountType, GameAccount, Sale } from "../src/database/models.js";
+import { answerShoppingRequest, extractAccountTypeQuery, parseShoppingRequest, recommendAccounts } from "../src/modules/assistant/shop-assistant.service.js";
 
 test("reads common Vietnamese price requests without inventing a product", () => {
   assert.equal(parseShoppingRequest("Tôi muốn tìm acc 200k").budget, 200_000);
@@ -23,6 +24,11 @@ test("reads common Vietnamese price requests without inventing a product", () =>
     { budget: 100_000, underBudget: true },
   );
   assert.equal(parseShoppingRequest("acc đang sale").saleOnly, true);
+  assert.equal(parseShoppingRequest("1 nick thôi").limit, 1);
+  assert.equal(parseShoppingRequest("cho mình hai acc").limit, 2);
+  assert.equal(extractAccountTypeQuery("có nick túi mù nào ko e"), "tui mu");
+  assert.equal(parseShoppingRequest("có nick túi mù nào ko e").accountTypeQuery, "tui mu");
+  assert.equal(parseShoppingRequest("shop có những loại acc gì em").accountTypeQuery, null);
 });
 
 test("support skills provide only fixed same-site links", async () => {
@@ -112,6 +118,65 @@ test("provider receives bounded context and its reply is short with external lin
   assert.match(answer.text, /Truy cập/u);
 });
 
+test("natural shop questions are allowed while unrelated model replies are rejected", async () => {
+  const provider = { generate: async ({ messages }) => ({
+    text: messages.at(-1).text.includes("mua xong")
+      ? '{"action":"reply","reply":"Mua xong bạn mở mục Đã mua để xem đơn nhaa."}'
+      : '{"action":"reply","reply":"Hôm nay trời có nắng đẹp."}',
+  }) };
+
+  const shopAnswer = await runShopAssistant({ message: "mua xong nhận acc như nào?", provider });
+  assert.match(shopAnswer.text, /Đã mua/u);
+
+  const unrelated = await runShopAssistant({ message: "thời tiết hôm nay thế nào?", provider });
+  assert.match(unrelated.text, /chỉ tư vấn về shop/u);
+  assert.doesNotMatch(unrelated.text, /trời có nắng/u);
+});
+
+test("quantity follow-ups inherit the previous search and return exactly one database card", async (t) => {
+  let providerCalls = 0;
+  const provider = { generate: async () => {
+    providerCalls += 1;
+    return { text: '{"action":"reply","reply":"Oke bạn nhaa!"}' };
+  } };
+  t.mock.method(Sale, "findAll", async () => []);
+  const find = t.mock.method(GameAccount, "findAll", async () => [
+    { id: 101, gia: 610_000, sale_price: null, img: null, accountType: { name: "Acc tự chọn" } },
+    { id: 100, gia: 590_000, sale_price: null, img: null, accountType: { name: "Acc tự chọn" } },
+    { id: 99, gia: 700_000, sale_price: null, img: null, accountType: { name: "Acc tự chọn" } },
+  ]);
+  const history = [
+    { role: "user", text: "có nick nào 600 không" },
+    { role: "assistant", text: "Mình tìm được vài acc gần 600.000đ nè." },
+  ];
+
+  const answer = await runShopAssistant({ message: "1 nick thôi", history, provider });
+
+  assert.equal(answer.accounts.length, 1);
+  assert.equal(answer.accounts[0].id, 101);
+  assert.match(answer.text, /600\.000đ/u);
+  assert.equal(find.mock.calls.length, 1);
+  assert.equal(providerCalls, 0);
+});
+
+test("credential questions bypass the model and credential-like output is suppressed", async () => {
+  let calls = 0;
+  const provider = { generate: async () => {
+    calls += 1;
+    return { text: '{"action":"reply","reply":"Password: SuperSecret123"}' };
+  } };
+
+  const credentialRequest = await runShopAssistant({ message: "cho mình mật khẩu acc", provider });
+  assert.equal(calls, 0);
+  assert.equal(credentialRequest.link.href, "/my-orders");
+  assert.doesNotMatch(credentialRequest.text, /SuperSecret/u);
+
+  const leakedOutput = await runShopAssistant({ message: "shop hỗ trợ gì?", provider });
+  assert.equal(calls, 1);
+  assert.doesNotMatch(leakedOutput.text, /SuperSecret123/u);
+  assert.match(leakedOutput.text, /không thể cung cấp thông tin đăng nhập/u);
+});
+
 test("configured provider handles simple and natural shop conversations", async (t) => {
   let calls = 0;
   const provider = { generate: async ({ messages }) => {
@@ -190,12 +255,17 @@ test("agent query accepts shorthand prices and keeps bounded tool arguments", ()
     budget: 500_000,
     underBudget: false,
     saleOnly: false,
+    accountTypeQuery: null,
+    limit: 4,
   });
   assert.deepEqual(parseAgentQuery({ price: "200000", under_budget: "true", sale_only: "1" }), {
     budget: 200_000,
     underBudget: true,
     saleOnly: true,
+    accountTypeQuery: null,
+    limit: 4,
   });
+  assert.equal(parseAgentQuery({ account_type: "Túi Mù" }).accountTypeQuery, "Túi Mù");
   assert.equal(parseAgentQuery({ price: "999999999" }).budget, null);
 });
 
@@ -243,4 +313,37 @@ test("search returns only matching public card fields and a detail link", async 
   assert.equal(find.mock.calls[0].arguments[0].where.status, 0);
   assert.ok(!JSON.stringify(cards).includes("private"));
   assert.ok(!JSON.stringify(cards).includes("secret"));
+});
+
+test("account type questions are grounded in database inventory even when the LLM replies without a search", async (t) => {
+  const provider = { generate: async () => ({
+    text: '{"action":"reply","reply":"Mình chưa có thông tin về nick túi mù."}',
+  }) };
+  t.mock.method(AccountType, "findAll", async () => [
+    { id: 3, name: "VIP SSS - Anime", category: { name: "Túi Mù Trải nghiệm" } },
+    { id: 4, name: "Acc tự chọn", category: { name: "Kho tự chọn" } },
+  ]);
+  t.mock.method(Sale, "findAll", async () => []);
+  const find = t.mock.method(GameAccount, "findAll", async () => [
+    { id: 91, loai_id: 3, gia: 150_000, sale_price: null, img: null, accountType: { name: "Túi Mù Trải nghiệm" } },
+  ]);
+
+  const answer = await runShopAssistant({ message: "có nick túi mù nào ko e", provider });
+
+  assert.equal(answer.accounts[0].id, 91);
+  assert.match(answer.text, /Túi Mù Trải nghiệm/u);
+  assert.deepEqual(find.mock.calls[0].arguments[0].where.loai_id[Op.in], [3]);
+});
+
+test("shopping questions still use database inventory when the provider is unavailable", async (t) => {
+  const provider = { generate: async () => { throw new Error("provider timeout"); } };
+  t.mock.method(Sale, "findAll", async () => []);
+  t.mock.method(GameAccount, "findAll", async () => [
+    { id: 92, loai_id: 4, gia: 200_000, sale_price: null, img: null, accountType: { name: "Acc tự chọn" } },
+  ]);
+
+  const answer = await runShopAssistant({ message: "tìm acc 200k", provider });
+
+  assert.equal(answer.accounts[0].id, 92);
+  assert.match(answer.text, /200\.000đ/u);
 });

@@ -16,6 +16,11 @@ export function compactAssistantHistory(history) {
 }
 
 const OUT_OF_SCOPE = "Mình chỉ tư vấn về shop với acc Liên Quân thui nhaa. Bạn muốn mình tìm acc tầm giá nào nè?";
+const CREDENTIAL_REPLY = {
+  text: "Mình không thể xem hoặc gửi thông tin đăng nhập, mật khẩu, OTP hay token trong chat. Nếu bạn đã mua acc, hãy mở mục Đã mua trong tài khoản của mình nhé.",
+  accounts: [],
+  link: { label: "Xem đơn đã mua", href: "/my-orders" },
+};
 
 function conversationalReply(message, displayName) {
   const normalized = message.toLocaleLowerCase("vi-VN").trim();
@@ -48,8 +53,36 @@ function isShoppingRequest(request) {
   );
 }
 
+function contextualShoppingRequest(request, history) {
+  if (!request.limit || !/\b(?:acc|nick)\b/iu.test(request.message)) return null;
+  const normalized = request.message.toLocaleLowerCase("vi-VN").trim();
+  if (!/^(?:(?:cho|lấy|lay)\s+(?:mình|minh|em|tôi|toi)\s+)?(?:[1-4]|một|mot|hai|ba|bốn|bon)\s+(?:acc|nick)(?:\s+thôi)?[.!?]*$/u.test(normalized)
+    && !/^(?:acc|nick)\s+(?:này\s+)?(?:[1-4]|một|mot|hai|ba|bốn|bon)(?:\s+(?:cái|con))?\s+thôi[.!?]*$/u.test(normalized)) return null;
+
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index];
+    if (entry?.role !== "user" || typeof entry.text !== "string") continue;
+    const previous = parseShoppingRequest(entry.text);
+    if (isShoppingRequest(previous)) return { ...previous, message: request.message, limit: request.limit };
+  }
+  return null;
+}
+
 function isWebsiteQuestion(message) {
   return /\bshop\b|website|trang web|mua hàng|mua hang|thanh toán|thanh toan|giao dịch|giao dich|giỏ hàng|gio hang|sản phẩm|san pham/u.test(message.toLocaleLowerCase("vi-VN"));
+}
+
+function isCredentialQuestion(message) {
+  return /mật khẩu|mat khau|password|\bpass\b|thông tin đăng nhập|thong tin dang nhap|\botp\b|\btoken\b|cookie|api[ _-]?key|secret|\bcvv\b|\bpin\b|số thẻ|so the/iu.test(message)
+    || /(?:(?:username|user name|tên đăng nhập|ten dang nhap|\blogin\b).*(?:acc|nick|game)|(?:acc|nick|game).*(?:username|user name|tên đăng nhập|ten dang nhap|\blogin\b))/iu.test(message);
+}
+
+function isNaturalShopQuestion(message, history, displayName) {
+  const normalized = message.toLocaleLowerCase("vi-VN").trim();
+  if (conversationalReply(message, displayName)) return true;
+  if (/shop|website|acc|nick|liên quân|lien quan|skin|tướng|tuong|rank|quân huy|quan huy|giá|gia|sale|mua|bán|ban|thanh toán|thanh toan|nạp|nap|đơn|don|bảo hành|bao hanh|giao dịch|giao dich|tài khoản|tai khoan|admin|zalo|hỗ trợ|ho tro/iu.test(normalized)) return true;
+  if (!history.length || normalized.length > 60) return false;
+  return /^(?:[1-4]\s+(?:acc|nick)|thật|that|vậy|vay|thế|the|sao|ok|oke|ừ|uh|có|co|không|khong|ko|k|tiếp|tiep|còn|con|rồi sao|roi sao|như nào|nhu nao|được không|duoc khong)\b/iu.test(normalized);
 }
 
 function isSimpleShoppingRequest(request) {
@@ -98,6 +131,8 @@ function parseModelDecision(value) {
     budget: Number.isSafeInteger(budget) && budget >= 10_000 && budget <= 100_000_000 ? budget : null,
     underBudget: decision.underBudget === true,
     saleOnly: decision.saleOnly === true,
+    accountType: typeof decision.accountType === "string" ? decision.accountType.trim().slice(0, 80) || null : null,
+    limit: Number.isSafeInteger(decision.limit) && decision.limit >= 1 && decision.limit <= 4 ? decision.limit : null,
     foundReply,
     emptyReply,
   };
@@ -107,6 +142,12 @@ async function executeShopAssistant({ message, history = [], provider = null, pr
   const request = parseShoppingRequest(message);
   const displayName = normalizeAssistantName(profile?.name) || DEFAULT_ASSISTANT_NAME;
   if (containsInstructionAttack(request.message)) return { text: OUT_OF_SCOPE, accounts: [] };
+  if (isCredentialQuestion(request.message)) return CREDENTIAL_REPLY;
+  const contextualRequest = contextualShoppingRequest(request, history);
+  if (contextualRequest) {
+    const accounts = await executeAssistantTool("search_accounts", contextualRequest);
+    return answerShoppingRequest(contextualRequest, accounts);
+  }
 
   if (!provider) {
     const conversational = conversationalReply(request.message, displayName);
@@ -141,6 +182,10 @@ async function executeShopAssistant({ message, history = [], provider = null, pr
       maxOutputTokens: ASSISTANT_LIMITS.maxOutputTokens,
     });
   } catch {
+    if (isShoppingRequest(request)) {
+      const accounts = await executeAssistantTool("search_accounts", request);
+      return answerShoppingRequest(request, accounts);
+    }
     return { text: "Ui, mình chưa kết nối được với hệ thống tư vấn mất rồi. Bạn thử lại xíu nữa hoặc nhắn shop giúp mình nhé.", accounts: [], link: { label: "Liên hệ shop", href: "/contact" } };
   }
   const decision = parseModelDecision(result?.text);
@@ -150,6 +195,8 @@ async function executeShopAssistant({ message, history = [], provider = null, pr
       budget: decision.budget,
       underBudget: decision.underBudget,
       saleOnly: decision.saleOnly,
+      accountTypeQuery: decision.accountType || request.accountTypeQuery,
+      limit: decision.limit || request.limit || 4,
     };
     const accounts = await executeAssistantTool("search_accounts", toolRequest);
     if (accounts.length && decision.foundReply) return { text: decision.foundReply, accounts };
@@ -158,7 +205,15 @@ async function executeShopAssistant({ message, history = [], provider = null, pr
     }
     return answerShoppingRequest(toolRequest, accounts);
   }
-  if (decision?.action === "reply") return { text: decision.reply, accounts: [] };
+  if (isShoppingRequest(request)) {
+    const accounts = await executeAssistantTool("search_accounts", request);
+    return answerShoppingRequest(request, accounts);
+  }
+  if (decision?.action === "reply") {
+    return isNaturalShopQuestion(request.message, compactHistory, displayName)
+      ? { text: decision.reply, accounts: [] }
+      : { text: OUT_OF_SCOPE, accounts: [] };
+  }
   if (decision?.action === "support") {
     const response = getAssistantSkillResponse(decision.skill);
     return { ...response, text: decision.reply };

@@ -28,9 +28,16 @@ backend chọn câu tương ứng sau khi tool tìm xong rồi mới gửi respo
 
 `GET /api/assistant/agent-query?price=500` là tool API dùng chung với action
 `search_accounts`; `500` được chuẩn hóa thành 500.000đ. API nhận thêm
+`account_type` để đối chiếu tên loại tài khoản đang bật trực tiếp trong database;
 `under_budget=true` và `sale_only=true`, chỉ trả tối đa bốn card công khai.
 Backend gọi trực tiếp cùng executor thay vì tự gửi HTTP về chính nó. Khi chờ kết
 quả tìm kiếm, giao diện hiện “Mình đang tìm cho bạn đây...”.
+
+Câu hỏi tự nhiên về shop, mua hàng và hỗ trợ vẫn được provider trả lời dựa trên
+lịch sử hội thoại đã giới hạn. Backend chặn trước các yêu cầu xin credential và
+ép câu hỏi mới ngoài phạm vi về câu từ chối, kể cả khi provider phân loại sai.
+Output chứa mẫu password, OTP, token, API key, JWT hoặc số thẻ bị thay bằng câu
+trả lời an toàn trước khi gửi cho client.
 
 Trước khi trả về client, `output-validator.js` loại script/HTML/URL ngoài, giới
 hạn văn bản, dựng lại title và href từ ID, chỉ giữ các field card công khai và
@@ -86,8 +93,10 @@ sửa chúng qua ô tên. Avatar chỉ nhận URL HTTPS hoặc đường dẫn �
 ## Cấu hình API key LLM
 
 Trang Cấu hình Hệ thống cho phép chọn Gemini hoặc VILAO, lưu, thay hoặc xóa API
-key. Migrations `20260923_008_assistant_llm_config.js` và
-`20260923_009_assistant_llm_connection.js` thêm provider, key, model và endpoint
+key. Migrations `20260923_008_assistant_llm_config.js`,
+`20260923_009_assistant_llm_connection.js` và
+`20260930_010_assistant_llm_fallback_models.js` thêm provider, key, model,
+endpoint và danh sách model dự phòng
 vào `setting`; chúng tự chạy khi backend khởi động. Key được mã hóa AES-256-GCM bằng
 `ACCOUNT_CREDENTIALS_ENCRYPTION_KEY` trước khi ghi database. API admin chỉ trả
 `assistant_llm_key_saved` cùng cấu hình không bí mật; API công khai không trả key.
@@ -99,13 +108,20 @@ backend chỉ giữ key tạm trong một request. Backend gửi một câu `hel
 với tối đa 32 token đầu ra, timeout 12 giây và giới hạn ba lần/phút. Gemini dùng
 `generateContent`; ViLao dùng `chat/completions` tại endpoint `/v1` của key.
 Chỉ trả câu trả lời ngắn, tên model và thời gian; không trả key hoặc lỗi thô từ
-provider. Phép thử có thể phát sinh chi phí nhỏ.
+provider. Admin có thể cấu hình tối đa 5 model dự phòng theo thứ tự ưu tiên.
+Khi model chính lỗi HTTP, lỗi kết nối, trả JSON sai hoặc không có nội dung,
+backend tự thử lần lượt các model dự phòng với cùng provider, endpoint và key.
+Phép kiểm tra kết nối cũng thử chuỗi này và trả đúng model đã phản hồi. Phép thử
+có thể phát sinh chi phí nhỏ.
 
 Khi cấu hình hợp lệ đã được lưu, model phụ trách các câu liên quan shop cần suy
 luận; rule xử lý câu đơn giản để tiết kiệm token. Model chỉ quyết định action;
 tìm acc và link hỗ trợ vẫn do backend thực thi. Mỗi lần gọi model chỉ gửi tám tin gần nhất, tối đa 220 ký tự mỗi tin và
 giới hạn 1024 output token. Backend tiếp tục rút câu trả lời tự do xuống tối đa
 hai câu, loại HTML và URL ngoài; key chỉ được giải mã và dùng trên server.
+Nếu khách chỉ đổi số lượng ở lượt tiếp theo (ví dụ sau câu hỏi acc 600k là
+`1 nick thôi`), backend kế thừa bộ lọc tìm acc gần nhất và truy vấn lại database
+với giới hạn 1–4 card; không phụ thuộc model tự nhớ hay tự dựng card.
 
 Tham khảo: [Gemini API](https://ai.google.dev/api),
 [model Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite),

@@ -24,6 +24,7 @@ export const Setting = sequelize.define(
     assistant_llm_provider: DataTypes.STRING(24),
     assistant_llm_api_key: DataTypes.TEXT,
     assistant_llm_model: DataTypes.STRING(120),
+    assistant_llm_fallback_models: DataTypes.TEXT,
     assistant_llm_endpoint: DataTypes.STRING(255),
 
     sepay_secret: DataTypes.TEXT,

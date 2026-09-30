@@ -5,8 +5,9 @@ import { updateAdminSetting } from "../src/modules/admin/admin.controller.js";
 import { getPublicSetting } from "../src/modules/settings/setting.controller.js";
 import { up as addAssistantLlmColumns } from "../src/database/migrations/20260923_008_assistant_llm_config.js";
 import { up as addAssistantConnectionColumns } from "../src/database/migrations/20260923_009_assistant_llm_connection.js";
+import { up as addAssistantFallbackColumns } from "../src/database/migrations/20260930_010_assistant_llm_fallback_models.js";
 import { HistoryLog, Setting } from "../src/database/models.js";
-import { DEFAULT_VILAO_ENDPOINT, getAssistantLlmConfig, normalizeAssistantLlmProvider, normalizeVilaoEndpoint } from "../src/modules/assistant/assistant-llm-config.service.js";
+import { DEFAULT_VILAO_ENDPOINT, getAssistantLlmConfig, normalizeAssistantLlmFallbackModels, normalizeAssistantLlmProvider, normalizeVilaoEndpoint } from "../src/modules/assistant/assistant-llm-config.service.js";
 import { AssistantLlmProbeError, probeAssistantLlm, resolveAssistantLlmProbeConfig } from "../src/modules/assistant/assistant-llm-probe.service.js";
 import { createAssistantLlmProvider } from "../src/modules/assistant/assistant-llm-provider.service.js";
 
@@ -26,6 +27,10 @@ test("LLM config migration adds both columns once", async () => {
   queryInterface.addColumn = async (_table, name) => { connectionColumns.push(name); };
   await addAssistantConnectionColumns({ queryInterface });
   assert.deepEqual(connectionColumns, ["assistant_llm_model", "assistant_llm_endpoint"]);
+  const fallbackColumns = [];
+  queryInterface.addColumn = async (_table, name) => { fallbackColumns.push(name); };
+  await addAssistantFallbackColumns({ queryInterface });
+  assert.deepEqual(fallbackColumns, ["assistant_llm_fallback_models"]);
 });
 
 test("admin saves an encrypted LLM key and never sends it in the response", async (t) => {
@@ -35,7 +40,7 @@ test("admin saves an encrypted LLM key and never sends it in the response", asyn
   t.mock.method(HistoryLog, "create", async () => ({}));
   const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; }, setHeader() {} };
   await updateAdminSetting({
-    body: { assistant_llm_provider: "gemini", assistant_llm_api_key: "secret-provider-key-123456" },
+    body: { assistant_llm_provider: "gemini", assistant_llm_api_key: "secret-provider-key-123456", assistant_llm_fallback_models: ["gemini-fallback-1", "gemini-fallback-2"] },
     user: { id: 1, username: "admin" },
     clientIp: "127.0.0.1",
   }, response);
@@ -45,16 +50,24 @@ test("admin saves an encrypted LLM key and never sends it in the response", asyn
   assert.equal(response.body.data.assistant_llm_key_saved, true);
   assert.ok(!JSON.stringify(response.body).includes("secret-provider-key"));
   assert.ok(!JSON.stringify(response.body).includes(setting.assistant_llm_api_key));
-  assert.deepEqual(await getAssistantLlmConfig(), { provider: "gemini", apiKey: "secret-provider-key-123456", model: "gemini-3.5-flash-lite", endpoint: DEFAULT_VILAO_ENDPOINT });
+  assert.deepEqual(response.body.data.assistant_llm_fallback_models, ["gemini-fallback-1", "gemini-fallback-2"]);
+  assert.deepEqual(await getAssistantLlmConfig(), { provider: "gemini", apiKey: "secret-provider-key-123456", model: "gemini-3.5-flash-lite", fallbackModels: ["gemini-fallback-1", "gemini-fallback-2"], endpoint: DEFAULT_VILAO_ENDPOINT });
 });
 
 test("invalid provider and plaintext stored keys cannot be used", async (t) => {
   assert.equal(normalizeAssistantLlmProvider("other"), null);
   t.mock.method(Setting, "findByPk", async () => ({ assistant_llm_provider: "gemini", assistant_llm_api_key: "plaintext-key" }));
-  assert.deepEqual(await getAssistantLlmConfig(), { provider: "gemini", apiKey: null, model: "gemini-3.5-flash-lite", endpoint: DEFAULT_VILAO_ENDPOINT });
+  assert.deepEqual(await getAssistantLlmConfig(), { provider: "gemini", apiKey: null, model: "gemini-3.5-flash-lite", fallbackModels: [], endpoint: DEFAULT_VILAO_ENDPOINT });
   assert.equal(normalizeVilaoEndpoint("https://evil.example/v1"), null);
   assert.equal(normalizeVilaoEndpoint("http://api.vilao.ai/v1"), null);
   assert.equal(normalizeVilaoEndpoint("https://api.vilao.ai/v1"), DEFAULT_VILAO_ENDPOINT);
+});
+
+test("fallback model list is validated, deduplicated and limited to five", () => {
+  assert.deepEqual(normalizeAssistantLlmFallbackModels(["model-main", "model-b", "model-b"], "model-main"), ["model-b"]);
+  assert.deepEqual(normalizeAssistantLlmFallbackModels('["model-a","model-b"]'), ["model-a", "model-b"]);
+  assert.equal(normalizeAssistantLlmFallbackModels(["a", "b", "c", "d", "e", "f"]), null);
+  assert.equal(normalizeAssistantLlmFallbackModels(["bad model"]), null);
 });
 
 test("hello probe calls Gemini with bounded tokens and returns only a short reply", async () => {
@@ -109,6 +122,7 @@ test("admin can probe a draft key without storing or returning it", async (t) =>
     provider: "vilao",
     apiKey: draftKey,
     model: "spd/gemini-3.8-flash-high",
+    fallbackModels: [],
     endpoint: DEFAULT_VILAO_ENDPOINT,
   });
 
@@ -118,6 +132,41 @@ test("admin can probe a draft key without storing or returning it", async (t) =>
   } });
   assert.ok(!JSON.stringify(result).includes(draftKey));
   assert.equal(result.reply, "Hello");
+});
+
+test("customer chat tries fallback models in order after provider failures", async () => {
+  const attempts = [];
+  const provider = createAssistantLlmProvider({
+    provider: "vilao",
+    apiKey: "private-live-chat-key",
+    model: "primary-model",
+    fallbackModels: ["fallback-one", "fallback-two"],
+    endpoint: DEFAULT_VILAO_ENDPOINT,
+  }, { fetcher: async (_url, options) => {
+    const model = JSON.parse(options.body).model;
+    attempts.push(model);
+    if (model !== "fallback-two") return { ok: false, status: 503 };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: "Fallback hoạt động." } }] }) };
+  } });
+
+  const result = await provider.generate({ instructions: "Trả lời ngắn.", messages: [{ role: "user", text: "Alo" }], maxOutputTokens: 80 });
+  assert.deepEqual(attempts, ["primary-model", "fallback-one", "fallback-two"]);
+  assert.deepEqual(result, { text: "Fallback hoạt động." });
+});
+
+test("hello probe reports the fallback model that actually responded", async () => {
+  const attempts = [];
+  const result = await probeAssistantLlm({
+    config: { provider: "vilao", apiKey: "private-vilao-key", model: "primary-model", fallbackModels: ["fallback-model"], endpoint: DEFAULT_VILAO_ENDPOINT },
+    fetcher: async (_url, options) => {
+      const model = JSON.parse(options.body).model;
+      attempts.push(model);
+      if (model === "primary-model") return { ok: false, status: 404 };
+      return { ok: true, json: async () => ({ choices: [{ message: { content: "Xin chào từ fallback" } }] }) };
+    },
+  });
+  assert.deepEqual(attempts, ["primary-model", "fallback-model"]);
+  assert.equal(result.model, "fallback-model");
 });
 
 test("customer chat provider sends bounded instructions to ViLao without exposing its key", async () => {

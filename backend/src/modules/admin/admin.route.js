@@ -57,6 +57,11 @@ router.use(adminMiddleware);
  *                 enum: [none, gemini, vilao]
  *               assistant_llm_model:
  *                 type: string
+ *               assistant_llm_fallback_models:
+ *                 type: array
+ *                 maxItems: 5
+ *                 items:
+ *                   type: string
  *               assistant_llm_endpoint:
  *                 type: string
  *               assistant_llm_api_key:
@@ -319,6 +324,12 @@ router.get("/setting", getAdminSetting);
  *               assistant_llm_model:
  *                 type: string
  *                 description: Mã model hoặc alias; Gemini để trống dùng Flash-Lite
+ *               assistant_llm_fallback_models:
+ *                 type: array
+ *                 maxItems: 5
+ *                 description: Danh sách model dự phòng theo thứ tự ưu tiên
+ *                 items:
+ *                   type: string
  *               assistant_llm_endpoint:
  *                 type: string
  *                 description: URL HTTPS /v1 của ViLao API key

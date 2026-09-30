@@ -1,4 +1,12 @@
 const ALLOWED_LINKS = new Set(["/accounts", "/my-orders", "/nap-tien", "/terms", "/contact"]);
+const SAFE_CREDENTIAL_REPLY = "Mình không thể cung cấp thông tin đăng nhập, mật khẩu, OTP hoặc token trong chat. Bạn chỉ xem thông tin đơn đã mua trong tài khoản của mình nhé.";
+
+function containsCredentialMaterial(value) {
+  if (typeof value !== "string") return false;
+  return /(?:mật khẩu|mat khau|password|pass|username|user name|login|otp|token|cookie|api[ _-]?key|secret)\s*(?::|=|là|la)\s*["']?[a-z0-9_@.!#$%&*+\-/]{3,}/iu.test(value)
+    || /\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{8,}\b/u.test(value)
+    || /\b(?:\d[ -]?){13,19}\b/u.test(value);
+}
 
 export function sanitizeAssistantText(value, maxLength = 320) {
   if (typeof value !== "string") return "";
@@ -43,7 +51,10 @@ export function validateAssistantAccounts(values) {
 }
 
 export function validateAssistantAnswer(value, fallbackText) {
-  const text = sanitizeAssistantText(value?.text) || sanitizeAssistantText(fallbackText);
+  const rawText = typeof value?.text === "string" ? value.text : "";
+  const text = containsCredentialMaterial(rawText)
+    ? SAFE_CREDENTIAL_REPLY
+    : sanitizeAssistantText(rawText) || sanitizeAssistantText(fallbackText);
   const answer = { text, accounts: validateAssistantAccounts(value?.accounts) };
   const href = typeof value?.link?.href === "string" ? value.link.href : "";
   if (ALLOWED_LINKS.has(href)) {

@@ -17,6 +17,11 @@ import { importImageUrl, uploadImageFile } from "../../utils/imageUpload";
 import { utf8ByteLength } from "../../utils/browserCompat";
 
 const MASKED_SECRET = "••••••••••••••••";
+const MAX_LLM_FALLBACK_MODELS = 5;
+
+function parseFallbackModels(value) {
+  return value.split(/[\n,]+/u).map((model) => model.trim()).filter(Boolean);
+}
 const settingNavigation = [
   { id: "storefront", label: "Cửa hàng", description: "Nhận diện & liên hệ", icon: Globe2 },
   { id: "assistant", label: "Trợ lý AI", description: "Chatbot & LLM", icon: Bot },
@@ -128,6 +133,7 @@ export default function AdminSetting() {
   const [showSepaySecret, setShowSepaySecret] = useState(false);
   const [editSepaySecret, setEditSepaySecret] = useState(false);
   const [llmKeyInput, setLlmKeyInput] = useState("");
+  const [llmFallbackModelsInput, setLlmFallbackModelsInput] = useState("");
   const [showLlmKey, setShowLlmKey] = useState(false);
   const [editLlmKey, setEditLlmKey] = useState(false);
   const [clearLlmKey, setClearLlmKey] = useState(false);
@@ -141,24 +147,38 @@ export default function AdminSetting() {
   async function load() {
     setLoading(true);
     setLoadError("");
-    try { const res = await api.get("/admin/setting"); setForm(res.data.data || {}); }
+    try {
+      const res = await api.get("/admin/setting");
+      const settings = res.data.data || {};
+      setForm(settings);
+      setLlmFallbackModelsInput(Array.isArray(settings.assistant_llm_fallback_models) ? settings.assistant_llm_fallback_models.join("\n") : "");
+    }
     catch (error) { setLoadError(error.response?.data?.message || "Không thể tải cấu hình hệ thống."); }
     finally { setLoading(false); }
   }
 
   async function save() {
     if (saving) return;
+    const fallbackModels = parseFallbackModels(llmFallbackModelsInput);
+    if (fallbackModels.length > MAX_LLM_FALLBACK_MODELS) {
+      notifyAdmin("Chỉ được cấu hình tối đa 5 model dự phòng.", "error");
+      return;
+    }
     setSaving(true);
     try {
       const settings = { ...form };
       delete settings.sepay_secret;
       delete settings.assistant_llm_api_key;
       delete settings.background;
+      settings.assistant_llm_fallback_models = fallbackModels;
       const mediaFields = ["logo", "favicon", "banner", "assistant_avatar"];
       const localizedMedia = await Promise.all(mediaFields.map((field) => importImageUrl(api, settings[field])));
       mediaFields.forEach((field, index) => { settings[field] = localizedMedia[index]; });
       const res = await api.put("/admin/setting", { ...settings, ...(sepaySecretInput.trim() && { sepay_secret: sepaySecretInput.trim() }), ...(!clearLlmKey && llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }), ...(clearLlmKey && { assistant_llm_clear_key: true }) });
-      if (res.data?.data) setForm(res.data.data);
+      if (res.data?.data) {
+        setForm(res.data.data);
+        setLlmFallbackModelsInput(Array.isArray(res.data.data.assistant_llm_fallback_models) ? res.data.data.assistant_llm_fallback_models.join("\n") : "");
+      }
       setSepaySecretInput(""); setShowSepaySecret(false); setEditSepaySecret(false);
       setLlmKeyInput(""); setShowLlmKey(false); setEditLlmKey(false); setClearLlmKey(false); setLlmConfigDirty(false); setLlmTestResult(null);
       notifyAdmin("Đã lưu cấu hình", "success");
@@ -170,9 +190,14 @@ export default function AdminSetting() {
 
   async function testLlmConnection() {
     if (llmTestBusy) return;
+    const fallbackModels = parseFallbackModels(llmFallbackModelsInput);
+    if (fallbackModels.length > MAX_LLM_FALLBACK_MODELS) {
+      setLlmTestResult({ success: false, message: "Chỉ được cấu hình tối đa 5 model dự phòng." });
+      return;
+    }
     setLlmTestBusy(true); setLlmTestResult(null);
     try {
-      const res = await api.post("/admin/assistant/test-llm", { assistant_llm_provider: form.assistant_llm_provider || "none", assistant_llm_model: form.assistant_llm_model || "", assistant_llm_endpoint: form.assistant_llm_endpoint || "", ...(llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }) });
+      const res = await api.post("/admin/assistant/test-llm", { assistant_llm_provider: form.assistant_llm_provider || "none", assistant_llm_model: form.assistant_llm_model || "", assistant_llm_fallback_models: fallbackModels, assistant_llm_endpoint: form.assistant_llm_endpoint || "", ...(llmKeyInput.trim() && { assistant_llm_api_key: llmKeyInput.trim() }) });
       setLlmTestResult({ success: true, message: `Model ${res.data.data.model} trả lời: “${res.data.data.reply}” (${res.data.data.latency_ms} ms)` });
     } catch (error) { setLlmTestResult({ success: false, message: error.response?.data?.message || "Không thể kết nối tới model lúc này." }); }
     finally { setLlmTestBusy(false); }
@@ -236,7 +261,9 @@ export default function AdminSetting() {
   const webhookUrl = new URL("payments/sepay/webhook", `${apiBase.href.replace(/\/?$/, "/")}`).href;
   const llmConfigured = Boolean(form.assistant_llm_key_saved && form.assistant_llm_provider !== "none");
   const sepayConfigured = Boolean(form.sepay_configured);
-  const llmTestDisabled = llmTestBusy || clearLlmKey || (!llmKeyInput.trim() && !form.assistant_llm_key_saved) || form.assistant_llm_provider === "none" || (form.assistant_llm_provider === "vilao" && !form.assistant_llm_model?.trim());
+  const fallbackModelCount = parseFallbackModels(llmFallbackModelsInput).length;
+  const fallbackModelsInvalid = fallbackModelCount > MAX_LLM_FALLBACK_MODELS;
+  const llmTestDisabled = llmTestBusy || fallbackModelsInvalid || clearLlmKey || (!llmKeyInput.trim() && !form.assistant_llm_key_saved) || form.assistant_llm_provider === "none" || (form.assistant_llm_provider === "vilao" && !form.assistant_llm_model?.trim());
 
   return (
     <div className="admin-setting-page admin-accounts-page">
@@ -274,8 +301,9 @@ export default function AdminSetting() {
             <div className="ui-form-grid">
               <AdminField id="admin-setting-assistant-name" label="Tên chatbot" helper="2–40 ký tự; chỉ dùng chữ, số và dấu cách."><Input id="admin-setting-assistant-name" maxLength={40} placeholder="Gia Linh" value={form.assistant_name || ""} onChange={(event) => set("assistant_name", event.target.value)} /></AdminField>
               <ImageUploadField label="Avatar chatbot" fieldKey="assistant_avatar" value={form.assistant_avatar} onChange={set} />
-              <AdminField id="admin-setting-llm-provider" label="Nhà cung cấp LLM"><Select id="admin-setting-llm-provider" value={form.assistant_llm_provider || "none"} onChange={(event) => { setForm((previous) => ({ ...previous, assistant_llm_provider: event.target.value, assistant_llm_model: "" })); setLlmConfigDirty(true); setLlmTestResult(null); }}><option value="none">Chưa chọn</option><option value="gemini">Gemini</option><option value="vilao">VILAO</option></Select></AdminField>
+              <AdminField id="admin-setting-llm-provider" label="Nhà cung cấp LLM"><Select id="admin-setting-llm-provider" value={form.assistant_llm_provider || "none"} onChange={(event) => { setForm((previous) => ({ ...previous, assistant_llm_provider: event.target.value, assistant_llm_model: "" })); setLlmFallbackModelsInput(""); setLlmConfigDirty(true); setLlmTestResult(null); }}><option value="none">Chưa chọn</option><option value="gemini">Gemini</option><option value="vilao">VILAO</option></Select></AdminField>
               <AdminField id="admin-setting-llm-model" label="Mã model" helper="Gemini để trống sẽ dùng model mặc định."><Input id="admin-setting-llm-model" maxLength={120} placeholder={form.assistant_llm_provider === "vilao" ? "Model hoặc alias ViLao" : "Model Gemini"} value={form.assistant_llm_model || ""} onChange={(event) => { set("assistant_llm_model", event.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }} /></AdminField>
+              <AdminField id="admin-setting-llm-fallback-models" label="Model dự phòng" className="ui-field-full" helper={`Mỗi dòng một model, tối đa 5. Đang cấu hình ${fallbackModelCount}/5; hệ thống thử từ trên xuống khi model trước lỗi hoặc không trả nội dung.`}><Textarea id="admin-setting-llm-fallback-models" rows={5} maxLength={604} aria-invalid={fallbackModelsInvalid} aria-describedby={fallbackModelsInvalid ? "admin-setting-llm-fallback-models-error" : undefined} placeholder={"model-du-phong-1\nmodel-du-phong-2"} value={llmFallbackModelsInput} onChange={(event) => { setLlmFallbackModelsInput(event.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }} />{fallbackModelsInvalid && <p id="admin-setting-llm-fallback-models-error" className="ui-field-error" role="alert">Xóa bớt {fallbackModelCount - MAX_LLM_FALLBACK_MODELS} model để còn tối đa 5.</p>}</AdminField>
               {form.assistant_llm_provider === "vilao" && <AdminField id="admin-setting-llm-endpoint" label="Endpoint ViLao" className="ui-field-full" helper="Dùng URL endpoint /v1 trong trang API Keys của ViLao."><Input id="admin-setting-llm-endpoint" type="url" maxLength={255} placeholder="https://api.vilao.ai/v1" value={form.assistant_llm_endpoint || ""} onChange={(event) => { set("assistant_llm_endpoint", event.target.value); setLlmConfigDirty(true); setLlmTestResult(null); }} /></AdminField>}
               <SecretField id="admin-setting-llm-key" label="API key LLM" helper="Key mới chỉ được gửi khi bạn lưu hoặc kiểm tra kết nối." saved={Boolean(form.assistant_llm_key_saved)} value={llmKeyInput} onChange={(value) => { setLlmKeyInput(value); setLlmConfigDirty(true); setLlmTestResult(null); }} editing={editLlmKey} onEditingChange={setEditLlmKey} visible={showLlmKey} onVisibleChange={setShowLlmKey} placeholder="Dán API key mới" minLength={16} maxLength={4096}>
                 {form.assistant_llm_key_saved && <label className="ui-checkbox-label"><Checkbox checked={clearLlmKey} onChange={(event) => { setClearLlmKey(event.target.checked); setLlmKeyInput(""); setEditLlmKey(false); setLlmConfigDirty(true); setLlmTestResult(null); }} /> Xóa API key hiện tại khi lưu</label>}

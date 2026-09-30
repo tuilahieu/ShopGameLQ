@@ -9,6 +9,8 @@ export const ASSISTANT_TOOLS = Object.freeze([{
       budget: { type: "integer", description: "Giá mong muốn tính bằng VND; bỏ qua nếu khách chưa nói giá" },
       underBudget: { type: "boolean", description: "Chỉ chọn acc có giá không vượt ngân sách" },
       saleOnly: { type: "boolean", description: "Chỉ chọn acc đang giảm giá" },
+      accountType: { type: "string", description: "Tên danh mục hoặc loại acc khách hỏi, ví dụ Túi Mù; bỏ qua nếu khách không nói loại" },
+      limit: { type: "integer", minimum: 1, maximum: 4, description: "Số thẻ acc khách muốn xem" },
     },
   },
 }]);
@@ -30,6 +32,12 @@ export function parseAgentQuery(input = {}) {
     budget: normalizeAgentPrice(input.price ?? input.budget),
     underBudget: parseBooleanQuery(input.under_budget ?? input.underBudget),
     saleOnly: parseBooleanQuery(input.sale_only ?? input.saleOnly),
+    accountTypeQuery: typeof (input.account_type ?? input.accountType) === "string"
+      ? (input.account_type ?? input.accountType).trim().slice(0, 80) || null
+      : null,
+    limit: Number.isSafeInteger(Number(input.limit)) && Number(input.limit) >= 1 && Number(input.limit) <= 4
+      ? Number(input.limit)
+      : 4,
   };
 }
 
@@ -41,6 +49,10 @@ export async function executeAssistantTool(name, args = {}) {
     budget,
     underBudget: args.underBudget === true,
     saleOnly: args.saleOnly === true,
+    accountTypeQuery: typeof (args.accountTypeQuery ?? args.accountType) === "string"
+      ? (args.accountTypeQuery ?? args.accountType).trim().slice(0, 80) || null
+      : null,
+    limit: Number.isSafeInteger(args.limit) && args.limit >= 1 && args.limit <= 4 ? args.limit : 4,
   });
 }
 

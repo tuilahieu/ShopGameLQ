@@ -71,6 +71,12 @@ router.get("/thread/:id", async (req, res) => {
  *         name: sale_only
  *         schema:
  *           type: boolean
+ *       - in: query
+ *         name: account_type
+ *         schema:
+ *           type: string
+ *           maxLength: 80
+ *         description: Tên loại tài khoản trong database, ví dụ Túi Mù
  *     responses:
  *       200:
  *         description: Tối đa 4 card acc đang bán, chỉ gồm dữ liệu công khai

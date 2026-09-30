@@ -23,7 +23,7 @@ import { applyWalletMutation } from "../wallet/wallet.service.js";
 import { decryptCredential, encryptCredential } from "../../shared/utils/credential.util.js";
 import { getSePayConfig } from "../payments/sepay-config.service.js";
 import { normalizeAssistantAvatar, normalizeAssistantName, publicAssistantProfile } from "../assistant/core/profile.js";
-import { normalizeAssistantLlmModel, normalizeAssistantLlmProvider, normalizeVilaoEndpoint, serializeAssistantLlmStatus } from "../assistant/assistant-llm-config.service.js";
+import { normalizeAssistantLlmFallbackModels, normalizeAssistantLlmModel, normalizeAssistantLlmProvider, normalizeVilaoEndpoint, serializeAssistantLlmStatus } from "../assistant/assistant-llm-config.service.js";
 import { completeIdempotencyKey, getIdempotencyInput, reserveIdempotencyKey } from "../orders/idempotency.service.js";
 import {
   parseDate,
@@ -724,6 +724,7 @@ export async function updateAdminSetting(req, res) {
       assistant_avatar,
       assistant_llm_provider,
       assistant_llm_model,
+      assistant_llm_fallback_models,
       assistant_llm_endpoint,
       assistant_llm_api_key,
       assistant_llm_clear_key,
@@ -752,6 +753,11 @@ export async function updateAdminSetting(req, res) {
     if (llmProvider === null) return errorResponse(res, "Nhà cung cấp LLM không hợp lệ", 400, "INVALID_ASSISTANT_LLM_PROVIDER", req);
     const llmModel = assistant_llm_model === undefined ? undefined : normalizeAssistantLlmModel(assistant_llm_model);
     if (llmModel === null) return errorResponse(res, "Tên model LLM không hợp lệ", 400, "INVALID_ASSISTANT_LLM_MODEL", req);
+    const effectiveLlmModel = llmModel === undefined ? setting.assistant_llm_model : llmModel;
+    const llmFallbackModels = assistant_llm_fallback_models === undefined
+      ? undefined
+      : normalizeAssistantLlmFallbackModels(assistant_llm_fallback_models, effectiveLlmModel);
+    if (llmFallbackModels === null) return errorResponse(res, "Danh sách model dự phòng không hợp lệ hoặc vượt quá 5 model", 400, "INVALID_ASSISTANT_LLM_FALLBACK_MODELS", req);
     const llmEndpoint = assistant_llm_endpoint === undefined ? undefined : normalizeVilaoEndpoint(assistant_llm_endpoint);
     if (llmEndpoint === null) return errorResponse(res, "Endpoint ViLao phải là URL HTTPS /v1 thuộc vilao.ai", 400, "INVALID_ASSISTANT_LLM_ENDPOINT", req);
     if (assistant_llm_api_key !== undefined && (typeof assistant_llm_api_key !== "string" || assistant_llm_api_key.trim().length < 16 || assistant_llm_api_key.trim().length > 4096)) {
@@ -777,6 +783,7 @@ export async function updateAdminSetting(req, res) {
       ...(assistantAvatar !== undefined && { assistant_avatar: assistantAvatar }),
       ...(llmProvider !== undefined && { assistant_llm_provider: llmProvider }),
       ...(llmModel !== undefined && { assistant_llm_model: llmModel }),
+      ...(llmFallbackModels !== undefined && { assistant_llm_fallback_models: JSON.stringify(llmFallbackModels) }),
       ...(llmEndpoint !== undefined && { assistant_llm_endpoint: llmEndpoint }),
       ...(assistant_llm_api_key !== undefined && { assistant_llm_api_key: encryptCredential(assistant_llm_api_key.trim()) }),
       ...(assistant_llm_clear_key && { assistant_llm_api_key: null }),

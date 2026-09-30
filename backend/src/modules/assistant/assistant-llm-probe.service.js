@@ -2,6 +2,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_VILAO_ENDPOINT,
   getAssistantLlmConfig,
+  normalizeAssistantLlmFallbackModels,
   normalizeAssistantLlmModel,
   normalizeAssistantLlmProvider,
   normalizeVilaoEndpoint,
@@ -28,7 +29,7 @@ function providerFailure(status) {
 export async function resolveAssistantLlmProbeConfig(input = {}) {
   const saved = await getAssistantLlmConfig();
   if (!input || typeof input !== "object") return saved;
-  const draftFields = ["assistant_llm_provider", "assistant_llm_api_key", "assistant_llm_model", "assistant_llm_endpoint"];
+  const draftFields = ["assistant_llm_provider", "assistant_llm_api_key", "assistant_llm_model", "assistant_llm_fallback_models", "assistant_llm_endpoint"];
   if (!draftFields.some((field) => input[field] !== undefined)) return saved;
 
   const provider = input.assistant_llm_provider === undefined
@@ -50,52 +51,65 @@ export async function resolveAssistantLlmProbeConfig(input = {}) {
   if (normalizedModel === null) throw new AssistantLlmProbeError("Tên model LLM không hợp lệ", "INVALID_ASSISTANT_LLM_MODEL", 400);
   const model = normalizedModel || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : "");
 
+  const fallbackModels = input.assistant_llm_fallback_models === undefined
+    ? normalizeAssistantLlmFallbackModels(saved.fallbackModels, model)
+    : normalizeAssistantLlmFallbackModels(input.assistant_llm_fallback_models, model);
+  if (fallbackModels === null) throw new AssistantLlmProbeError("Danh sách model dự phòng không hợp lệ hoặc vượt quá 5 model", "INVALID_ASSISTANT_LLM_FALLBACK_MODELS", 400);
+
   const endpoint = input.assistant_llm_endpoint === undefined
     ? saved.endpoint
     : normalizeVilaoEndpoint(input.assistant_llm_endpoint);
   if (endpoint === null) throw new AssistantLlmProbeError("Endpoint ViLao phải là URL HTTPS /v1 thuộc vilao.ai", "INVALID_ASSISTANT_LLM_ENDPOINT", 400);
 
-  return { provider, apiKey, model, endpoint: endpoint || DEFAULT_VILAO_ENDPOINT };
+  return { provider, apiKey, model, fallbackModels, endpoint: endpoint || DEFAULT_VILAO_ENDPOINT };
 }
 
 export async function probeAssistantLlm({ fetcher = globalThis.fetch, config = null } = {}) {
-  const { provider, apiKey, model, endpoint } = config || await getAssistantLlmConfig();
+  const { provider, apiKey, model, fallbackModels = [], endpoint } = config || await getAssistantLlmConfig();
   if (!apiKey || provider === "none") throw new AssistantLlmProbeError("Hãy lưu nhà cung cấp và API key trước", "LLM_NOT_CONFIGURED", 400);
   if (!model) throw new AssistantLlmProbeError("Hãy lưu mã model trước khi kiểm tra", "LLM_MODEL_REQUIRED", 400);
 
   const isGemini = provider === "gemini";
-  const url = isGemini
-    ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
-    : `${endpoint}/chat/completions`;
-  const body = isGemini
-    ? { contents: [{ role: "user", parts: [{ text: "hello" }] }], generationConfig: { maxOutputTokens: 32, temperature: 0 } }
-    : { model, messages: [{ role: "user", content: "hello" }], max_tokens: 32, temperature: 0, stream: false };
-
   const started = Date.now();
-  let response;
-  try {
-    response = await fetcher(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(isGemini ? { "x-goog-api-key": apiKey } : { Authorization: `Bearer ${apiKey}` }),
-      },
-      body: JSON.stringify(body),
-      redirect: "error",
-      signal: AbortSignal.timeout(12_000),
-    });
-  } catch (error) {
-    if (error?.name === "TimeoutError" || error?.name === "AbortError") throw new AssistantLlmProbeError("Model phản hồi quá lâu, thử lại sau", "LLM_TIMEOUT", 504);
-    throw new AssistantLlmProbeError("Không kết nối được tới nhà cung cấp LLM", "LLM_CONNECTION_ERROR");
-  }
-  if (!response.ok) throw providerFailure(response.status);
+  const models = [...new Set([model, ...fallbackModels])];
+  let lastError;
 
-  let data;
-  try { data = await response.json(); } catch { throw new AssistantLlmProbeError("Model trả về dữ liệu không hợp lệ", "LLM_BAD_RESPONSE"); }
-  const rawReply = isGemini
-    ? data?.candidates?.[0]?.content?.parts?.filter((part) => typeof part.text === "string").map((part) => part.text).join(" ")
-    : data?.choices?.[0]?.message?.content;
-  const reply = typeof rawReply === "string" ? rawReply.replace(/\s+/gu, " ").trim().slice(0, 160) : "";
-  if (!reply) throw new AssistantLlmProbeError("Model không trả lời câu hello", "LLM_EMPTY_RESPONSE");
-  return { provider, model, reply, latency_ms: Date.now() - started };
+  for (const candidateModel of models) {
+    const url = isGemini
+      ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent`
+      : `${endpoint}/chat/completions`;
+    const body = isGemini
+      ? { contents: [{ role: "user", parts: [{ text: "hello" }] }], generationConfig: { maxOutputTokens: 32, temperature: 0 } }
+      : { model: candidateModel, messages: [{ role: "user", content: "hello" }], max_tokens: 32, temperature: 0, stream: false };
+
+    try {
+      const response = await fetcher(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(isGemini ? { "x-goog-api-key": apiKey } : { Authorization: `Bearer ${apiKey}` }),
+        },
+        body: JSON.stringify(body),
+        redirect: "error",
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!response.ok) throw providerFailure(response.status);
+
+      let data;
+      try { data = await response.json(); } catch { throw new AssistantLlmProbeError("Model trả về dữ liệu không hợp lệ", "LLM_BAD_RESPONSE"); }
+      const rawReply = isGemini
+        ? data?.candidates?.[0]?.content?.parts?.filter((part) => typeof part.text === "string").map((part) => part.text).join(" ")
+        : data?.choices?.[0]?.message?.content;
+      const reply = typeof rawReply === "string" ? rawReply.replace(/\s+/gu, " ").trim().slice(0, 160) : "";
+      if (!reply) throw new AssistantLlmProbeError("Model không trả lời câu hello", "LLM_EMPTY_RESPONSE");
+      return { provider, model: candidateModel, reply, latency_ms: Date.now() - started };
+    } catch (error) {
+      lastError = error instanceof AssistantLlmProbeError
+        ? error
+        : error?.name === "TimeoutError" || error?.name === "AbortError"
+          ? new AssistantLlmProbeError("Model phản hồi quá lâu, thử lại sau", "LLM_TIMEOUT", 504)
+          : new AssistantLlmProbeError("Không kết nối được tới nhà cung cấp LLM", "LLM_CONNECTION_ERROR");
+    }
+  }
+  throw lastError || new AssistantLlmProbeError("Không gọi được model", "LLM_PROVIDER_ERROR");
 }
