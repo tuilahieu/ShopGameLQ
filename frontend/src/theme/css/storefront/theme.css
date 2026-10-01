@@ -1038,55 +1038,6 @@ body:has(.client-page) .notice-popup-modal .notice-popup-body {
   width: 100%;
 }
 
-.notice-zalo-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.74rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary);
-  padding-inline: 0.15rem;
-}
-
-.notice-zalo-section-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.notice-zalo-live-dot {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: #16a34a;
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.notice-zalo-live-dot::before {
-  content: "";
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
-  animation: pulse-zalo-dot 1.8s ease-in-out infinite;
-}
-
-@keyframes pulse-zalo-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.8; }
-}
-
 .notice-zalo-cards {
   display: flex;
   flex-direction: column;
@@ -1098,7 +1049,7 @@ body:has(.client-page) .notice-popup-modal .notice-popup-body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   text-decoration: none !important;
   color: inherit !important;
   background: linear-gradient(135deg, #f0f7ff 0%, #e6f1ff 100%);
@@ -1132,9 +1083,9 @@ body:has(.client-page) .notice-popup-modal .notice-popup-body {
 }
 
 .notice-zalo-logo {
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: 0 0 2.5rem;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 2.35rem;
   display: grid;
   place-items: center;
   border-radius: 0.65rem;
@@ -1155,35 +1106,21 @@ body:has(.client-page) .notice-popup-modal .notice-popup-body {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  overflow: hidden;
+  align-items: center;
 }
 
 .notice-zalo-title {
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 800;
   color: #0b57d0;
   line-height: 1.3;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
+  margin: 0;
+  overflow-wrap: break-word;
 }
 
 [data-theme="dark"] .notice-zalo-title {
   color: #60a5fa;
-}
-
-.notice-zalo-sub {
-  font-size: 0.76rem;
-  color: var(--color-text-secondary);
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
 }
 
 .notice-zalo-action {
@@ -1823,19 +1760,12 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   .notice-zalo-section {
     gap: 0.45rem !important;
   }
-  .notice-zalo-section-header {
-    font-size: 0.7rem !important;
-    gap: 0.35rem !important;
-  }
-  .notice-zalo-live-dot {
-    font-size: 0.68rem !important;
-  }
   .notice-zalo-cards {
     gap: 0.45rem !important;
   }
   .notice-zalo-card {
-    padding: 0.55rem 0.65rem !important;
-    gap: 0.55rem !important;
+    padding: 0.55rem 0.75rem !important;
+    gap: 0.65rem !important;
     border-radius: 0.75rem !important;
   }
   .notice-zalo-logo {
@@ -1845,17 +1775,14 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
     border-radius: 0.55rem !important;
   }
   .notice-zalo-title {
-    font-size: 0.85rem !important;
+    font-size: 0.88rem !important;
     line-height: 1.25 !important;
-  }
-  .notice-zalo-sub {
-    font-size: 0.72rem !important;
-    line-height: 1.2 !important;
+    white-space: nowrap !important;
   }
   .notice-zalo-action {
-    padding: 0.36rem 0.58rem !important;
-    font-size: 0.74rem !important;
-    border-radius: 0.5rem !important;
+    padding: 0.36rem 0.65rem !important;
+    font-size: 0.76rem !important;
+    border-radius: 0.55rem !important;
   }
   body:has(.client-page) .notice-popup-modal .modal-footer {
     padding: 0.65rem 0.75rem !important;
@@ -1959,8 +1886,7 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 @media (prefers-reduced-motion: reduce) {
   .client-page :where(.storefront-category-card, .catalogue-category-card, .account-card-premium,
     .btn-primary, .btn-secondary, .btn-outline) { transform: none !important; transition: none !important; }
-  .notice-highlight-icon,
-  .notice-zalo-live-dot::before {
+  .notice-highlight-icon {
     animation: none !important;
   }
 }

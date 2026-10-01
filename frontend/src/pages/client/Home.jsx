@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, ArrowUpRight, Bell, ChevronLeft, ChevronRight, Clock, Flame, Gamepad2, Headphones, Megaphone, ShieldCheck, Users, Zap } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, ChevronLeft, ChevronRight, Clock, Flame, Gamepad2, Headphones, Megaphone, ShieldCheck, Zap } from "lucide-react";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import Modal from "../../components/Modal";
@@ -23,30 +23,47 @@ function parseStoreNotice(rawText) {
     .filter(Boolean);
 
   const textLines = [];
-  const zaloLinks = [];
-  let groupCounter = 0;
+  const rawZaloEntries = [];
   const zaloUrlRegex = /(https?:\/\/)?(zalo\.me\/(?:g\/)?[a-zA-Z0-9_\-./]+)/i;
 
   for (const line of lines) {
     const match = line.match(zaloUrlRegex);
     if (match) {
-      groupCounter += 1;
       const matchedUrl = match[0];
       const fullUrl = matchedUrl.startsWith("http") ? matchedUrl : `https://${matchedUrl}`;
       const isGroup = matchedUrl.includes("zalo.me/g/");
       const label = line.replace(zaloUrlRegex, "").replace(/^[->:\s|]+|[->:\s|]+$/g, "").trim();
-
-      zaloLinks.push({
-        id: `zalo-${groupCounter}-${matchedUrl}`,
-        url: fullUrl,
-        title: label || (isGroup ? `Tham gia cộng đồng Zalo ${groupCounter}` : `Liên hệ Zalo ${groupCounter > 1 ? groupCounter : ""}`.trim()),
-        subtitle: isGroup ? "Nhóm sale và tặng miễn phí acc" : "Nhắn tin trao đổi hỗ trợ trực tiếp",
-        isGroup,
-      });
+      rawZaloEntries.push({ matchedUrl, fullUrl, isGroup, label });
     } else {
       textLines.push(line);
     }
   }
+
+  const totalGroups = rawZaloEntries.filter((e) => e.isGroup).length;
+  let groupCounter = 0;
+  let contactCounter = 0;
+
+  const zaloLinks = rawZaloEntries.map((entry) => {
+    if (entry.isGroup) {
+      groupCounter += 1;
+      const defaultTitle = totalGroups > 1 ? `Tham gia cộng đồng ${groupCounter}` : "Tham gia cộng đồng";
+      return {
+        id: `zalo-${entry.matchedUrl}-${groupCounter}`,
+        url: entry.fullUrl,
+        title: entry.label || defaultTitle,
+        isGroup: true,
+      };
+    }
+
+    contactCounter += 1;
+    const defaultTitle = contactCounter > 1 ? `Liên hệ Zalo ${contactCounter}` : "Liên hệ Zalo";
+    return {
+      id: `zalo-${entry.matchedUrl}-${contactCounter}`,
+      url: entry.fullUrl,
+      title: entry.label || defaultTitle,
+      isGroup: false,
+    };
+  });
 
   return { textLines, zaloLinks };
 }
@@ -468,13 +485,6 @@ export default function Home() {
 
               {parsedNotice.zaloLinks.length > 0 && (
                 <div className="notice-zalo-section">
-                  <div className="notice-zalo-section-header">
-                    <span className="notice-zalo-section-title">
-                      <Users size={14} aria-hidden="true" />
-                      <span>Cộng đồng Zalo chính thức</span>
-                    </span>
-                    <span className="notice-zalo-live-dot">Đang hoạt động</span>
-                  </div>
                   <div className="notice-zalo-cards">
                     {parsedNotice.zaloLinks.map((item) => (
                       <a
@@ -488,18 +498,17 @@ export default function Home() {
                           <img
                             src="/storefront/zalo-contact.webp"
                             alt="Logo Zalo"
-                            width="40"
-                            height="40"
+                            width="38"
+                            height="38"
                             loading="lazy"
                           />
                         </div>
                         <div className="notice-zalo-info">
                           <strong className="notice-zalo-title">{item.title}</strong>
-                          <span className="notice-zalo-sub">{item.subtitle}</span>
                         </div>
                         <div className="notice-zalo-action" aria-hidden="true">
                           <span>Tham gia</span>
-                          <ArrowUpRight size={15} />
+                          <ArrowUpRight size={14} />
                         </div>
                       </a>
                     ))}
