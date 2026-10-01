@@ -1014,41 +1014,15 @@
 }
 
 /* Notice Popup Modal Styles */
-.notice-popup-modal { --dialog-width: 46rem; }
+.notice-popup-modal { --dialog-width: 32rem; }
 
 .notice-popup-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-3);
-  text-align: center;
-  padding: var(--space-2) 0;
-}
-
-.notice-popup-badge {
-  width: 3.5rem;
-  height: 3.5rem;
-  display: grid;
-  place-items: center;
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
-  border-radius: 50%;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.notice-popup-lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  color: var(--color-text);
-  font-size: var(--font-size-body);
-  line-height: 1.6;
-}
-
-.notice-popup-lines p {
-  margin: 0;
-  word-break: break-word;
+  text-align: left;
+  width: 100%;
 }
 
 .notice-popup-footer {

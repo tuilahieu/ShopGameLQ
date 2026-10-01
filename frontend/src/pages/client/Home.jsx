@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/api";
-import { ArrowRight, Bell, ChevronLeft, ChevronRight, Clock, Flame, Gamepad2, Headphones, ShieldCheck, Zap } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, ChevronLeft, ChevronRight, Clock, Flame, Gamepad2, Headphones, Megaphone, ShieldCheck, Users, Zap } from "lucide-react";
 import AccountCard from "../../components/AccountCard";
 import SafeImage from "../../components/SafeImage";
 import Modal from "../../components/Modal";
@@ -11,6 +11,45 @@ import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/stor
 import usePageSeo from "../../hooks/usePageSeo";
 import { formatNumber } from "../../utils/formatters";
 import { getApiErrorMessage } from "../../utils/apiError";
+
+function parseStoreNotice(rawText) {
+  if (!rawText || typeof rawText !== "string") {
+    return { textLines: [], zaloLinks: [] };
+  }
+
+  const lines = rawText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const textLines = [];
+  const zaloLinks = [];
+  let groupCounter = 0;
+  const zaloUrlRegex = /(https?:\/\/)?(zalo\.me\/(?:g\/)?[a-zA-Z0-9_\-./]+)/i;
+
+  for (const line of lines) {
+    const match = line.match(zaloUrlRegex);
+    if (match) {
+      groupCounter += 1;
+      const matchedUrl = match[0];
+      const fullUrl = matchedUrl.startsWith("http") ? matchedUrl : `https://${matchedUrl}`;
+      const isGroup = matchedUrl.includes("zalo.me/g/");
+      const label = line.replace(zaloUrlRegex, "").replace(/^[->:\s|]+|[->:\s|]+$/g, "").trim();
+
+      zaloLinks.push({
+        id: `zalo-${groupCounter}-${matchedUrl}`,
+        url: fullUrl,
+        title: label || (isGroup ? `Tham gia cộng đồng Zalo ${groupCounter}` : `Liên hệ Zalo ${groupCounter > 1 ? groupCounter : ""}`.trim()),
+        subtitle: isGroup ? "Nhóm sale và tặng miễn phí acc" : "Nhắn tin trao đổi hỗ trợ trực tiếp",
+        isGroup,
+      });
+    } else {
+      textLines.push(line);
+    }
+  }
+
+  return { textLines, zaloLinks };
+}
 
 function SaleCountdown({ endTimes, onExpired }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -383,44 +422,94 @@ export default function Home() {
       </div>
 
       {/* Store Notice Popup Modal */}
-      {data.setting?.thongbao && (
-        <Modal
-          isOpen={showNoticeModal}
-          onClose={handleCloseNotice}
-          title="Thông báo cửa hàng"
-          className="notice-popup-modal"
-          footer={
-            <div className="notice-popup-footer">
-              <button
-                type="button"
-                className="btn-outline notice-snooze-btn"
-                onClick={handleHideNotice1Hour}
-              >
-                <Clock size={15} />
-                <span>Tắt trong 1h</span>
-              </button>
-              <button
-                type="button"
-                className="btn-primary notice-dismiss-btn"
-                onClick={handleCloseNotice}
-              >
-                Đã hiểu
-              </button>
+      {data.setting?.thongbao && (() => {
+        const parsedNotice = parseStoreNotice(data.setting.thongbao);
+        return (
+          <Modal
+            isOpen={showNoticeModal}
+            onClose={handleCloseNotice}
+            title="Thông báo cửa hàng"
+            className="notice-popup-modal"
+            footer={
+              <div className="notice-popup-footer">
+                <button
+                  type="button"
+                  className="btn-outline notice-snooze-btn"
+                  onClick={handleHideNotice1Hour}
+                >
+                  <Clock size={15} />
+                  <span>Tắt trong 1h</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary notice-dismiss-btn"
+                  onClick={handleCloseNotice}
+                >
+                  Đã hiểu
+                </button>
+              </div>
+            }
+          >
+            <div className="notice-popup-body">
+              {parsedNotice.textLines.length > 0 && (
+                <div className="notice-popup-highlight-banner">
+                  <div className="notice-highlight-icon" aria-hidden="true">
+                    <Megaphone size={20} />
+                  </div>
+                  <div className="notice-highlight-content">
+                    {parsedNotice.textLines.map((line, index) => (
+                      <p key={index} className="notice-highlight-text">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {parsedNotice.zaloLinks.length > 0 && (
+                <div className="notice-zalo-section">
+                  <div className="notice-zalo-section-header">
+                    <span className="notice-zalo-section-title">
+                      <Users size={14} aria-hidden="true" />
+                      <span>Cộng đồng Zalo chính thức</span>
+                    </span>
+                    <span className="notice-zalo-live-dot">Đang hoạt động</span>
+                  </div>
+                  <div className="notice-zalo-cards">
+                    {parsedNotice.zaloLinks.map((item) => (
+                      <a
+                        key={item.id}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="notice-zalo-card"
+                      >
+                        <div className="notice-zalo-logo">
+                          <img
+                            src="/storefront/zalo-contact.webp"
+                            alt="Logo Zalo"
+                            width="40"
+                            height="40"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="notice-zalo-info">
+                          <strong className="notice-zalo-title">{item.title}</strong>
+                          <span className="notice-zalo-sub">{item.subtitle}</span>
+                        </div>
+                        <div className="notice-zalo-action" aria-hidden="true">
+                          <span>Tham gia</span>
+                          <ArrowUpRight size={15} />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          }
-        >
-          <div className="notice-popup-body">
-            <div className="notice-popup-badge">
-              <Bell size={26} />
-            </div>
-            <div className="notice-popup-lines">
-              {data.setting.thongbao.split("\n").filter((line) => line.trim()).map((line, index) => (
-                <p key={index}>{line.trim()}</p>
-              ))}
-            </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
 
       {data.flashSaleAccounts && data.flashSaleAccounts.length > 0 && (
         <section className="flash-sale-section storefront-section" aria-labelledby="flash-sale-title">
