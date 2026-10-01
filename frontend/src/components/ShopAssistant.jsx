@@ -34,7 +34,7 @@ function AssistantAvatar({ name, avatarUrl, small = false }) {
           alt=""
           width={small ? 28 : 42}
           height={small ? 28 : 42}
-          loading="eager"
+          loading="lazy"
           decoding="async"
           className={loadedUrl === src ? "is-loaded" : "is-loading"}
           onLoad={async (event) => {
