@@ -220,11 +220,11 @@ html { scroll-behavior: smooth; }
 }
 
 .bundle-loading-card {
-  width: min(100%, 21rem);
+  width: min(100%, 17rem);
   display: grid;
   justify-items: center;
-  gap: 1.15rem;
-  padding: 2rem 1.5rem 1.5rem;
+  gap: 1.25rem;
+  padding: 1.65rem 1.5rem 1.35rem;
   background: rgb(255 255 255 / 0.82);
   border: 1px solid rgb(45 45 55 / 0.14);
   border-radius: 1.35rem;
@@ -232,17 +232,8 @@ html { scroll-behavior: smooth; }
   backdrop-filter: blur(12px);
 }
 
-.bundle-loading-mark {
-  position: relative;
-  width: 8.75rem;
-  height: 8.75rem;
-  display: grid;
-  place-items: center;
-}
-
 .bundle-loading-logo {
   position: relative;
-  z-index: 2;
   display: inline-flex;
   align-items: baseline;
   font-size: 1.5rem;
@@ -273,37 +264,6 @@ html { scroll-behavior: smooth; }
   border-radius: 50%;
   background: #f1c45b;
 }
-
-.bundle-loading-orbit,
-.bundle-loading-orbit::before {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-}
-
-.bundle-loading-orbit {
-  border: 2px solid rgb(198 66 50 / 0.12);
-  animation: bundle-loader-spin 1.8s linear infinite;
-}
-
-.bundle-loading-orbit::before {
-  content: "";
-  border-top: 3px solid var(--client-primary, #c64232);
-  border-right: 3px solid transparent;
-}
-
-.bundle-loading-orbit > i {
-  position: absolute;
-  width: 0.52rem;
-  height: 0.52rem;
-  border-radius: 50%;
-  background: #f1c45b;
-  box-shadow: 0 0 0 0.3rem rgb(241 196 91 / 0.14);
-}
-
-.bundle-loading-orbit > i:nth-child(1) { top: 0.45rem; left: 2rem; }
-.bundle-loading-orbit > i:nth-child(2) { right: -0.05rem; bottom: 2.8rem; background: var(--client-primary, #c64232); }
-.bundle-loading-orbit > i:nth-child(3) { left: 0.55rem; bottom: 1.2rem; width: 0.32rem; height: 0.32rem; }
 
 .bundle-loading-track {
   width: min(100%, 13rem);
@@ -338,7 +298,6 @@ html { scroll-behavior: smooth; }
 [data-theme="dark"] .bundle-loading-logo strong { color: #fffaf0; }
 [data-theme="dark"] .bundle-loading-track { background: #3a3b45; }
 
-@keyframes bundle-loader-spin { to { transform: rotate(1turn); } }
 @keyframes bundle-loader-progress {
   0% { transform: translateX(-115%); }
   55%, 100% { transform: translateX(225%); }
@@ -346,17 +305,15 @@ html { scroll-behavior: smooth; }
 
 @media (max-width: 47.99rem) {
   .bundle-loading-card {
-    width: min(100%, 18rem);
-    padding: 1.6rem 1.2rem 1.25rem;
-    border-radius: 1.15rem;
+    width: min(100%, 15rem);
+    padding: 1.35rem 1.15rem 1.1rem;
+    border-radius: 1rem;
   }
 
-  .bundle-loading-mark { width: 7.5rem; height: 7.5rem; }
   .bundle-loading-logo { font-size: 1.3rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bundle-loading-orbit { animation: none; }
   .bundle-loading-track > i { animation: none; transform: none; width: 65%; }
 }
 

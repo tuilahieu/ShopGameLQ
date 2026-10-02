@@ -18,10 +18,7 @@ function BundleLoadingOverlay({ label }) {
   return (
     <div className="bundle-loading-overlay" role="status" aria-live="polite" aria-label={label}>
       <div className="bundle-loading-card">
-        <div className="bundle-loading-mark" aria-hidden="true">
-          <span className="bundle-loading-logo"><strong>Shop</strong><b>Game</b><i /></span>
-          <span className="bundle-loading-orbit"><i /><i /><i /></span>
-        </div>
+        <span className="bundle-loading-logo" aria-hidden="true"><strong>Shop</strong><b>Game</b><i /></span>
         <span className="bundle-loading-track" aria-hidden="true"><i /></span>
       </div>
     </div>
