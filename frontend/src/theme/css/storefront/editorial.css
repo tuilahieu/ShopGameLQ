@@ -3400,6 +3400,10 @@ body.has-mobile-purchase-bar:not(.has-form-focus) .client-page .shop-assistant:n
     width: min(78vw, 19rem);
     min-width: min(78vw, 19rem);
   }
+
+  .client-page.is-home .skeleton-home-grid .skeleton-product-card:nth-child(n) {
+    display: block;
+  }
 }
 
 /* Premium flash sale rail — follows the category section visual system. */

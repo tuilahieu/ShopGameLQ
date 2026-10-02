@@ -403,11 +403,36 @@
 .client-page .skeleton-detail-benefits .skeleton-block { max-width: 22rem; }
 .client-page .skeleton-detail-mobile-purchase { display: none; }
 
+.client-page .account-detail-page.skeleton-detail-page {
+  width: min(100%, 84rem);
+  max-width: 84rem;
+  padding-top: clamp(1rem, 2.5vw, 2rem);
+  padding-inline: var(--storefront-gutter);
+}
+
+.client-page .account-detail-page.skeleton-detail-page .skeleton-back-link {
+  width: 9rem;
+  height: 2.5rem;
+  margin-bottom: 0;
+  border-radius: 0.65rem;
+}
+
+.client-page .account-detail-page.skeleton-detail-page .skeleton-detail-media {
+  padding: 0.55rem;
+}
+
+.client-page .account-detail-page.skeleton-detail-page .skeleton-detail-media > .skeleton-block {
+  aspect-ratio: 16 / 9;
+}
+
+.client-page .account-detail-page.skeleton-detail-page .skeleton-detail-panel {
+  padding: 1rem;
+  gap: 0.85rem;
+}
+
 /* One predictable fixed-layer stack on mobile. */
 @media (max-width: 48rem) {
   .client-page { --storefront-gutter: max(0.85rem, env(safe-area-inset-left, 0px)); }
-
-  .client-page .orders-page .skeleton-order-card:nth-child(n + 2) { display: none !important; }
 
   .client-page .orders-page .order-cards-container,
   .client-page .orders-page .skeleton-orders-list {
@@ -465,6 +490,20 @@
   .client-page .skeleton-detail-mobile-purchase > span {
     display: grid;
     gap: 0.4rem;
+  }
+
+  .client-page .account-detail-page.skeleton-detail-page {
+    padding-top: 0.75rem;
+    padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .client-page .account-detail-page.skeleton-detail-page .skeleton-detail-media {
+    padding: 0.4rem;
+  }
+
+  .client-page .account-detail-page.skeleton-detail-page .skeleton-detail-panel {
+    min-height: 0;
+    padding: 0.85rem;
   }
 }
 

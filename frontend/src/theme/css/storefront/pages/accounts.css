@@ -1995,3 +1995,89 @@
 [data-theme="dark"] .client-page .catalogue-page .catalogue-category-footer small {
   color: var(--client-text-secondary, #9e9ea7) !important;
 }
+
+/* Loading composition uses the same heading and card grid as the rendered
+   category view. Keep these rules at the end of the route stylesheet so an
+   older generic two-column skeleton can never win the mobile cascade. */
+.client-page .catalogue-page .skeleton-catalogue-heading-copy {
+  width: min(100%, 52rem);
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+.client-page .catalogue-page .skeleton-catalogue-kicker {
+  width: 9rem;
+  height: 2rem;
+  border: 2px solid var(--catalogue-line);
+  border-radius: 999px;
+}
+
+.client-page .catalogue-page .skeleton-catalogue-title-row {
+  width: min(100%, 28rem);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.client-page .catalogue-page .skeleton-catalogue-title-row > .is-title {
+  width: min(22rem, calc(100% - 3.5rem));
+  height: clamp(2.3rem, 4vw, 3.45rem);
+}
+
+.client-page .catalogue-page .skeleton-catalogue-count-badge {
+  width: clamp(2.3rem, 3.4vw, 2.75rem);
+  height: clamp(2.3rem, 3.4vw, 2.75rem);
+  flex: 0 0 auto;
+  border: 2px solid var(--catalogue-line);
+  border-radius: 50%;
+}
+
+@media (max-width: 47.99rem) {
+  .client-page .catalogue-page > .skeleton-catalogue:not(.is-results) {
+    gap: 1.25rem;
+  }
+
+  .client-page .catalogue-page > .skeleton-catalogue:not(.is-results) .skeleton-catalogue-category-heading {
+    min-height: 0;
+    margin-bottom: 1.25rem;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-heading-copy {
+    gap: 0.55rem;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-kicker {
+    width: 8.1rem;
+    height: 1.85rem;
+    border-width: 1.75px;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-title-row {
+    width: min(100%, 22rem);
+    gap: 0.5rem;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-title-row > .is-title {
+    width: min(17rem, calc(100% - 2.45rem));
+    height: 1.95rem;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-count-badge {
+    width: 1.95rem;
+    height: 1.95rem;
+    border-width: 1.75px;
+  }
+
+  .client-page .catalogue-page > .skeleton-catalogue .skeleton-category-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .client-page .catalogue-page > .skeleton-catalogue .skeleton-category-grid > .skeleton-catalogue-category-card {
+    display: flex !important;
+  }
+
+  .client-page .catalogue-page > .skeleton-catalogue .skeleton-account-grid > .skeleton-catalogue-account-card {
+    display: block !important;
+  }
+}

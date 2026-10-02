@@ -11,9 +11,8 @@ function ProductSkeletonCard({ compact = false }) {
     <article className={`skeleton-product-card${compact ? " is-compact" : ""}`} aria-hidden="true">
       <SkeletonBlock className="skeleton-product-media" />
       <div className="skeleton-product-copy">
-        <SkeletonBlock className="is-line is-65" />
-        <div className="skeleton-chip-row"><SkeletonBlock className="is-mini-chip" /><SkeletonBlock className="is-mini-chip" /></div>
-        <div className="skeleton-product-footer"><SkeletonBlock className="is-price-line" /><SkeletonBlock className="is-status" /></div>
+        <SkeletonBlock className="is-title is-65" />
+        <div className="skeleton-product-footer"><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-line" /></div>
       </div>
     </article>
   );
@@ -21,11 +20,11 @@ function ProductSkeletonCard({ compact = false }) {
 
 function CatalogueCategorySkeletonCard() {
   return (
-    <article className="skeleton-catalogue-category-card" aria-hidden="true">
-      <SkeletonBlock className="skeleton-catalogue-category-media" />
-      <div className="skeleton-catalogue-category-copy">
+    <article className="catalogue-category-card skeleton-catalogue-category-card" aria-hidden="true">
+      <SkeletonBlock className="catalogue-category-media skeleton-catalogue-category-media" />
+      <div className="catalogue-category-copy skeleton-catalogue-category-copy">
         <SkeletonBlock className="is-title is-65" />
-        <div className="skeleton-catalogue-category-footer">
+        <div className="catalogue-category-footer skeleton-catalogue-category-footer">
           <SkeletonBlock className="is-line is-65" />
           <SkeletonBlock className="is-line" />
         </div>
@@ -36,12 +35,12 @@ function CatalogueCategorySkeletonCard() {
 
 function CatalogueAccountSkeletonCard() {
   return (
-    <article className="skeleton-catalogue-account-card" aria-hidden="true">
-      <div className="skeleton-catalogue-account-media">
+    <article className="account-card-premium skeleton-catalogue-account-card" aria-hidden="true">
+      <div className="account-thumb-wrapper skeleton-catalogue-account-media">
         <SkeletonBlock />
         <SkeletonBlock className="is-badge skeleton-catalogue-account-id" />
       </div>
-      <div className="skeleton-catalogue-account-copy">
+      <div className="account-body-premium skeleton-catalogue-account-copy">
         <SkeletonBlock className="is-title is-65" />
         <div className="skeleton-catalogue-account-description"><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /></div>
         <div className="skeleton-chip-row"><SkeletonBlock className="is-mini-chip" /><SkeletonBlock className="is-mini-chip" /></div>
@@ -90,15 +89,19 @@ function HomeSkeleton({ label }) {
 
 function CatalogueSkeleton({ label, results = false, items = 4 }) {
   return (
-    <LoadingRegion className={`skeleton-catalogue${results ? " is-results" : ""}`} label={label}>
+    <LoadingRegion className={`skeleton-catalogue${results ? " is-results" : " catalogue-category-view"}`} label={label}>
       {!results && (
-        <div className="skeleton-catalogue-category-heading" aria-hidden="true">
-          <div><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-65" /></div>
+        <div className="catalogue-heading skeleton-catalogue-category-heading" aria-hidden="true">
+          <div className="skeleton-catalogue-heading-copy">
+            <SkeletonBlock className="skeleton-catalogue-kicker" />
+            <div className="skeleton-catalogue-title-row"><SkeletonBlock className="is-title" /><SkeletonBlock className="skeleton-catalogue-count-badge" /></div>
+            <SkeletonBlock className="is-line is-65" />
+          </div>
         </div>
       )}
-      {results && <div className="skeleton-type-cartridge" aria-hidden="true"><SkeletonBlock className="skeleton-cartridge-media" /><div className="skeleton-cartridge-copy"><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-field" /></div></div>}
-      {results && <div className="skeleton-sort-control" aria-hidden="true"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /></div>}
-      <div className={results ? "skeleton-account-grid" : "skeleton-category-grid"}>
+      {results && <div className="type-info-banner skeleton-type-cartridge" aria-hidden="true"><SkeletonBlock className="type-info-banner-img skeleton-cartridge-media" /><div className="type-info-banner-body skeleton-cartridge-copy"><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line" /><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-field" /></div></div>}
+      {results && <div className="catalogue-sort-bar skeleton-sort-control" aria-hidden="true"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /></div>}
+      <div className={results ? "account-grid skeleton-account-grid" : "catalogue-category-grid skeleton-category-grid"}>
         {Array.from({ length: items }, (_, index) => results
           ? <CatalogueAccountSkeletonCard key={index} />
           : <CatalogueCategorySkeletonCard key={index} />)}
@@ -109,7 +112,7 @@ function CatalogueSkeleton({ label, results = false, items = 4 }) {
 
 function DetailSkeleton({ label }) {
   return (
-    <LoadingRegion className="skeleton-detail-page" label={label}>
+    <LoadingRegion className="page-container account-detail-page skeleton-detail-page" label={label}>
       <SkeletonBlock className="skeleton-back-link" />
       <div className="skeleton-detail-layout">
         <div className="skeleton-detail-media"><SkeletonBlock /></div>
