@@ -425,13 +425,24 @@ export default function Home() {
             type="button"
             className="storefront-notice-trigger"
             onClick={() => setShowNoticeModal(true)}
+            aria-label="Xem thông báo cửa hàng"
           >
             <div className="storefront-notice-trigger-left">
-              <Bell size={16} aria-hidden="true" />
-              <span>Thông báo cửa hàng</span>
+              <span className="storefront-notice-trigger-icon" aria-hidden="true">
+                <Bell size={18} />
+              </span>
+              <span className="storefront-notice-trigger-copy">
+                <strong>
+                  <span className="notice-label-long">Thông báo cửa hàng</span>
+                  <span className="notice-label-short">Thông báo</span>
+                </strong>
+                <small>Cập nhật mới dành cho bạn</small>
+              </span>
             </div>
             <span className="storefront-notice-trigger-right">
-              Xem chi tiết &gt;
+              <span className="notice-label-long">Xem thông báo</span>
+              <span className="notice-label-short">Xem</span>
+              <ArrowRight size={16} aria-hidden="true" />
             </span>
           </button>
         )}
@@ -445,7 +456,12 @@ export default function Home() {
           <Modal
             isOpen={showNoticeModal}
             onClose={handleCloseNotice}
-            title="Thông báo cửa hàng"
+            title={(
+              <>
+                <span className="notice-label-long">Thông báo cửa hàng</span>
+                <span className="notice-label-short">Thông báo</span>
+              </>
+            )}
             className="notice-popup-modal"
             footer={
               <div className="notice-popup-footer">
@@ -453,9 +469,11 @@ export default function Home() {
                   type="button"
                   className="btn-outline notice-snooze-btn"
                   onClick={handleHideNotice1Hour}
+                  aria-label="Tắt thông báo trong 1 giờ"
                 >
-                  <Clock size={15} />
-                  <span>Tắt trong 1h</span>
+                  <Clock size={16} aria-hidden="true" />
+                  <span className="notice-label-long">Tắt trong 1 giờ</span>
+                  <span className="notice-label-short">Nhắc sau</span>
                 </button>
                 <button
                   type="button"
@@ -474,6 +492,7 @@ export default function Home() {
                     <Megaphone size={20} />
                   </div>
                   <div className="notice-highlight-content">
+                    <span className="notice-highlight-eyebrow">Tin mới từ cửa hàng</span>
                     {parsedNotice.textLines.map((line, index) => (
                       <p key={index} className="notice-highlight-text">
                         {line}
@@ -504,10 +523,14 @@ export default function Home() {
                           />
                         </div>
                         <div className="notice-zalo-info">
+                          <span className="notice-zalo-kind">
+                            {item.isGroup ? "Nhóm Zalo" : "Zalo hỗ trợ"}
+                          </span>
                           <strong className="notice-zalo-title">{item.title}</strong>
                         </div>
                         <div className="notice-zalo-action" aria-hidden="true">
-                          <span>Tham gia</span>
+                          <span className="notice-label-long">{item.isGroup ? "Vào nhóm" : "Liên hệ"}</span>
+                          <span className="notice-label-short">Mở</span>
                           <ArrowUpRight size={14} />
                         </div>
                       </a>

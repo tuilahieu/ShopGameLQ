@@ -128,20 +128,67 @@
 }
 
 .client-page .catalogue-page .skeleton-catalogue-category-copy {
-  padding: 0.8rem;
-  display: grid;
-  gap: 0.65rem;
+  padding: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0;
 }
 
 .client-page .catalogue-page .skeleton-catalogue-category-copy .is-title {
-  width: 72%;
+  width: calc(72% - 2.25rem);
   height: 1.15rem;
+  margin: 1rem 1.125rem;
 }
 
-.client-page .catalogue-page .skeleton-catalogue-category-action {
-  width: 8.6rem;
-  height: 2.5rem;
-  border-radius: 0.42rem;
+.client-page .catalogue-page .skeleton-catalogue-category-footer {
+  padding: 0.65rem 1.125rem 0.875rem;
+  display: grid;
+  gap: 0.45rem;
+  border-top: 1px solid var(--catalogue-line);
+  border-top: 1px solid color-mix(in srgb, var(--catalogue-line) 26%, transparent);
+}
+
+.client-page .catalogue-page .skeleton-catalogue-category-footer > :first-child { width: min(75%, 10rem); }
+.client-page .catalogue-page .skeleton-catalogue-category-footer > :last-child { width: min(100%, 14rem); }
+
+@media (max-width: 47.99rem) {
+  .client-page .catalogue-page > .skeleton-catalogue :where(.skeleton-category-grid, .skeleton-account-grid) > :nth-child(n + 2) {
+    display: none;
+  }
+
+  .client-page .catalogue-page > .skeleton-catalogue :where(.skeleton-category-grid, .skeleton-account-grid) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue-category-copy .is-title { width: calc(78% - 2.25rem); height: 1.45rem; margin: 1rem 1.125rem; }
+  .client-page .catalogue-page .skeleton-catalogue-category-footer { padding: 0.625rem 1.125rem 0.875rem; }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-type-cartridge {
+    height: calc((100vw - 2.375rem) * 0.5625 + 6.125rem);
+    min-height: 0;
+    margin: 0;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-cartridge-media {
+    height: calc((100vw - 2.375rem) * 0.5625);
+    min-height: 0;
+    flex: 0 0 calc((100vw - 2.375rem) * 0.5625);
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-cartridge-copy {
+    min-height: 6.125rem;
+    flex: 0 0 6.125rem;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-catalogue-account-media > .skeleton-block:first-child {
+    aspect-ratio: 16 / 10;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-catalogue-account-copy {
+    min-height: 11.25rem;
+  }
 }
 
 .client-page .catalogue-page .skeleton-type-cartridge {
@@ -1657,6 +1704,75 @@
   max-width: 26rem;
 }
 
+/* Data loading keeps the same unframed, mobile-first category composition as
+   the rendered catalogue. The skeleton is inserted inside `.catalogue-page`,
+   so it must not add its own panel or reduce the card width. */
+.client-page .catalogue-page > .skeleton-catalogue:not(.is-results) {
+  padding: 0 !important;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.client-page .catalogue-page > .skeleton-catalogue:not(.is-results) .skeleton-catalogue-category-heading {
+  min-height: 6rem;
+  margin: 0;
+}
+
+.client-page .catalogue-page > .skeleton-catalogue:not(.is-results) .skeleton-category-grid {
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+}
+
+@media (min-width: 36rem) {
+  .client-page .catalogue-page > .skeleton-catalogue:not(.is-results) .skeleton-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+}
+
+@media (min-width: 55rem) {
+  .client-page .catalogue-page > .skeleton-catalogue:not(.is-results) .skeleton-category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* The results header changes from a stacked mobile card to the same image /
+   information split as `.type-info-banner` on larger screens. */
+@media (min-width: 48rem) {
+  .client-page .catalogue-page > .skeleton-catalogue :where(.skeleton-category-grid, .skeleton-account-grid) {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-type-cartridge {
+    height: 14.2rem;
+    min-height: 14.2rem;
+    margin: 0;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-cartridge-media {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-cartridge-copy {
+    min-width: 0;
+    height: 100%;
+    flex: 1 1 auto;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-catalogue-account-media > .skeleton-block:first-child {
+    aspect-ratio: 16 / 10;
+  }
+
+  .client-page .catalogue-page .skeleton-catalogue.is-results .skeleton-catalogue-account-copy {
+    min-height: 0;
+    height: 12.625rem;
+  }
+}
+
 /* Category Card — Identical to Home Section */
 .client-page .catalogue-page .catalogue-category-card {
   min-width: 0;
@@ -1879,4 +1995,3 @@
 [data-theme="dark"] .client-page .catalogue-page .catalogue-category-footer small {
   color: var(--client-text-secondary, #9e9ea7) !important;
 }
-

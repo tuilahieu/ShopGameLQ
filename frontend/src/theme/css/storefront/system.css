@@ -26,7 +26,7 @@
   --storefront-control-height: 2.75rem;
   min-height: 100dvh;
   color: var(--color-text);
-  background: var(--color-canvas);
+  background-color: var(--color-canvas);
   font-family: var(--storefront-font-body);
 }
 
@@ -406,6 +406,8 @@
 /* One predictable fixed-layer stack on mobile. */
 @media (max-width: 48rem) {
   .client-page { --storefront-gutter: max(0.85rem, env(safe-area-inset-left, 0px)); }
+
+  .client-page .orders-page .skeleton-order-card:nth-child(n + 2) { display: none !important; }
 
   .client-page .orders-page .order-cards-container,
   .client-page .orders-page .skeleton-orders-list {

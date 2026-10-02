@@ -25,7 +25,10 @@ function CatalogueCategorySkeletonCard() {
       <SkeletonBlock className="skeleton-catalogue-category-media" />
       <div className="skeleton-catalogue-category-copy">
         <SkeletonBlock className="is-title is-65" />
-        <SkeletonBlock className="skeleton-catalogue-category-action" />
+        <div className="skeleton-catalogue-category-footer">
+          <SkeletonBlock className="is-line is-65" />
+          <SkeletonBlock className="is-line" />
+        </div>
       </div>
     </article>
   );
@@ -78,7 +81,7 @@ function HomeSkeleton({ label }) {
       {Array.from({ length: 2 }, (_, section) => (
         <section className="skeleton-store-section" aria-hidden="true" key={section}>
           <div className="skeleton-section-heading"><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-button-small" /></div>
-          <div className="skeleton-home-grid">{Array.from({ length: 4 }, (_, index) => <ProductSkeletonCard compact key={index} />)}</div>
+          <div className="skeleton-home-grid">{Array.from({ length: 3 }, (_, index) => <ProductSkeletonCard compact key={index} />)}</div>
         </section>
       ))}
     </LoadingRegion>
@@ -109,7 +112,7 @@ function DetailSkeleton({ label }) {
     <LoadingRegion className="skeleton-detail-page" label={label}>
       <SkeletonBlock className="skeleton-back-link" />
       <div className="skeleton-detail-layout">
-        <div className="skeleton-detail-media"><SkeletonBlock /><div className="skeleton-detail-thumbs"><SkeletonBlock /><SkeletonBlock /><SkeletonBlock /></div></div>
+        <div className="skeleton-detail-media"><SkeletonBlock /></div>
         <div className="skeleton-detail-panel">
           <div className="skeleton-detail-badges"><SkeletonBlock className="is-badge" /><SkeletonBlock className="is-badge" /></div>
           <SkeletonBlock className="is-title" /><SkeletonBlock className="is-price" />
@@ -122,13 +125,12 @@ function DetailSkeleton({ label }) {
             <SkeletonBlock className="is-line is-45" />
             <div className="skeleton-field-row"><SkeletonBlock className="is-field" /><SkeletonBlock className="is-button-small" /></div>
           </div>
+          <SkeletonBlock className="is-button skeleton-detail-purchase" />
           <div className="skeleton-detail-benefits">
             <SkeletonBlock className="is-line is-45" />
             <SkeletonBlock className="is-line is-65" />
             <SkeletonBlock className="is-line is-65" />
           </div>
-          <SkeletonBlock className="is-button skeleton-detail-purchase" />
-          <SkeletonBlock className="skeleton-detail-notice" />
         </div>
       </div>
       <div className="skeleton-detail-mobile-purchase" aria-hidden="true">
@@ -144,10 +146,19 @@ function ProfileSkeleton({ label, showHeading = true }) {
     <LoadingRegion className="skeleton-profile-page" label={label}>
       {showHeading && <div className="skeleton-page-heading"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>}
       <div className="skeleton-profile-layout">
-        <div className="skeleton-profile-side"><SkeletonBlock className="is-avatar" /><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-45" />{Array.from({ length: 3 }, (_, index) => <SkeletonBlock className="is-field" key={index} />)}</div>
+        <div className="skeleton-profile-side">
+          <SkeletonBlock className="is-avatar" />
+          <div className="skeleton-profile-identity"><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-45" /></div>
+          <div className="skeleton-profile-summary">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-line is-45" /></div>)}</div>
+          <div className="skeleton-profile-actions"><SkeletonBlock className="is-button" /><SkeletonBlock className="is-button" /></div>
+        </div>
         <div className="skeleton-profile-main-stack">
-          <div className="skeleton-profile-main"><SkeletonBlock className="is-title is-45" /><SkeletonBlock className="is-line is-65" /></div>
-          <div className="skeleton-profile-main"><SkeletonBlock className="is-title is-45" />{Array.from({ length: 4 }, (_, index) => <div className="skeleton-transaction-row" key={index}><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-price-line" /></div>)}</div>
+          <div className="skeleton-profile-disclosure"><span><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-line is-65" /></span></span><SkeletonBlock className="is-button-small" /></div>
+          <div className="skeleton-profile-transactions">
+            <SkeletonBlock className="is-title is-45" />
+            <div className="skeleton-transaction-mobile-list">{Array.from({ length: 3 }, (_, index) => <div className="skeleton-transaction-mobile-card" key={index}><span><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-line is-45" /></span><span><SkeletonBlock className="is-price-line" /><SkeletonBlock className="is-line is-65" /></span></div>)}</div>
+            <div className="skeleton-transaction-table">{Array.from({ length: 5 }, (_, index) => <div className="skeleton-transaction-row" key={index}>{Array.from({ length: 5 }, (_, cell) => <SkeletonBlock className={cell === 2 ? "is-price-line" : "is-line"} key={cell} />)}</div>)}</div>
+          </div>
         </div>
       </div>
     </LoadingRegion>
@@ -199,6 +210,32 @@ function RechargeSkeleton({ label }) {
   );
 }
 
+function RechargeBankSkeleton({ label }) {
+  return (
+    <LoadingRegion className="skeleton-recharge-bank" label={label}>
+      <div className="skeleton-recharge-bank-field"><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /></div>
+      <div className="skeleton-recharge-bank-summary">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-line is-45" /></div>)}</div>
+    </LoadingRegion>
+  );
+}
+
+function OrderDetailSkeleton({ label }) {
+  return (
+    <LoadingRegion className="skeleton-order-detail order-detail-content" label={label}>
+      <section className="skeleton-order-credentials order-credentials" aria-hidden="true">
+        <div className="skeleton-order-credentials-header"><span><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /></span></span><SkeletonBlock className="is-badge" /></div>
+        <SkeletonBlock className="skeleton-order-copy-all" />
+        {Array.from({ length: 2 }, (_, index) => <div className="skeleton-order-credential-field" key={index}><SkeletonBlock className="is-line is-45" /><div><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-button-small" /></div></div>)}
+      </section>
+      <section className="skeleton-order-security" aria-hidden="true">
+        <div className="skeleton-order-security-heading"><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /></span></div>
+        <div className="skeleton-order-security-steps">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-badge" /><span><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-line" /></span></div>)}</div>
+      </section>
+      <div className="skeleton-order-summary" aria-hidden="true">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-line is-45" /><SkeletonBlock className={index === 2 ? "is-price-line" : "is-line is-45"} /></div>)}</div>
+    </LoadingRegion>
+  );
+}
+
 function AuthSkeleton({ label }) {
   return <LoadingRegion className="skeleton-auth-page" label={label}><div className="skeleton-auth-card" aria-hidden="true"><SkeletonBlock className="is-avatar" /><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-field" /><SkeletonBlock className="is-field" /><SkeletonBlock className="is-button" /><SkeletonBlock className="is-line is-45" /></div></LoadingRegion>;
 }
@@ -224,6 +261,8 @@ export default function SkeletonLoading({ variant = "cards", label = "Đang tả
   if (variant === "profile") return <ProfileSkeleton label={label} showHeading={!compact} />;
   if (variant === "orders") return <OrdersSkeleton label={label} items={items} showHeading={!compact} />;
   if (variant === "recharge") return <RechargeSkeleton label={label} />;
+  if (variant === "recharge-bank") return <RechargeBankSkeleton label={label} />;
+  if (variant === "order-detail") return <OrderDetailSkeleton label={label} />;
   if (variant === "auth") return <AuthSkeleton label={label} />;
   if (variant === "article") return <ArticleSkeleton label={label} />;
   if (variant === "contact") return <ArticleSkeleton label={label} contact />;

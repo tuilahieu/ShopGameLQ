@@ -151,6 +151,387 @@
   }
 }
 
+/* Store notice: compact on small screens, richer once space is available. */
+.notice-label-long { display: none; }
+.notice-label-short { display: inline; }
+
+.client-page.is-home .storefront-home .storefront-notice-trigger {
+  position: relative;
+  z-index: 3;
+  width: calc(100% - (2 * var(--editorial-gutter)));
+  min-height: 3.75rem;
+  margin: -1.15rem auto 1.25rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--home-ink);
+  background: color-mix(in srgb, var(--home-paper) 94%, white);
+  border: 1px solid color-mix(in srgb, var(--home-line) 48%, transparent);
+  border-left: 0.28rem solid var(--home-accent);
+  border-radius: 0.8rem;
+  box-shadow: 0 0.32rem 0 color-mix(in srgb, var(--home-line) 35%, transparent), 0 0.8rem 2rem rgb(47 38 28 / 0.1);
+  overflow: hidden;
+}
+
+.client-page.is-home .storefront-home .storefront-notice-trigger::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: rgb(255 255 255 / 0.72);
+  pointer-events: none;
+  content: "";
+}
+
+.client-page.is-home .storefront-home .storefront-notice-trigger:hover {
+  color: var(--home-ink);
+  background: color-mix(in srgb, var(--home-paper) 84%, white);
+  box-shadow: 0 0.18rem 0 color-mix(in srgb, var(--home-line) 42%, transparent), 0 0.65rem 1.5rem rgb(47 38 28 / 0.12) !important;
+}
+
+.storefront-notice-trigger-left {
+  min-width: 0;
+  gap: 0.6rem;
+}
+
+.storefront-notice-trigger-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--home-accent);
+  border: 1px solid var(--home-accent-deep);
+  border-radius: 0.65rem;
+  box-shadow: 0 0.2rem 0 var(--home-accent-deep);
+}
+
+.storefront-notice-trigger-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.05rem;
+}
+
+.storefront-notice-trigger-copy strong {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.storefront-notice-trigger-copy small {
+  display: none;
+  color: color-mix(in srgb, var(--home-ink) 68%, transparent);
+  font-size: 0.76rem;
+  font-weight: 550;
+  line-height: 1.25;
+}
+
+.client-page.is-home .storefront-home .storefront-notice-trigger-right {
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.65rem;
+  color: var(--home-accent-deep);
+  background: color-mix(in srgb, var(--home-accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--home-accent) 28%, transparent);
+  border-radius: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+body:has(.client-page) .modal-content-wrapper.notice-popup-modal {
+  width: min(31rem, calc(100vw - 1.25rem)) !important;
+  max-width: 31rem !important;
+  max-height: min(90dvh, calc(100vh - 1.25rem)) !important;
+  margin-inline: auto !important;
+  background: #fffdfa;
+  border: 1px solid #d8cfc4;
+  border-radius: 1rem !important;
+  box-shadow: 0 0.5rem 0 rgb(68 52 38 / 0.14), 0 1.5rem 4rem rgb(33 25 18 / 0.28);
+}
+
+body:has(.client-page) .notice-popup-modal .modal-header {
+  min-height: 3.5rem !important;
+  padding: 0.7rem 0.8rem 0.7rem 1rem !important;
+  background: #fffdfa;
+  border-bottom: 1px solid #e2d9cf;
+}
+
+body:has(.client-page) .notice-popup-modal .modal-header h3 {
+  font-size: 1rem !important;
+  font-weight: 850;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+body:has(.client-page) .notice-popup-modal .modal-close-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-color: #d8cfc4;
+  border-radius: 0.65rem;
+}
+
+body:has(.client-page) .notice-popup-modal .modal-body {
+  padding: 0.75rem !important;
+  background: #fffdfa;
+}
+
+body:has(.client-page) .notice-popup-modal .notice-popup-body {
+  gap: 0.65rem !important;
+}
+
+.notice-popup-highlight-banner {
+  gap: 0.65rem !important;
+  padding: 0.75rem !important;
+  background: #fff2e8;
+  border: 1px solid #efc1a4;
+  border-left: 0.25rem solid var(--client-primary);
+  border-radius: 0.75rem !important;
+  box-shadow: none;
+}
+
+.notice-highlight-icon {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  flex-basis: 2.25rem !important;
+  margin-top: 0;
+  background: var(--client-primary);
+  border-radius: 0.6rem !important;
+  box-shadow: 0 0.2rem 0 var(--client-primary-pressed);
+  animation: none;
+}
+
+.notice-highlight-content { gap: 0.25rem; }
+
+.notice-highlight-eyebrow,
+.notice-zalo-kind {
+  color: #8f4435;
+  font-size: 0.67rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.notice-highlight-text,
+.notice-highlight-text + .notice-highlight-text {
+  margin: 0;
+  padding: 0;
+  color: #68291e;
+  border: 0;
+  font-size: 0.84rem !important;
+  font-weight: 750;
+  line-height: 1.4 !important;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.notice-highlight-text + .notice-highlight-text {
+  padding-top: 0.3rem;
+  border-top: 1px dashed rgb(143 68 53 / 0.26);
+  font-size: 0.78rem !important;
+  font-weight: 600;
+}
+
+.notice-zalo-cards { gap: 0.5rem !important; }
+
+.notice-zalo-card {
+  min-height: 4rem;
+  gap: 0.65rem !important;
+  padding: 0.55rem 0.6rem !important;
+  background: #f4f8ff;
+  border: 1px solid #bcd1f3;
+  border-radius: 0.75rem !important;
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+.notice-zalo-card:hover {
+  background: #edf5ff;
+  border-color: #6fa6ed;
+  box-shadow: 0 0.35rem 1rem rgb(20 92 190 / 0.13);
+  transform: translateY(-0.08rem);
+}
+
+.notice-zalo-card:active { transform: translateY(0.06rem); }
+
+.notice-zalo-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-focus-ring) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.notice-zalo-logo {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  flex-basis: 2.5rem !important;
+  border-radius: 0.62rem !important;
+  box-shadow: 0 0.15rem 0 rgb(0 104 255 / 0.16);
+}
+
+.notice-zalo-info {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.notice-zalo-kind { color: #48688f; }
+
+.notice-zalo-title {
+  display: block;
+  color: #154f9c;
+  font-size: 0.86rem !important;
+  line-height: 1.3 !important;
+  white-space: normal !important;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.notice-zalo-action {
+  min-width: 3rem;
+  min-height: 2.5rem;
+  gap: 0.18rem;
+  padding: 0.4rem 0.5rem !important;
+  background: #1264d9;
+  border-radius: 0.58rem !important;
+  box-shadow: 0 0.18rem 0 #0b4fae;
+  font-size: 0.76rem !important;
+}
+
+body:has(.client-page) .notice-popup-modal .modal-footer {
+  padding: 0.65rem 0.75rem max(0.65rem, env(safe-area-inset-bottom)) !important;
+  background: #f7f0e7;
+  border-top-color: #e2d9cf;
+}
+
+body:has(.client-page) .notice-popup-modal .notice-popup-footer {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 0.5rem !important;
+}
+
+body:has(.client-page) .notice-popup-modal .notice-popup-footer > button {
+  width: 100% !important;
+  min-height: 2.75rem !important;
+  padding: 0.5rem 0.6rem !important;
+  border-radius: 0.65rem !important;
+  font-size: 0.84rem !important;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger {
+  color: #f7f2ea;
+  background: #252730;
+  border-color: #686f7d;
+  border-left-color: #e45f4f;
+  box-shadow: 0 0.3rem 0 #111319, 0 0.9rem 2rem rgb(0 0 0 / 0.3);
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger:hover {
+  color: #fffaf2;
+  background: #2d303a;
+  box-shadow: 0 0.18rem 0 #111319, 0 0.75rem 1.65rem rgb(0 0 0 / 0.32) !important;
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger::after {
+  background: rgb(255 255 255 / 0.1);
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger-icon {
+  color: #fff;
+  background: #c94a3a;
+  border-color: #f07a6b;
+  box-shadow: 0 0.2rem 0 #70261e;
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger-copy small {
+  color: #c8cbd3;
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger-right {
+  color: #ffd5ce;
+  background: #452825;
+  border-color: #8f5048;
+}
+
+[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger:hover .storefront-notice-trigger-right {
+  color: #fff0ed;
+  background: #53302c;
+  border-color: #b9685e;
+}
+
+[data-theme="dark"] body:has(.client-page) .modal-content-wrapper.notice-popup-modal,
+[data-theme="dark"] body:has(.client-page) .notice-popup-modal :where(.modal-header, .modal-body) {
+  background: #191815;
+  border-color: #4b463e;
+}
+
+[data-theme="dark"] body:has(.client-page) .notice-popup-modal .modal-footer { background: #24211d; border-color: #4b463e; }
+[data-theme="dark"] .notice-popup-highlight-banner { background: #33231d; border-color: #754536; border-left-color: var(--client-primary); }
+[data-theme="dark"] .notice-highlight-eyebrow { color: #e5a38c; }
+[data-theme="dark"] .notice-highlight-text,
+[data-theme="dark"] .notice-highlight-text + .notice-highlight-text { color: #f3c7b8; }
+[data-theme="dark"] .notice-zalo-card { background: #182333; border-color: #365578; }
+[data-theme="dark"] .notice-zalo-card:hover { background: #1c2c40; border-color: #5c8fc8; }
+[data-theme="dark"] .notice-zalo-kind { color: #94b8e5; }
+[data-theme="dark"] .notice-zalo-title { color: #a8cfff; }
+
+@media (min-width: 30rem) {
+  .notice-label-long { display: inline; }
+  .notice-label-short { display: none; }
+
+  .storefront-notice-trigger-copy small { display: block; }
+
+  .client-page.is-home .storefront-home .storefront-notice-trigger {
+    min-height: 4.25rem;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .storefront-notice-trigger-copy strong { font-size: 0.96rem; }
+
+  .client-page.is-home .storefront-home .storefront-notice-trigger-right {
+    padding-inline: 0.75rem 0.65rem;
+  }
+
+  body:has(.client-page) .notice-popup-modal .modal-header { padding-inline: 1.1rem 0.85rem !important; }
+  body:has(.client-page) .notice-popup-modal .modal-body { padding: 1rem !important; }
+  body:has(.client-page) .notice-popup-modal .modal-footer { padding: 0.75rem 1rem !important; }
+  .notice-popup-highlight-banner { padding: 0.9rem !important; }
+  .notice-highlight-text { font-size: 0.93rem !important; }
+  .notice-highlight-text + .notice-highlight-text { font-size: 0.84rem !important; }
+  .notice-zalo-card { min-height: 4.5rem; padding: 0.65rem 0.75rem !important; }
+  .notice-zalo-title { font-size: 0.94rem !important; }
+  .notice-zalo-action { min-width: 5.6rem; padding-inline: 0.7rem !important; }
+}
+
+@media (min-width: 48rem) {
+  .client-page.is-home .storefront-home .storefront-notice-trigger {
+    width: min(calc(100% - (2 * var(--editorial-gutter))), var(--editorial-max));
+    margin-top: -1.4rem;
+    margin-bottom: 1.75rem;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .client-page.is-home .storefront-home .storefront-notice-trigger {
+    margin: 0.75rem auto 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice-highlight-icon,
+  .notice-zalo-card,
+  .client-page.is-home .storefront-home .storefront-notice-trigger { animation: none !important; transition: none !important; }
+}
+
 /* Category navigation: arrows stay in the heading, discovery stays centred
    below the cards so the two actions do not compete on narrow screens. */
 .client-page.is-home .storefront-home .storefront-game-heading-actions {
@@ -553,12 +934,6 @@
 .client-page.is-home .storefront-home .storefront-primary-cta:hover,
 .client-page.is-home .storefront-home .storefront-game-explore:hover { background: #af3528 !important; }
 
-.client-page.is-home .storefront-home .storefront-notice-trigger {
-  color: var(--home-ink);
-  background: #f9e7bb;
-  border-top-color: rgb(37 37 44 / 0.15);
-}
-
 /* Keep every existing section/grid; refine only surfaces and typography. */
 .client-page.is-home .storefront-home .storefront-game-section,
 .client-page.is-home .storefront-home .flash-sale-section {
@@ -787,7 +1162,6 @@
 }
 
 [data-theme="dark"] .client-page.is-home .storefront-home .flash-sale-section { background: #352522; border-color: #8b5b53; box-shadow: 0 0.35rem 0 #130d0c; }
-[data-theme="dark"] .client-page.is-home .storefront-home .storefront-notice-trigger { color: var(--home-ink); background: #44371e; border-top-color: #7d6840; }
 [data-theme="dark"] .client-page.is-home .client-nav-link.active { color: #ffb0a4; background: #482b2a; }
 [data-theme="dark"] .client-page.is-home .storefront-home .storefront-game-heading p,
 [data-theme="dark"] .client-page.is-home .storefront-home .storefront-section-heading p { color: var(--home-muted); }
@@ -2980,7 +3354,6 @@ body.has-mobile-purchase-bar:not(.has-form-focus) .client-page .shop-assistant:n
 
   .client-page.is-home .skeleton-console {
     width: 100%;
-    aspect-ratio: 16 / 10;
     transform: none;
   }
 
@@ -3002,6 +3375,10 @@ body.has-mobile-purchase-bar:not(.has-form-focus) .client-page .shop-assistant:n
   .client-page.is-home .skeleton-home-action {
     width: 100%;
     min-height: 3rem;
+  }
+
+  .client-page.is-home .skeleton-notice-row {
+    margin: 0.75rem auto 1.25rem;
   }
 
   .client-page.is-home .skeleton-home-notice {
@@ -3336,5 +3713,62 @@ body.has-mobile-purchase-bar:not(.has-form-focus) .client-page .shop-assistant:n
 
   .client-page.is-home .storefront-home .flash-sale-account-card .price-box strong {
     font-size: 1.2rem !important;
+  }
+}
+
+/* Explicit tactile depth for actions that navigate or dismiss immediately.
+   Their local surface rules previously flattened the shared pressed state. */
+.client-page .recharge-access-actions > :is(.btn-primary, .btn-outline),
+body:has(.client-page) .notice-popup-modal .notice-popup-footer > :is(.notice-snooze-btn, .notice-dismiss-btn) {
+  position: relative;
+  touch-action: manipulation;
+  transform: translateY(0) scale(1) !important;
+  transition: transform 80ms cubic-bezier(0.2, 0, 0, 1), box-shadow 80ms cubic-bezier(0.2, 0, 0, 1), background-color 100ms ease !important;
+}
+
+.client-page .recharge-access-actions > .btn-primary,
+body:has(.client-page) .notice-popup-modal .notice-dismiss-btn {
+  box-shadow: 0 0.28rem 0 var(--client-primary-pressed, #8e2c23), 0 0.6rem 1rem rgb(53 19 14 / 0.18) !important;
+}
+
+.client-page .recharge-access-actions > .btn-outline,
+body:has(.client-page) .notice-popup-modal .notice-snooze-btn {
+  box-shadow: 0 0.28rem 0 var(--color-border), 0 0.55rem 0.9rem rgb(32 32 39 / 0.12) !important;
+}
+
+@media (hover: hover) {
+  .client-page .recharge-access-actions > :is(.btn-primary, .btn-outline):hover,
+  body:has(.client-page) .notice-popup-modal .notice-popup-footer > :is(.notice-snooze-btn, .notice-dismiss-btn):hover {
+    transform: translateY(-0.12rem) scale(1) !important;
+  }
+
+  .client-page .recharge-access-actions > .btn-primary:hover,
+  body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
+    box-shadow: 0 0.4rem 0 var(--client-primary-pressed, #8e2c23), 0 0.8rem 1.25rem rgb(53 19 14 / 0.22) !important;
+  }
+
+  .client-page .recharge-access-actions > .btn-outline:hover,
+  body:has(.client-page) .notice-popup-modal .notice-snooze-btn:hover {
+    box-shadow: 0 0.4rem 0 var(--color-border), 0 0.75rem 1.1rem rgb(32 32 39 / 0.14) !important;
+  }
+}
+
+.client-page .recharge-access-actions > :is(.btn-primary, .btn-outline):where(:active, .is-pressed, [data-pressed="true"]),
+body:has(.client-page) .notice-popup-modal .notice-popup-footer > :is(.notice-snooze-btn, .notice-dismiss-btn):where(:active, .is-pressed, [data-pressed="true"]) {
+  transform: translateY(0.28rem) scale(0.985) !important;
+  box-shadow: inset 0 0.18rem 0.35rem rgb(0 0 0 / 0.3), 0 0 0 transparent !important;
+  filter: brightness(0.88) !important;
+  transition-duration: 0s !important;
+}
+
+[data-theme="dark"] .client-page .recharge-access-actions > .btn-outline,
+[data-theme="dark"] body:has(.client-page) .notice-popup-modal .notice-snooze-btn {
+  box-shadow: 0 0.28rem 0 #12141a, 0 0.55rem 0.9rem rgb(0 0 0 / 0.24) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-page .recharge-access-actions > :is(.btn-primary, .btn-outline),
+  body:has(.client-page) .notice-popup-modal .notice-popup-footer > :is(.notice-snooze-btn, .notice-dismiss-btn) {
+    transition: none !important;
   }
 }

@@ -2,11 +2,26 @@ import { useState } from "react";
 import { User, Lock, Copy, Check, Eye, EyeOff } from "lucide-react";
 
 export default function LoginCredentials({ login, copiedField, onCopy }) {
-  const [username, password] = String(login || "").split("|");
+  const rawLogin = String(login || "");
+  const separatorIndex = rawLogin.indexOf("|");
+  const username = separatorIndex >= 0 ? rawLogin.slice(0, separatorIndex) : rawLogin;
+  const password = separatorIndex >= 0 ? rawLogin.slice(separatorIndex + 1) : "";
   const [showPassword, setShowPassword] = useState(true);
 
   return (
     <div className="login-credentials-box">
+      <div className="credential-quick-copy">
+        <span>Nhấn vào từng ô để chọn nhanh</span>
+        <button
+          type="button"
+          className={`credential-copy-all ${copiedField === "all" ? "is-copied" : ""}`}
+          onClick={() => onCopy(rawLogin, "all")}
+          disabled={!rawLogin}
+        >
+          {copiedField === "all" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+          <span>{copiedField === "all" ? "Đã chép cả hai" : "Sao chép cả hai"}</span>
+        </button>
+      </div>
       {/* USERNAME ROW */}
       <div className="credential-item credential-card-field">
         <div className="credential-field-header">

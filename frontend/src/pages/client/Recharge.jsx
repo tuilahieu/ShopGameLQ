@@ -261,7 +261,7 @@ export default function Recharge() {
 
           <section className="recharge-step recharge-bank-step" aria-labelledby="recharge-bank-title">
             <div className="recharge-step-title"><span>2</span><div><strong id="recharge-bank-title">Tài khoản nhận</strong><small>Chọn nơi bạn sẽ chuyển tiền đến</small></div></div>
-            {banksLoading ? <SkeletonLoading variant="form" items={1} compact label="Đang tải tài khoản nhận tiền" /> : (
+            {banksLoading ? <SkeletonLoading variant="recharge-bank" label="Đang tải tài khoản nhận tiền" /> : (
               <FormField id="payment-bank" label="Ngân hàng">
                 <select id="payment-bank" name="bankId" className="filter-input" value={selectedBankId} onChange={(event) => { setSelectedBankId(event.target.value); setIntentError(""); }}>
                   {banks.map((bank) => <option key={bank.id} value={bank.id.toString()}>{bank.name}</option>)}

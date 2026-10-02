@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { Key, Calendar, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Key, Calendar, ShieldCheck } from "lucide-react";
 import CustomerPageHeading from "../../components/client/CustomerPageHeading";
+import AccountSecurityGuide from "../../components/client/AccountSecurityGuide";
 import LoginCredentials from "../../components/client/LoginCredentials";
 import SafeImage from "../../components/SafeImage";
 import useClipboardFeedback from "../../hooks/useClipboardFeedback";
@@ -126,7 +127,7 @@ export default function MyOrders() {
           setIsModalOpen(false);
           setSelectedOrder(null);
         }}
-        title={`Thông tin tài khoản đơn hàng #${selectedOrder?.id || ""}`}
+        title={`Tài khoản đơn hàng #${selectedOrder?.id || ""}`}
         className="client-transaction-dialog client-credentials-dialog"
         footer={
           <button 
@@ -141,37 +142,34 @@ export default function MyOrders() {
         }
       >
         {modalLoading ? (
-          <SkeletonLoading variant="form" items={3} compact label="Đang tải thông tin tài khoản" />
+          <SkeletonLoading variant="order-detail" label="Đang tải thông tin tài khoản" />
         ) : detailError ? (
           <div className="alert-error" role="alert">{detailError}</div>
         ) : selectedOrder ? (
           <div className="order-detail-content">
             
-            <dl className="order-detail-summary">
-              <div><dt>Mã đơn hàng</dt><dd>#{selectedOrder.id}</dd></div>
-              <div><dt>Mã tài khoản</dt><dd>#{selectedOrder.acc_id}</dd></div>
-              <div><dt>Đã thanh toán</dt><dd>{formatVnd(selectedOrder.final_price)}</dd></div>
-            </dl>
-
             <div className="order-credentials">
               <div className="order-credentials-header">
                 <div className="order-credentials-heading">
                   <ShieldCheck size={18} aria-hidden="true" />
-                  <h4>THÔNG TIN ĐĂNG NHẬP</h4>
+                  <div>
+                    <span className="order-credentials-eyebrow">Thông tin quan trọng</span>
+                    <h4>Tài khoản &amp; mật khẩu</h4>
+                  </div>
                 </div>
-                <span className="order-credentials-tag">Đã bán</span>
+                <span className="order-credentials-tag">Sẵn sàng</span>
               </div>
               
               <LoginCredentials login={selectedOrder.account?.login} copiedField={copiedField} onCopy={copy} />
             </div>
 
-            <div className="order-security-note">
-              <ShieldAlert size={18} className="order-security-icon" aria-hidden="true" />
-              <div className="order-security-content">
-                <strong>Khuyến nghị bảo mật:</strong>
-                <p>Nếu đăng nhập thành công, vui lòng truy cập trang chủ Garena để liên kết số điện thoại, email bảo mật cá nhân và đổi mật khẩu mới.</p>
-              </div>
-            </div>
+            <AccountSecurityGuide />
+
+            <dl className="order-detail-summary" aria-label="Thông tin đơn hàng">
+              <div><dt>Đơn hàng</dt><dd>#{selectedOrder.id}</dd></div>
+              <div><dt>Mã tài khoản</dt><dd>#{selectedOrder.acc_id}</dd></div>
+              <div><dt>Thanh toán</dt><dd>{formatVnd(selectedOrder.final_price)}</dd></div>
+            </dl>
           </div>
         ) : null}
       </Modal>

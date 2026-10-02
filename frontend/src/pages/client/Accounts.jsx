@@ -142,7 +142,7 @@ export default function Accounts() {
   return (
     <div className="page-container catalogue-page">
       {loading ? (
-        <SkeletonLoading variant={loaiId ? "catalogue-results" : "catalogue"} items={4} label="Đang tải kho tài khoản" />
+        <SkeletonLoading variant={loaiId ? "catalogue-results" : "catalogue"} items={3} label="Đang tải kho tài khoản" />
       ) : loadError ? (
         <StatusMessage title="Không thể tải kho tài khoản" description={loadError} action={<button className="btn-primary" onClick={loadData}>Tải lại</button>} />
       ) : !loaiId ? (

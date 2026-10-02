@@ -276,8 +276,9 @@ export default function ClientLayout() {
               <span>Đã mua</span>
             </NavLink>
           )}
-          <NavLink to="/contact" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
-            <span>Liên hệ</span>
+          <NavLink to="/nap-tien" className={({ isActive }) => isActive ? "client-nav-link active" : "client-nav-link"}>
+            <CreditCard size={15} aria-hidden="true" />
+            <span>Nạp tiền</span>
           </NavLink>
         </nav>
 

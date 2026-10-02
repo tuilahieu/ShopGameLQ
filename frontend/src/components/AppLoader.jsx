@@ -38,7 +38,7 @@ export default function AppLoader({ inline = false }) {
   const skeletonItems = route.variant === "orders"
     ? 2
     : route.variant === "catalogue" || route.variant === "catalogue-results"
-      ? 4
+      ? 3
       : 6;
   const skeleton = <SkeletonLoading {...route} items={skeletonItems} />;
 

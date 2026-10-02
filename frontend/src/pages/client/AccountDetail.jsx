@@ -9,6 +9,7 @@ import { CheckCircle2, ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, Spa
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
 import LoginCredentials from "../../components/client/LoginCredentials";
+import AccountSecurityGuide from "../../components/client/AccountSecurityGuide";
 import useClipboardFeedback from "../../hooks/useClipboardFeedback";
 import { readStoredJson } from "../../utils/storage";
 import usePageSeo from "../../hooks/usePageSeo";
@@ -471,14 +472,16 @@ export default function AccountDetail() {
         className="client-transaction-dialog client-purchase-confirm-dialog"
         footer={
           <>
-            <button onClick={() => setIsConfirmOpen(false)} className="btn-outline">
-              Quay lại
+            <button onClick={() => setIsConfirmOpen(false)} className="btn-outline purchase-confirm-back">
+              <ChevronLeft size={18} aria-hidden="true" />
+              <span>Quay lại</span>
             </button>
             {hasInsufficientBalance ? (
-              <Link to="/nap-tien" className="btn-primary">Nạp thêm tiền</Link>
+              <Link to="/nap-tien" className="btn-primary purchase-confirm-submit">Nạp thêm tiền</Link>
             ) : (
-              <button disabled={isBuying} aria-busy={isBuying} onClick={buyAccount} className="btn-primary">
-                {isBuying ? "Đang xử lý..." : "Xác nhận mua"}
+              <button disabled={isBuying} aria-busy={isBuying} onClick={buyAccount} className="btn-primary purchase-confirm-submit">
+                {!isBuying && <ShoppingCart size={18} aria-hidden="true" />}
+                <span>{isBuying ? "Đang xử lý..." : "Xác nhận mua"}</span>
               </button>
             )}
           </>
@@ -592,7 +595,10 @@ export default function AccountDetail() {
             <div className="order-credentials-header">
               <div className="order-credentials-heading">
                 <ShieldCheck size={18} aria-hidden="true" />
-                <h4>THÔNG TIN ĐĂNG NHẬP</h4>
+                <div>
+                  <span className="order-credentials-eyebrow">Thông tin quan trọng</span>
+                  <h4>Tài khoản &amp; mật khẩu</h4>
+                </div>
               </div>
               <span className="order-credentials-tag">Bàn giao tự động</span>
             </div>
@@ -600,15 +606,7 @@ export default function AccountDetail() {
             <LoginCredentials login={purchaseData?.login} copiedField={copiedField} onCopy={copy} />
           </div>
 
-          <div className="order-security-note">
-            <ShieldAlert size={18} className="order-security-icon" aria-hidden="true" />
-            <div className="order-security-content">
-              <strong>Lưu ý bảo mật quan trọng:</strong>
-              <p>
-                Vui lòng đăng nhập vào tài khoản Liên Quân, kích hoạt số điện thoại bảo mật và đổi mật khẩu Garena ngay để tránh xảy ra tranh chấp sau này.
-              </p>
-            </div>
-          </div>
+          <AccountSecurityGuide />
         </div>
       </Modal>
 
