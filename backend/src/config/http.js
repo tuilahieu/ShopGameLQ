@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import { errorResponse } from "../shared/utils/response.util.js";
 import { getClientIp } from "../shared/utils/ip.util.js";
 
+export function getGlobalApiRateLimitMax(underAttack) {
+  return underAttack ? 250 : null;
+}
+
 export function requestContext(req, res, next) {
   req.requestId = req.get("x-request-id") || crypto.randomUUID();
   req.clientIp = getClientIp(req);

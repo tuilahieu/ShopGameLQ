@@ -1,7 +1,51 @@
-shop_game.sql
-backend/uploads/
-scratch/
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+dist-ssr/
+build/
+coverage/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Logs and runtime files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.pid
+*.pid.lock
 
 # Local environment configuration
 .env
 .env.*
+!.env.example
+!**/.env.example
+*.local
+
+# Local data and uploaded files
+/shop_game.sql
+/backend/uploads/
+/scratch/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local agent and design references
+/AGENTS.md
+/.agents/
+/design-system/

@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { swaggerSpec } from "./config/swagger.js";
 import { env } from "./config/env.js";
-import { requestContext, securityHeaders, notFoundHandler, errorHandler } from "./config/http.js";
+import { createRateLimit, getGlobalApiRateLimitMax, requestContext, securityHeaders, notFoundHandler, errorHandler } from "./config/http.js";
 import { sequelize } from "./config/database.js";
 
 import authRoute from "./modules/auth/auth.route.js";
@@ -44,6 +44,12 @@ export function createApp() {
     allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id", "X-Admin-Session", "X-Assistant-Thread-Token"],
     maxAge: 86_400,
   }));
+  // Keep normal traffic unrestricted globally. Emergency mode adds broad
+  // per-IP flood protection without weakening stricter route limiters.
+  const globalApiRateLimitMax = getGlobalApiRateLimitMax(env.underAttack);
+  if (globalApiRateLimitMax) {
+    app.use("/api", createRateLimit({ windowMs: 60_000, max: globalApiRateLimitMax }));
+  }
   // SePay's HMAC is over the exact bytes it sent. This must be mounted before
   // express.json(), otherwise parsing and serializing would invalidate it.
   app.post("/api/payments/sepay/webhook", express.raw({ type: "application/json", limit: env.maxBodyBytes }), sepayWebhook);

@@ -5,7 +5,7 @@ import api from "../../api/api";
 import Modal from "../../components/Modal";
 import SafeImage from "../../components/SafeImage";
 import SkeletonLoading from "../../components/SkeletonLoading";
-import { CheckCircle2, ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, Sparkles, ShieldCheck, History } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ShoppingCart, Info, ShieldAlert, ZoomIn, ShieldCheck, History } from "lucide-react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getAccountPricing } from "../../utils/accountPricing";
 import LoginCredentials from "../../components/client/LoginCredentials";
@@ -556,7 +556,7 @@ export default function AccountDetail() {
         onClose={() => setIsSuccessOpen(false)}
         title={
           <span className="dialog-title-with-icon">
-            <CheckCircle2 size={21} aria-hidden="true" /> Mua tài khoản thành công
+            <CheckCircle2 size={21} aria-hidden="true" /> Tài khoản đã sẵn sàng
           </span>
         }
         className="client-transaction-dialog client-credentials-dialog"
@@ -568,39 +568,29 @@ export default function AccountDetail() {
               className="btn-outline modal-btn-secondary"
             >
               <History size={16} aria-hidden="true" />
-              <span>Lịch sử mua hàng</span>
+              <span>Đơn đã mua</span>
             </button>
             <button
               type="button"
               onClick={() => setIsSuccessOpen(false)}
               className="btn-primary modal-btn-primary"
             >
-              <span>Đóng lại</span>
+              <span>Đóng</span>
             </button>
           </>
         }
       >
         <div className="credential-delivery">
-          <div className="credential-delivery-banner">
-            <div className="credential-delivery-badge">
-              <Sparkles size={13} aria-hidden="true" />
-              <span>GIAO DỊCH HOÀN TẤT</span>
-            </div>
-            <p className="credential-delivery-text">
-              Cảm ơn bạn đã tin tưởng ủng hộ <strong>{readStoredJson("setting", {}).ten_web || "Shop Tran Hieu"}</strong>. Tài khoản đã được bàn giao tự động thành công!
-            </p>
-          </div>
-          
           <div className="order-credentials">
             <div className="order-credentials-header">
               <div className="order-credentials-heading">
                 <ShieldCheck size={18} aria-hidden="true" />
                 <div>
-                  <span className="order-credentials-eyebrow">Thông tin quan trọng</span>
+                  <span className="order-credentials-eyebrow">Thông tin đăng nhập</span>
                   <h4>Tài khoản &amp; mật khẩu</h4>
                 </div>
               </div>
-              <span className="order-credentials-tag">Bàn giao tự động</span>
+              <span className="order-credentials-tag">Đã bàn giao</span>
             </div>
             
             <LoginCredentials login={purchaseData?.login} copiedField={copiedField} onCopy={copy} />

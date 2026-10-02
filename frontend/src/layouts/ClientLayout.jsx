@@ -231,7 +231,13 @@ export default function ClientLayout() {
 
   const { zaloLink, phoneDisplay, facebookLink } = getSupportContacts(setting);
   const isHome = location.pathname === "/";
-  const isSaleActive = location.pathname === "/accounts" && new URLSearchParams(location.search).get("loai_id") === "3";
+  const cheapAccountsCategory = gameCategories.find((category) => (
+    category.name?.trim().toLocaleUpperCase("vi-VN") === "ACC GIÁ RẺ"
+  ));
+  const cheapAccountsCategoryId = String(cheapAccountsCategory?.id || 1);
+  const cheapAccountsHref = `/accounts?danhmuc_id=${cheapAccountsCategoryId}`;
+  const isSaleActive = location.pathname === "/accounts"
+    && new URLSearchParams(location.search).get("danhmuc_id") === cheapAccountsCategoryId;
   const isCatalogActive = location.pathname === "/accounts" && !isSaleActive;
 
   return (
@@ -646,10 +652,10 @@ export default function ClientLayout() {
         </Link>
         
         <Link
-          to="/accounts?loai_id=3"
+          to={cheapAccountsHref}
           className={`mobile-nav-item mobile-sale-item${isSaleActive ? " active" : ""}`}
           aria-current={isSaleActive ? "page" : undefined}
-          aria-label="Xem tài khoản Sale"
+          aria-label="Xem danh mục tài khoản giá rẻ"
         >
           <span className="mobile-sale-icon">
             <Flame size={21} aria-hidden="true" />

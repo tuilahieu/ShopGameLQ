@@ -8,10 +8,18 @@ export default function LoginCredentials({ login, copiedField, onCopy }) {
   const password = separatorIndex >= 0 ? rawLogin.slice(separatorIndex + 1) : "";
   const [showPassword, setShowPassword] = useState(true);
 
+  function selectValue(event) {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(event.currentTarget);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
   return (
     <div className="login-credentials-box">
       <div className="credential-quick-copy">
-        <span>Nhấn vào từng ô để chọn nhanh</span>
+        <span>Sao chép nhanh thông tin đăng nhập</span>
         <button
           type="button"
           className={`credential-copy-all ${copiedField === "all" ? "is-copied" : ""}`}
@@ -19,7 +27,7 @@ export default function LoginCredentials({ login, copiedField, onCopy }) {
           disabled={!rawLogin}
         >
           {copiedField === "all" ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
-          <span>{copiedField === "all" ? "Đã chép cả hai" : "Sao chép cả hai"}</span>
+          <span>{copiedField === "all" ? "Đã sao chép" : "Sao chép cả hai"}</span>
         </button>
       </div>
       {/* USERNAME ROW */}
@@ -31,14 +39,16 @@ export default function LoginCredentials({ login, copiedField, onCopy }) {
           </span>
         </div>
         <div className="credential-field-row">
-          <input
-            type="text"
-            readOnly
-            value={username || "Chưa có dữ liệu"}
+          <div
+            role="textbox"
+            aria-readonly="true"
+            tabIndex={0}
             className="credential-code-input"
-            onClick={(e) => e.target.select()}
+            onClick={selectValue}
             aria-label="Tài khoản đăng nhập"
-          />
+          >
+            {username || "Chưa có dữ liệu"}
+          </div>
           <button
             type="button"
             className={`credential-copy-button ${copiedField === "user" ? "is-copied" : ""}`}
@@ -61,7 +71,7 @@ export default function LoginCredentials({ login, copiedField, onCopy }) {
       </div>
 
       {/* PASSWORD ROW */}
-      <div className="credential-item credential-card-field">
+      <div className="credential-item credential-card-field has-visibility">
         <div className="credential-field-header">
           <span className="credential-field-title">
             <Lock size={13} aria-hidden="true" />
@@ -69,14 +79,16 @@ export default function LoginCredentials({ login, copiedField, onCopy }) {
           </span>
         </div>
         <div className="credential-field-row">
-          <input
-            type={showPassword ? "text" : "password"}
-            readOnly
-            value={password || "Chưa có dữ liệu"}
+          <div
+            role="textbox"
+            aria-readonly="true"
+            tabIndex={0}
             className="credential-code-input"
-            onClick={(e) => e.target.select()}
+            onClick={selectValue}
             aria-label="Mật khẩu tài khoản"
-          />
+          >
+            {password ? (showPassword ? password : "•".repeat(Math.max(password.length, 8))) : "Chưa có dữ liệu"}
+          </div>
           <button
             type="button"
             className="credential-visibility-button"

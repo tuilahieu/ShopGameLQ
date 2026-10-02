@@ -87,6 +87,8 @@ hình hoặc khó thao tác ở các kích thước khác nhau.
 - Upload kiểm tra loại file, giới hạn kích thước và dùng tên file ngẫu nhiên.
 - Import ảnh từ URL có kiểm tra địa chỉ mạng để hạn chế SSRF.
 - Rate limit được áp dụng cho đăng nhập, chatbot, upload và thao tác nhạy cảm.
+- Bình thường API không có giới hạn toàn cục; đặt `UNDER_ATTACK=1` và khởi động
+  lại backend để giới hạn toàn bộ API ở 250 yêu cầu/phút/IP.
 - Migration quản lý thay đổi cấu trúc database theo thứ tự.
 
 ### CI/CD và hạ tầng

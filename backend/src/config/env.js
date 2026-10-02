@@ -109,6 +109,7 @@ export const env = Object.freeze({
   },
   corsOrigins,
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  underAttack: process.env.UNDER_ATTACK === "1",
   uploadDir: process.env.UPLOAD_DIR || "uploads",
   maxBodyBytes: process.env.MAX_BODY_BYTES || "1mb",
   captcha: captchaConfig(),

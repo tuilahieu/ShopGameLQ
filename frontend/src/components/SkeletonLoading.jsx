@@ -228,8 +228,8 @@ function OrderDetailSkeleton({ label }) {
         {Array.from({ length: 2 }, (_, index) => <div className="skeleton-order-credential-field" key={index}><SkeletonBlock className="is-line is-45" /><div><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-button-small" /></div></div>)}
       </section>
       <section className="skeleton-order-security" aria-hidden="true">
-        <div className="skeleton-order-security-heading"><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-line is-45" /><SkeletonBlock className="is-title is-65" /></span></div>
-        <div className="skeleton-order-security-steps">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-badge" /><span><SkeletonBlock className="is-line is-65" /><SkeletonBlock className="is-line" /></span></div>)}</div>
+        <div className="skeleton-order-security-heading"><SkeletonBlock className="is-avatar" /><span><SkeletonBlock className="is-title is-65" /><SkeletonBlock className="is-line" /></span></div>
+        <SkeletonBlock className="is-avatar skeleton-order-security-chevron" />
       </section>
       <div className="skeleton-order-summary" aria-hidden="true">{Array.from({ length: 3 }, (_, index) => <div key={index}><SkeletonBlock className="is-line is-45" /><SkeletonBlock className={index === 2 ? "is-price-line" : "is-line is-45"} /></div>)}</div>
     </LoadingRegion>

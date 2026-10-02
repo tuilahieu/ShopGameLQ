@@ -1,5 +1,7 @@
 # Project Agent Rules
 
+CỰC QUAN TRỌNG: KHÔNG ĐƯỢC DÙNG CHROME MCP NỮA !! TÔI SẼ TỰ KIỂM TRA BẰNG TAY, SAU KHI BẠN CODE XONG THÌ DỪNG LUÔN ĐỂ TAO CHECK BẰNG TAY.
+
 ## Loading states
 
 - Loading a route bundle or lazy-loaded JavaScript chunk must use the dedicated branded loading overlay. Do not use a page-content skeleton for bundle loading.

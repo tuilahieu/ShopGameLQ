@@ -1938,87 +1938,33 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 
 /* Dialog size & container */
 .modal-content-wrapper.client-credentials-dialog {
-  max-width: 42rem;
-  width: min(42rem, calc(100vw - 1.25rem));
+  max-width: 39rem;
+  width: min(39rem, calc(100vw - 1.25rem));
   border-radius: 1.1rem;
   overflow: hidden;
 }
 
 /* Dialog content spacing */
 .client-credentials-dialog .modal-body {
-  padding: 1.15rem 1.25rem;
+  padding: 0.9rem 1rem;
 }
 
 .client-credentials-dialog .credential-delivery {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-/* 1. Celebration Banner */
-.client-credentials-dialog .credential-delivery-banner {
-  padding: 0.85rem 1rem;
-  border-radius: 0.85rem;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%);
-  border: 1.5px solid rgba(16, 185, 129, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.client-credentials-dialog .credential-delivery-badge {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 9999px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #10b981;
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.client-credentials-dialog .credential-delivery-text {
-  margin: 0;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: var(--color-text);
-}
-
-.client-credentials-dialog .credential-delivery-text strong {
-  color: #10b981;
-  font-weight: 750;
-}
-
-[data-theme="dark"] .client-credentials-dialog .credential-delivery-banner {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0.04) 100%);
-  border-color: rgba(16, 185, 129, 0.32);
-}
-
-[data-theme="dark"] .client-credentials-dialog .credential-delivery-badge {
-  background: rgba(16, 185, 129, 0.22);
-  border-color: rgba(16, 185, 129, 0.45);
-  color: #34d399;
-}
-
-[data-theme="dark"] .client-credentials-dialog .credential-delivery-text strong {
-  color: #34d399;
-}
-
-/* 2. Credentials Vault Box */
+/* Credentials are the primary content in the delivery dialog. */
 .client-credentials-dialog .order-credentials {
-  padding: 1.1rem;
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--color-success-soft) 48%, var(--color-surface));
-  border: 2px solid color-mix(in srgb, var(--color-success) 58%, var(--color-border));
-  box-shadow: 0 0.35rem 0 color-mix(in srgb, var(--color-success) 18%, transparent);
+  padding: 0.9rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--color-success-soft) 32%, var(--color-surface));
+  border: 1.5px solid color-mix(in srgb, var(--color-success) 62%, var(--color-border));
+  box-shadow: 0 0.2rem 0 color-mix(in srgb, var(--color-success) 16%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.7rem;
 }
 
 .client-credentials-dialog .order-credentials-header {
@@ -2026,7 +1972,7 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding-bottom: 0.45rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -2082,7 +2028,7 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 [data-theme="dark"] .client-credentials-dialog .order-credentials {
   background: #171f21;
   border-color: #287b64;
-  box-shadow: 0 0.35rem 0 #0c3229;
+  box-shadow: 0 0.2rem 0 #0c3229;
 }
 
 [data-theme="dark"] .client-credentials-dialog .order-credentials-header {
@@ -2095,17 +2041,18 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   color: #6ee7b7;
 }
 
-/* 3. Credentials Fields in Vault */
+/* Credential fields */
 .client-credentials-dialog .login-credentials-box {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   margin: 0;
   padding: 0;
 }
 
 .client-credentials-dialog .credential-quick-copy {
-  min-height: 2.65rem;
+  min-height: 2.5rem;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2119,7 +2066,7 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 }
 
 .client-credentials-dialog .credential-copy-all {
-  min-height: 2.6rem;
+  min-height: 2.5rem;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -2144,10 +2091,18 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 .client-credentials-dialog .credential-copy-all.is-copied { background: #065f46; }
 
 .client-credentials-dialog .credential-card-field {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.35rem 0;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.4rem;
+  border-bottom: 1px solid var(--color-border);
 }
+
+.client-credentials-dialog .credential-card-field:last-child { border-bottom: 0; }
 
 .client-credentials-dialog .credential-field-header {
   display: flex;
@@ -2167,14 +2122,16 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 }
 
 .client-credentials-dialog .credential-field-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "value visibility copy";
   align-items: center;
   gap: 0.45rem;
-  min-height: 3.4rem;
+  min-height: 3.1rem;
   background: var(--color-surface);
   border: 1.5px solid color-mix(in srgb, var(--color-success) 24%, var(--color-border));
   border-radius: 0.8rem;
-  padding: 0.35rem 0.4rem 0.35rem 0.9rem;
+  padding: 0.3rem 0.35rem 0.3rem 0.75rem;
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
@@ -2184,29 +2141,33 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 }
 
 .client-credentials-dialog .credential-code-input {
-  flex: 1 1 auto;
+  grid-area: value;
   min-width: 0;
-  border: none !important;
-  background: transparent !important;
+  max-width: 100%;
   color: var(--color-text) !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
-  font-size: 1.05rem !important;
+  font-size: 0.96rem !important;
   font-weight: 800 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  outline: none !important;
-  box-shadow: none !important;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
   user-select: all;
   letter-spacing: 0.02em;
 }
 
+.client-credentials-dialog .credential-code-input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+}
+
 .client-credentials-dialog .credential-visibility-button {
+  grid-area: visibility;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.65rem;
-  min-height: 2.65rem;
+  width: 2.5rem;
+  min-height: 2.5rem;
   padding: 0;
   background: transparent;
   border: none;
@@ -2226,13 +2187,14 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 }
 
 .client-credentials-dialog .credential-copy-button {
+  grid-area: copy;
   flex: 0 0 auto;
-  min-height: 2.65rem;
+  min-height: 2.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.8rem;
+  padding: 0.4rem 0.65rem;
   border-radius: 0.6rem;
   font-family: inherit;
   font-size: 0.8rem;
@@ -2302,53 +2264,92 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   box-shadow: 0 0 0 transparent !important;
 }
 
-/* 4. Security guide */
+/* Secondary guidance stays compact until the customer asks for details. */
 .client-credentials-dialog .order-security-note {
-  display: grid;
-  gap: 0.9rem;
-  padding: 1rem;
-  border-radius: 1rem;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  color: #725522;
+  font-size: initial;
+  line-height: normal;
+  border-radius: 0.8rem;
   background: #fff9eb;
-  border: 1.5px solid #e5a52f;
-  box-shadow: 0 0.3rem 0 rgba(151, 95, 10, 0.14);
+  border: 1px solid #d99a27;
 }
 
 .client-credentials-dialog .order-security-heading {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3.6rem;
+  padding: 0.65rem 0.75rem;
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.client-credentials-dialog .order-security-heading::-webkit-details-marker { display: none; }
+.client-credentials-dialog .order-security-heading::marker { display: none; content: ""; }
+.client-credentials-dialog .order-security-heading:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+  border-radius: 0.7rem;
 }
 
 .client-credentials-dialog .order-security-heading > div {
   min-width: 0;
+  flex: 1;
   display: grid;
-  gap: 0.1rem;
+  gap: 0.12rem;
 }
 
 .client-credentials-dialog .order-security-icon {
-  width: 2.6rem;
-  height: 2.6rem;
-  flex: 0 0 2.6rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 2.2rem;
   display: grid;
   place-items: center;
   color: #8b5500;
   background: #ffd56c;
   border: 1px solid #d8991f;
-  border-radius: 0.72rem;
+  border-radius: 0.58rem;
 }
 
-.client-credentials-dialog .order-security-eyebrow {
-  color: #97600a;
-  font-size: 0.65rem;
-  font-weight: 850;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
+.client-credentials-dialog .order-security-icon > svg,
+.client-credentials-dialog .order-security-chevron {
+  margin: 0;
 }
 
 .client-credentials-dialog .order-security-heading strong {
   color: #5f3b03;
-  font-size: 0.98rem;
+  font-size: 0.8rem;
   font-weight: 850;
+}
+
+.client-credentials-dialog .order-security-heading > div > span {
+  color: #725522;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.client-credentials-dialog .order-security-chevron {
+  flex: 0 0 auto;
+  color: #8b5500;
+  transition: transform 160ms ease;
+}
+
+.client-credentials-dialog .order-security-note[open] .order-security-heading {
+  border-bottom: 1px solid rgba(151, 96, 10, 0.2);
+}
+
+.client-credentials-dialog .order-security-note[open] .order-security-chevron { transform: rotate(180deg); }
+.client-credentials-dialog .order-security-content {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.75rem 0.75rem;
 }
 
 .client-credentials-dialog .order-security-steps {
@@ -2366,7 +2367,7 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 0.5rem;
-  padding: 0.65rem;
+  padding: 0.55rem;
   color: #694813;
   background: rgba(255, 255, 255, 0.62);
   border: 1px solid rgba(151, 96, 10, 0.2);
@@ -2403,7 +2404,6 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
 [data-theme="dark"] .client-credentials-dialog .order-security-note {
   background: #292318;
   border-color: #90641d;
-  box-shadow: 0 0.3rem 0 #15120c;
 }
 
 [data-theme="dark"] .client-credentials-dialog .order-security-icon {
@@ -2412,8 +2412,9 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   border-color: #b77b15;
 }
 
-[data-theme="dark"] .client-credentials-dialog .order-security-eyebrow { color: #efbd5b; }
 [data-theme="dark"] .client-credentials-dialog .order-security-heading strong { color: #fff0cd; }
+[data-theme="dark"] .client-credentials-dialog .order-security-heading > div > span { color: #d7c49c; }
+[data-theme="dark"] .client-credentials-dialog .order-security-chevron { color: #efbd5b; }
 [data-theme="dark"] .client-credentials-dialog .order-security-steps li {
   color: #f7e3bb;
   background: #211d16;
@@ -2482,6 +2483,47 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   .client-credentials-dialog .order-detail-summary { padding: 0.65rem; }
   .client-credentials-dialog .order-detail-summary > div { padding-inline: 0.5rem; }
   .modal-content-wrapper.client-credentials-dialog .modal-footer { padding: 0.7rem 0.8rem 0.85rem !important; }
+}
+
+@media (max-width: 30rem) {
+  .client-credentials-dialog .order-credentials-header { flex-wrap: wrap; }
+  .client-credentials-dialog .order-credentials-tag { margin-left: 1.95rem; }
+  .client-credentials-dialog .credential-field-row {
+    min-height: 3.25rem;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "value visibility copy";
+    gap: 0.3rem;
+    padding: 0.3rem 0.35rem 0.3rem 0.65rem;
+  }
+  .client-credentials-dialog .credential-code-input {
+    width: 100%;
+    font-size: 0.92rem !important;
+  }
+  .client-credentials-dialog .credential-copy-button { min-height: 2.65rem; justify-self: end; padding-inline: 0.6rem; }
+  .client-credentials-dialog .credential-visibility-button { width: 2.65rem; min-height: 2.65rem; justify-self: start; }
+  .client-credentials-dialog .order-security-heading { align-items: flex-start; }
+  .client-credentials-dialog .order-security-chevron { margin-top: 0.45rem; }
+  .client-credentials-dialog .order-detail-summary { grid-template-columns: minmax(0, 1fr); }
+  .client-credentials-dialog .order-detail-summary > div {
+    padding: 0.45rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .client-credentials-dialog .order-detail-summary > div:first-child { padding-top: 0; }
+  .client-credentials-dialog .order-detail-summary > div:last-child { padding-bottom: 0; border-bottom: 0; }
+  .client-credentials-dialog .order-detail-summary dd { max-width: 60%; text-align: end; }
+  .modal-content-wrapper.client-credentials-dialog .modal-footer { grid-template-columns: 1fr 1fr !important; padding-inline: 0.75rem !important; }
+}
+
+@media (max-width: 22.5rem) {
+  .client-credentials-dialog .credential-copy-button { width: 2.65rem; padding-inline: 0; }
+  .client-credentials-dialog .credential-copy-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .client-credentials-dialog .credential-quick-copy > span { display: none; }
+  .client-credentials-dialog .credential-copy-all { width: 100%; }
 }
 
 /* ==========================================================================
@@ -2691,6 +2733,19 @@ body:has(.client-page) .notice-popup-modal .notice-dismiss-btn:hover {
   background: #242832 !important;
   border-color: #596276 !important;
   box-shadow: 0 0.2rem 0 #0d0f15 !important;
+}
+
+/* Delivery footer stays secondary to the credentials above it. */
+.modal-content-wrapper.client-credentials-dialog .modal-footer {
+  grid-template-columns: 0.8fr 1.2fr !important;
+  gap: 0.6rem !important;
+  padding: 0.7rem 1rem 0.85rem !important;
+}
+
+.modal-content-wrapper.client-credentials-dialog .modal-footer > :where(button, a) {
+  min-height: 2.75rem !important;
+  border-radius: 0.72rem !important;
+  font-size: 0.84rem !important;
 }
 
 /* Image preview: one fitted image and one close action, nothing else. */

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRateLimit } from "../src/config/http.js";
+import { createRateLimit, getGlobalApiRateLimitMax } from "../src/config/http.js";
 
 function mockResponse() {
   return {
@@ -24,4 +24,9 @@ test("rate limiter permits the configured request count then rejects by IP", () 
   assert.equal(response.statusCode, 429);
   assert.equal(response.body.success, false);
   assert.equal(response.headers["Retry-After"], 3);
+});
+
+test("global API rate limit is only enabled in under-attack mode", () => {
+  assert.equal(getGlobalApiRateLimitMax(false), null);
+  assert.equal(getGlobalApiRateLimitMax(true), 250);
 });

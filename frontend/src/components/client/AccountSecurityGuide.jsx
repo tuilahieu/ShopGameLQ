@@ -1,22 +1,25 @@
-import { ShieldAlert } from "lucide-react";
+import { ChevronDown, ShieldAlert } from "lucide-react";
 
 export default function AccountSecurityGuide() {
   return (
-    <aside className="order-security-note" aria-labelledby="account-security-title">
-      <div className="order-security-heading">
+    <details className="order-security-note">
+      <summary className="order-security-heading">
         <span className="order-security-icon" aria-hidden="true">
-          <ShieldAlert size={20} />
+          <ShieldAlert size={18} />
         </span>
         <div>
-          <span className="order-security-eyebrow">Làm ngay sau khi đăng nhập</span>
-          <strong id="account-security-title">Bảo vệ tài khoản của bạn</strong>
+          <strong>Bảo mật tài khoản ngay sau khi đăng nhập</strong>
+          <span>Đổi mật khẩu, liên kết số điện thoại và email của bạn</span>
         </div>
+        <ChevronDown className="order-security-chevron" size={18} aria-hidden="true" />
+      </summary>
+      <div className="order-security-content">
+        <ol className="order-security-steps">
+          <li><span>1</span><p><strong>Kiểm tra đăng nhập</strong>Đăng nhập game bằng thông tin phía trên.</p></li>
+          <li><span>2</span><p><strong>Liên kết bảo mật</strong>Thêm số điện thoại và email cá nhân.</p></li>
+          <li><span>3</span><p><strong>Đổi mật khẩu</strong>Tạo mật khẩu mới và không chia sẻ mã xác nhận.</p></li>
+        </ol>
       </div>
-      <ol className="order-security-steps">
-        <li><span>1</span><p><strong>Kiểm tra đăng nhập</strong>Đăng nhập game bằng thông tin phía trên.</p></li>
-        <li><span>2</span><p><strong>Thêm thông tin cá nhân</strong>Liên kết số điện thoại và email bảo mật của bạn.</p></li>
-        <li><span>3</span><p><strong>Đổi mật khẩu ngay</strong>Tạo mật khẩu mới và không chia sẻ mã xác nhận cho người khác.</p></li>
-      </ol>
-    </aside>
+    </details>
   );
 }
