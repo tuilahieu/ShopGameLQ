@@ -1,17 +1,32 @@
 import { lazy } from "react";
+import ClientLayoutScreen from "@/layouts/ClientLayout";
+import HomeScreen from "@/pages/client/Home";
+import AccountsScreen from "@/pages/client/Accounts";
+import AccountDetailScreen from "@/pages/client/AccountDetail";
+import LoginScreen from "@/pages/client/Login";
+import RegisterScreen from "@/pages/client/Register";
+import MyOrdersScreen from "@/pages/client/MyOrders";
+import RechargeScreen from "@/pages/client/Recharge";
+import ProfileScreen from "@/pages/client/Profile";
+import TermsScreen from "@/pages/client/Terms";
+import ContactScreen from "@/pages/client/Contact";
+import NotFoundScreen from "@/pages/client/NotFound";
 
-export const ClientLayout = lazy(() => import("@/layouts/ClientLayout"));
-export const Home = lazy(() => import("@/pages/client/Home"));
-export const Accounts = lazy(() => import("@/pages/client/Accounts"));
-export const AccountDetail = lazy(() => import("@/pages/client/AccountDetail"));
-export const Login = lazy(() => import("@/pages/client/Login"));
-export const Register = lazy(() => import("@/pages/client/Register"));
-export const MyOrders = lazy(() => import("@/pages/client/MyOrders"));
-export const Recharge = lazy(() => import("@/pages/client/Recharge"));
-export const Profile = lazy(() => import("@/pages/client/Profile"));
-export const Terms = lazy(() => import("@/pages/client/Terms"));
-export const Contact = lazy(() => import("@/pages/client/Contact"));
-export const NotFound = lazy(() => import("@/pages/client/NotFound"));
+// Customer routes are deliberately part of the initial storefront bundle.
+// Their data skeletons are the only page-level loading state customers see;
+// admin and CTV screens remain lazy and retain the branded bundle fallback.
+export const ClientLayout = ClientLayoutScreen;
+export const Home = HomeScreen;
+export const Accounts = AccountsScreen;
+export const AccountDetail = AccountDetailScreen;
+export const Login = LoginScreen;
+export const Register = RegisterScreen;
+export const MyOrders = MyOrdersScreen;
+export const Recharge = RechargeScreen;
+export const Profile = ProfileScreen;
+export const Terms = TermsScreen;
+export const Contact = ContactScreen;
+export const NotFound = NotFoundScreen;
 
 export const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"));
 export const AdminGate = lazy(() => import("@/pages/admin/AdminGate"));

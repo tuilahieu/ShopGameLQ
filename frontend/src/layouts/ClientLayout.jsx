@@ -13,22 +13,6 @@ import useMotionReveal from "../hooks/useMotionReveal";
 import ShopAssistant from "../components/ShopAssistant";
 import SiteBrand, { BrandWordmark } from "../components/client/SiteBrand";
 
-function preloadClientScreens() {
-  return Promise.allSettled([
-    import("../pages/client/Home"),
-    import("../pages/client/Accounts"),
-    import("../pages/client/AccountDetail"),
-    import("../pages/client/Login"),
-    import("../pages/client/Register"),
-    import("../pages/client/MyOrders"),
-    import("../pages/client/Recharge"),
-    import("../pages/client/Profile"),
-    import("../pages/client/Terms"),
-    import("../pages/client/Contact"),
-    import("../pages/client/NotFound"),
-  ]);
-}
-
 export default function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,13 +37,6 @@ export default function ClientLayout() {
   const routeKey = `${location.pathname}${location.search}`;
 
   useMotionReveal(mainRef, routeKey);
-
-  useEffect(() => {
-    // Warm every customer route after the shared shell mounts. Navigation then
-    // moves directly to the page's data skeleton instead of showing a bundle
-    // loader followed by a second loading state.
-    void preloadClientScreens();
-  }, []);
 
   useEffect(() => {
     if (isMobileMenuOpen) {

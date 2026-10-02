@@ -11,6 +11,28 @@ import { resolveAccountTypeImage, resolveStorefrontHero } from "../../utils/stor
 import usePageSeo from "../../hooks/usePageSeo";
 import { formatNumber } from "../../utils/formatters";
 import { getApiErrorMessage } from "../../utils/apiError";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
+
+function preloadHeroImage(source) {
+  const url = resolveMediaUrl(source);
+  if (!url) return Promise.resolve(false);
+
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.fetchPriority = "high";
+    image.onload = async () => {
+      try {
+        await image.decode?.();
+      } catch {
+        // The load event already confirms that the browser can render it.
+      }
+      resolve(true);
+    };
+    image.onerror = () => resolve(false);
+    image.src = url;
+  });
+}
 
 function parseStoreNotice(rawText) {
   if (!rawText || typeof rawText !== "string") {
@@ -289,11 +311,14 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [heroPreloaded, setHeroPreloaded] = useState(false);
 
   async function loadHome() {
     setLoadError("");
     try {
       const res = await api.get("/home");
+      const heroReady = await preloadHeroImage(resolveStorefrontHero(res.data.data?.setting?.banner));
+      setHeroPreloaded(heroReady);
       setData(res.data.data);
       if (res.data.data?.setting?.thongbao) {
         const hideUntil = Number(localStorage.getItem("hide_notice_until") || 0);
@@ -393,10 +418,11 @@ export default function Home() {
                     alt={`Banner ${data.setting?.ten_web || "cửa hàng tài khoản game"}`}
                     width={1600}
                     height={900}
-                    loading="eager"
-                    fetchPriority="high"
-                    decoding="async"
-                    fallbackLabel="Ảnh giới thiệu cửa hàng"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  preloaded={heroPreloaded}
+                  fallbackLabel="Ảnh giới thiệu cửa hàng"
                   />
                 ) : (
                   <div className="home-banner-placeholder">

@@ -20,12 +20,13 @@ export default function SafeImage({
   loading = "lazy",
   decoding = "async",
   fetchPriority,
+  preloaded = false,
   onLoad,
   ...props
 }) {
   const resolvedSrc = resolveMediaUrl(src);
   const [failedSrc, setFailedSrc] = useState(null);
-  const [loadedSrc, setLoadedSrc] = useState(null);
+  const [loadedSrc, setLoadedSrc] = useState(() => (preloaded ? resolvedSrc : null));
   const failed = !resolvedSrc || failedSrc === resolvedSrc;
   const loaded = loadedSrc === resolvedSrc;
 
